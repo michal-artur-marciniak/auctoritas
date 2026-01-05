@@ -1,0 +1,30 @@
+# Build stage
+FROM eclipse-temurin:21-jdk-alpine AS build
+WORKDIR /app
+
+# Copy Maven wrapper
+COPY backend/mvnw mvnw
+COPY backend/.mvn/ .mvn/
+
+# Copy the auth-specific build POM
+COPY infra/docker/pom-auth.xml pom.xml
+
+# Copy only the modules we need
+COPY backend/libs/common/ libs/common/
+COPY backend/services/auth-service/ services/auth-service/
+
+# Build using the minimal POM
+RUN chmod +x mvnw && ./mvnw clean package -DskipTests
+
+# Runtime stage
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+
+RUN addgroup -S auctoritas && adduser -S auctoritas -G auctoritas
+USER auctoritas
+
+COPY --from=build /app/services/auth-service/target/*.jar app.jar
+
+EXPOSE 8081
+
+ENTRYPOINT ["java", "-jar", "app.jar"]

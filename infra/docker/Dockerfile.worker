@@ -1,0 +1,30 @@
+# Build stage
+FROM eclipse-temurin:21-jdk-alpine AS build
+WORKDIR /app
+
+# Copy Maven wrapper
+COPY backend/mvnw mvnw
+COPY backend/.mvn/ .mvn/
+
+# Copy the worker-specific build POM
+COPY infra/docker/pom-worker.xml pom.xml
+
+# Copy only the modules we need
+COPY backend/libs/common/ libs/common/
+COPY backend/services/worker-service/ services/worker-service/
+
+# Build using the minimal POM
+RUN chmod +x mvnw && ./mvnw clean package -DskipTests
+
+# Runtime stage
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+
+RUN addgroup -S auctoritas && adduser -S auctoritas -G auctoritas
+USER auctoritas
+
+COPY --from=build /app/services/worker-service/target/*.jar app.jar
+
+EXPOSE 8082
+
+ENTRYPOINT ["java", "-jar", "app.jar"]

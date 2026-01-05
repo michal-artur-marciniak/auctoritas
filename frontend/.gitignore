@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.pnpm-store/
+*.tsbuildinfo
+.turbo/
+.next/
+.nuxt/
+.output/
+coverage/
+*.log

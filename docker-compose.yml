@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:18
+    container_name: auctoritas-postgres
+    environment:
+      POSTGRES_DB: auctoritas
+      POSTGRES_USER: auctoritas
+      POSTGRES_PASSWORD: auctoritas_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auctoritas"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  redis:
+    image: redis:8.4-alpine
+    container_name: auctoritas-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  rabbitmq:
+    image: rabbitmq:4.2-management
+    container_name: auctoritas-rabbitmq
+    ports:
+      - "5672:5672"    # AMQP protocol
+      - "15672:15672"  # Management UI (http://localhost:15672, guest/guest)
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

@@ -1,0 +1,13 @@
+{
+  "name": "auctoritas-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev:dashboard": "pnpm --filter dashboard dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

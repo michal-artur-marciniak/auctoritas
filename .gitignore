@@ -1,0 +1,82 @@
+# ====================
+# Backend (Java/Maven)
+# ====================
+target/
+!**/src/main/**/target/
+!**/src/test/**/target/
+*.jar
+*.war
+*.ear
+*.class
+
+# Maven wrapper jar (downloaded on demand)
+.mvn/wrapper/maven-wrapper.jar
+
+# ====================
+# Frontend (Node/pnpm)
+# ====================
+node_modules/
+dist/
+.pnpm-store/
+*.tsbuildinfo
+
+# ====================
+# IDE
+# ====================
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# Eclipse / STS
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/nbdist/
+/.nb-gradle/
+
+# VS Code
+.vscode/
+
+# ====================
+# OS
+# ====================
+.DS_Store
+Thumbs.db
+
+# ====================
+# Environment / Secrets
+# ====================
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+credentials.json
+
+# ====================
+# Logs
+# ====================
+*.log
+logs/
+
+# ====================
+# Docker
+# ====================
+.docker/
+
+# ====================
+# Misc
+# ====================
+*.swp
+*.swo
+*~
