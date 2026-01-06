@@ -80,3 +80,4 @@ logs/
 *.swp
 *.swo
 *~
+.docs/
