@@ -21,6 +21,9 @@
     <properties>
         <java.version>21</java.version>
         <spring-cloud.version>2025.0.1</spring-cloud.version>
+        <logstash-logback.version>8.0</logstash-logback.version>
+        <testcontainers.version>1.20.4</testcontainers.version>
+        <hypersistence-utils.version>3.9.0</hypersistence-utils.version>
     </properties>
 
     <modules>
@@ -39,6 +42,29 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+        
+        <!-- Testcontainers BOM -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-bom</artifactId>
+            <version>${testcontainers.version}</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+        
+        <!-- Logstash encoder -->
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>${logstash-logback.version}</version>
+        </dependency>
+        
+        <!-- Hypersistence Utils (for JSONB mapping) -->
+        <dependency>
+            <groupId>io.hypersistence</groupId>
+            <artifactId>hypersistence-utils-hibernate-63</artifactId>
+            <version>${hypersistence-utils.version}</version>
+        </dependency>
         </dependencies>
     </dependencyManagement>
 </project>
