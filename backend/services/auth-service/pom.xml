@@ -42,11 +42,6 @@
       <artifactId>postgresql</artifactId>
       <scope>runtime</scope>
     </dependency>
-    <!-- JSONB support -->
-    <dependency>
-      <groupId>io.hypersistence</groupId>
-      <artifactId>hypersistence-utils-hibernate-63</artifactId>
-    </dependency>
     <!-- Password encoding -->
     <dependency>
       <groupId>org.springframework.security</groupId>
