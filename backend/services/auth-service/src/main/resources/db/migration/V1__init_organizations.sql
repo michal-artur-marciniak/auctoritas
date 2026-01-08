@@ -21,7 +21,7 @@ CREATE TABLE organization_members (
   avatar_url      VARCHAR(500),
   role            VARCHAR(20) NOT NULL,
   email_verified  BOOLEAN NOT NULL DEFAULT FALSE,
-  status          VARTCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+  status          VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
   created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at      TIMESTAMP NOT NULL DEFAULT NOW(),
 
@@ -60,6 +60,7 @@ CREATE TABLE org_member_mfa (
 CREATE TABLE org_member_sessions (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   member_id       UUID NOT NULL UNIQUE REFERENCES organization_members(id) ON DELETE CASCADE,
+  user_agent      TEXT,
   device_info     JSONB,
   ip_address      INET,
   expires_at      TIMESTAMP NOT NULL,
