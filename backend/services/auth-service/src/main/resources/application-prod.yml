@@ -1,4 +1,8 @@
 spring:
+  config:
+    activate:
+      on-profile: prod
+
   datasource:
     url: ${DATABASE_URL}
     username: ${DATABASE_USERNAME}
@@ -10,11 +14,11 @@ spring:
       idle-timeout: 600000
       max-lifetime: 1800000
 
-    jpa:
-      show-sql: false
+  jpa:
+    show-sql: false
 
-    flyway:
-      baseline-on-migrate: false
+  flyway:
+    baseline-on-migrate: false
 
 logging:
   level:

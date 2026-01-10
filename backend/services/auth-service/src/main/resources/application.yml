@@ -4,6 +4,12 @@ server:
 spring:
   application:
     name: auth-service
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:auctoritas}
+    username: ${DB_USERNAME:auctoritas}
+    password: ${DB_PASSWORD:auctoritas_dev}
 
   jpa:
     open-in-view: false
