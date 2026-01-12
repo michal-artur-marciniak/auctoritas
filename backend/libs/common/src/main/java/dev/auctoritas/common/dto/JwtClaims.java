@@ -1,6 +1,15 @@
 package dev.auctoritas.common.dto;
 
-import java.util.UUID;
+import java.util.Set;
 
 public record JwtClaims(
-    UUID subject, UUID organizationId, String role, String type, String issuer) {}
+    String subject,
+    String orgId,
+    String projectId,
+    String role,
+    String type,
+    Set<String> permissions,
+    String issuer,
+    long iat,
+    long exp) {
+}

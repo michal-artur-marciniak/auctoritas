@@ -16,12 +16,13 @@ public class JwtConfig {
     private String privateKeyPath = "keys/jwt-private.pem";
     private String publicKeyPath = "keys/jwt-public.pem";
     private int keySize = 2048;
+    private boolean autoGenerate = true;
   }
 
   @Data
   public static class TokenConfig {
-    private long accessTokenExpirationSeconds = 1800;
-    private long refreshTokenExpirationSeconds = 2592000;
-    private String issuer = "auctoritas";
+    private long accessTokenTtlSeconds = 1800; // 30 minutes
+    private long refreshTokenTtlSeconds = 604800; // 7 days
+    private String issuer = "auctoritas.dev";
   }
 }
