@@ -1,6 +1,7 @@
 package dev.auctoritas.common.util;
 
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
+import org.bouncycastle.openssl.PEMKeyPair;
 import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.openssl.jcajce.JcaPEMWriter;
 
@@ -36,7 +37,16 @@ public class KeyPairUtils {
   public static PrivateKey loadPrivateKey(String path) throws Exception {
     try (PEMParser parser = new PEMParser(new FileReader(path))) {
       Object obj = parser.readObject();
-      PrivateKeyInfo privateKeyInfo = (PrivateKeyInfo) obj;
+
+      PrivateKeyInfo privateKeyInfo;
+      if (obj instanceof PEMKeyPair pemKeyPair) {
+        privateKeyInfo = pemKeyPair.getPrivateKeyInfo();
+      } else if (obj instanceof PrivateKeyInfo pki) {
+        privateKeyInfo = pki;
+      } else {
+        throw new IllegalArgumentException("Unexpected object type in PEM file: " + obj.getClass().getName());
+      }
+
       PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(privateKeyInfo.getEncoded());
       KeyFactory kf = KeyFactory.getInstance(RSA_ALGORITHM);
       return kf.generatePrivate(spec);
@@ -46,7 +56,16 @@ public class KeyPairUtils {
   public static PublicKey loadPublicKey(String path) throws Exception {
     try (PEMParser parser = new PEMParser(new FileReader(path))) {
       Object obj = parser.readObject();
-      byte[] content = ((org.bouncycastle.asn1.x509.SubjectPublicKeyInfo) obj).getEncoded();
+      byte[] content;
+
+      if (obj instanceof org.bouncycastle.asn1.x509.SubjectPublicKeyInfo spki) {
+        content = spki.getEncoded();
+      } else if (obj instanceof PEMKeyPair pemKeyPair) {
+        content = pemKeyPair.getPublicKeyInfo().getEncoded();
+      } else {
+        throw new IllegalArgumentException("Unexpected object type in PEM file: " + obj.getClass().getName());
+      }
+
       X509EncodedKeySpec spec = new X509EncodedKeySpec(content);
       KeyFactory kf = KeyFactory.getInstance(RSA_ALGORITHM);
       return kf.generatePublic(spec);
