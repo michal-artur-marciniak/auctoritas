@@ -22,9 +22,22 @@ This document outlines the step-by-step implementation plan for **v0.2.0 - Organ
 - ✅ Core DTOs (ApiResponse, AuthTokens, JwtClaims)
 - ✅ V3 migration for refresh tokens
 
+### Completed (v0.2.0 - Phase 1 & 2)
+- ✅ **Phase 1: Foundation Infrastructure (5 commits)**
+  - Commit 1: JWT, BouncyCastle, Argon2 dependencies
+  - Commit 2: JWT and password policy configuration
+  - Commit 3: Core DTOs (ApiResponse, ErrorDetail, AuthTokens, JwtClaims)
+  - Commit 4: Utility classes (KeyPairUtils, SecureRandomUtils, ValidationUtils)
+  - Commit 5: Database indexes (V4 migration)
+
+- ✅ **Phase 2: Common Library Services (3 commits) - 98 TESTS PASSING**
+  - Commit 6: JwtService for RS256 token generation/validation
+  - Commit 7: PasswordValidator for password policy enforcement
+  - Commit 8: GlobalExceptionHandler with custom exceptions
+
 ### In Progress (v0.2.0 branch)
-- Currently at commit `983acba` with V3 migration complete
-- Remaining: Services, Controllers, Security, Gateway, Tests
+- Currently at commit `2a42a4a` with Phase 2 complete
+- Remaining: Auth Service Business Logic (Commits 9-12)
 
 ---
 
@@ -127,7 +140,7 @@ DELETE /api/v1/org/{orgId}
 
 ---
 
-### **Phase 2: Common Library Services (3 commits)**
+### **Phase 2: Common Library Services (3 commits) - COMPLETED ✅**
 
 #### **Commit 6: feat(common): add JwtService for RS256 token generation and validation**
 - Create `JwtService`:
@@ -136,37 +149,43 @@ DELETE /api/v1/org/{orgId}
   - `extractClaims(String token)` → JwtClaims object
   - Load RSA keys from configured paths
   - Handle missing keys by auto-generating on startup
-- Create `JwtPrincipal` class implementing `UserDetails`:
-  - Wrapper for authentication in Spring Security
-  - Convert JwtClaims to GrantedAuthority
-- Add comprehensive unit tests
+- Create `JwtPrincipal` record:
+  - Principal extraction from JWT claims
+  - Type checking (isOrgMember, isEndUser)
+  - Permission helpers (hasPermission)
+- Add JwtServiceTest with 17 unit tests
+- Fix KeyPairUtils for BouncyCastle PEMKeyPair compatibility
 - **Rationale:** Centralized JWT logic with RS256 signing
 
 #### **Commit 7: feat(common): add PasswordValidator for policy enforcement**
+- Create `ValidationError` enum with 10 error types
+- Create `ValidationResult` record with factory methods
 - Create `PasswordValidator`:
-  - `validate(String password)` → ValidationResult (valid + errors)
-  - Check length, uppercase, lowercase, digit, special char
-  - Check against common password patterns
-  - Support for future zxcvbn integration
-- Create `ValidationResult` record (isValid, List<ValidationError>)
-- Add unit tests with various password scenarios
+  - Length validation (8-128 characters)
+  - Character requirements (uppercase, lowercase, digit, special char)
+  - Common password detection (blacklist of 10 common passwords)
+  - Sequential character detection (4+ consecutive chars)
+  - Repeated character detection (5+ consecutive chars)
+  - Whitespace detection
+- Add PasswordValidatorTest with 52 unit tests
 - **Rationale:** Enforce password security policy consistently
 
 #### **Commit 8: feat(common): add global exception handler and custom exceptions**
 - Create exception classes:
-  - `AuthException` (authentication failures)
-  - `ValidationException` (validation errors)
-  - `ServiceException` (business logic errors)
+  - `AuthException` (authentication failures with error code, details, cause)
+  - `ValidationException` (validation errors with ErrorDetail list)
+  - `ServiceException` (business logic errors with resource info)
 - Create `GlobalExceptionHandler` with `@ControllerAdvice`:
   - Handle all custom exceptions → ApiResponse with error
   - Handle `MethodArgumentNotValidException` → field validation errors
-  - Handle `AuthenticationException` → 401 response
+  - Handle Spring Security exceptions → 401 responses
   - Handle generic `Exception` → 500 with error detail
+- Add GlobalExceptionHandlerTest with 24 unit tests
 - **Rationale:** Consistent error responses across application
 
 ---
 
-### **Phase 3: Auth Service - Business Logic (4 commits)**
+### **Phase 3: Auth Service - Business Logic (4 commits) - NEXT PHASE 🔄**
 
 #### **Commit 9: feat(auth): add OrganizationService with registration and CRUD**
 - Create `OrganizationService`:
@@ -177,6 +196,8 @@ DELETE /api/v1/org/{orgId}
   - `isSlugAvailable(String slug)` → boolean
   - Delete with authorization check
 - Implement transactional registration (org + member + initial session)
+- Integrate with PasswordValidator for password policy
+- Use Argon2PasswordEncoder for password hashing
 - Add unit tests with Testcontainers
 - **Rationale:** Core business logic for organization management
 
@@ -190,7 +211,7 @@ DELETE /api/v1/org/{orgId}
 - Token format: `rt_<32-char base64>`
 - SHA-256 hashing before storage
 - Device fingerprinting (browser family, OS from User-Agent)
-- Create `OrgMemberRefreshTokenRepository` if not exists
+- Create `OrgMemberRefreshTokenRepository`
 - Add unit tests
 - **Rationale:** Secure refresh token management with rotation support
 
@@ -464,17 +485,21 @@ DELETE /api/v1/org/{orgId}
 
 ### Total: 29 atomic commits organized into 9 phases
 
-| Phase | Commits | Focus |
-|-------|---------|-------|
-| 1. Foundation Infrastructure | 5 | Dependencies, config, DTOs, utils, DB indexes |
-| 2. Common Library Services | 3 | JwtService, PasswordValidator, ExceptionHandler |
-| 3. Auth Service Business Logic | 4 | OrgService, RefreshTokenService, OrgMemberService, DTOs |
-| 4. REST Controllers | 2 | OrganizationController, OrgAuthController |
-| 5. Security Configuration | 2 | Password encoder, JWT filter |
-| 6. Gateway Service | 4 | Dependencies, routing, rate limiting, CORS |
-| 7. Configuration & Infrastructure | 3 | Config files, key generation, Docker |
-| 8. Testing & Quality | 4 | Unit tests, integration tests, API tests, CI checks |
-| 9. Documentation & Release | 2 | Docs, changelog, release notes |
+| Phase | Commits | Status | Focus |
+|-------|---------|--------|-------|
+| 1. Foundation Infrastructure | 5 | ✅ Complete | Dependencies, config, DTOs, utils, DB indexes |
+| 2. Common Library Services | 3 | ✅ Complete | JwtService, PasswordValidator, ExceptionHandler |
+| 3. Auth Service Business Logic | 4 | 🔄 In Progress | OrgService, RefreshTokenService, OrgMemberService, DTOs |
+| 4. REST Controllers | 2 | ⏳ Pending | OrganizationController, OrgAuthController |
+| 5. Security Configuration | 2 | ⏳ Pending | Password encoder, JWT filter |
+| 6. Gateway Service | 4 | ⏳ Pending | Dependencies, routing, rate limiting, CORS |
+| 7. Configuration & Infrastructure | 3 | ⏳ Pending | Config files, key generation, Docker |
+| 8. Testing & Quality | 4 | ⏳ Pending | Unit tests, integration tests, API tests, CI checks |
+| 9. Documentation & Release | 2 | ⏳ Pending | Docs, changelog, release notes |
+
+### Current Progress
+- **Total Commits:** 8 of 29 (27%)
+- **Tests Passing:** 98 (all modules)
 
 ### Commit Message Format
 
@@ -585,4 +610,46 @@ After v0.2.0 is complete:
 ---
 
 *Last Updated: January 2026*  
-*Version: 1.0*
+*Version: 1.1 - Phase 2 Complete*
+
+---
+
+## Phase 2 Completion Details
+
+### Files Created (Phase 2)
+
+**Commit 6: JwtService**
+```
+backend/libs/common/src/main/java/dev/auctoritas/common/service/JwtService.java
+backend/libs/common/src/main/java/dev/auctoritas/common/security/JwtPrincipal.java
+backend/libs/common/src/test/java/dev/auctoritas/common/service/JwtServiceTest.java
+```
+
+**Commit 7: PasswordValidator**
+```
+backend/libs/common/src/main/java/dev/auctoritas/common/validation/ValidationError.java
+backend/libs/common/src/main/java/dev/auctoritas/common/validation/ValidationResult.java
+backend/libs/common/src/main/java/dev/auctoritas/common/validation/PasswordValidator.java
+backend/libs/common/src/test/java/dev/auctoritas/common/validation/PasswordValidatorTest.java
+```
+
+**Commit 8: GlobalExceptionHandler**
+```
+backend/libs/common/src/main/java/dev/auctoritas/common/exception/AuthException.java
+backend/libs/common/src/main/java/dev/auctoritas/common/exception/ValidationException.java
+backend/libs/common/src/main/java/dev/auctoritas/common/exception/ServiceException.java
+backend/libs/common/src/main/java/dev/auctoritas/common/exception/GlobalExceptionHandler.java
+backend/libs/common/src/test/java/dev/auctoritas/common/exception/GlobalExceptionHandlerTest.java
+```
+
+### Files Modified (Phase 2)
+```
+backend/libs/common/src/main/java/dev/auctoritas/common/util/KeyPairUtils.java
+backend/libs/common/pom.xml (added web, security, mockito dependencies)
+```
+
+### Test Results
+```
+Tests run: 98, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+```
