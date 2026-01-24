@@ -10,6 +10,11 @@
   <artifactId>common</artifactId>
   <name>Common Library</name>
   <dependencies>
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <scope>provided</scope>
+    </dependency>
     <!-- JPA API -->
     <dependency>
       <groupId>org.springframework.boot</groupId>

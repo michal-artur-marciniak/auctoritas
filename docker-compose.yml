@@ -38,6 +38,37 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  auth-service:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.auth
+    container_name: auctoritas-auth-service
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: auctoritas
+      DB_USERNAME: auctoritas
+      DB_PASSWORD: auctoritas_dev
+      SPRING_PROFILES_ACTIVE: dev
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+  gateway-service:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.gateway
+    container_name: auctoritas-gateway-service
+    ports:
+      - "8080:8080"
+  worker-service:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.worker
+    container_name: auctoritas-worker-service
+    ports:
+      - "8082:8082"
 
 volumes:
   postgres_data:
