@@ -2,10 +2,15 @@ package dev.auctoritas.auth.service;
 
 import dev.auctoritas.auth.api.OrgLoginRequest;
 import dev.auctoritas.auth.api.OrgLoginResponse;
+import dev.auctoritas.auth.api.OrgRefreshRequest;
+import dev.auctoritas.auth.api.OrgRefreshResponse;
+import dev.auctoritas.auth.entity.organization.OrgMemberRefreshToken;
 import dev.auctoritas.auth.entity.organization.Organization;
 import dev.auctoritas.auth.entity.organization.OrganizationMember;
+import dev.auctoritas.auth.repository.OrgMemberRefreshTokenRepository;
 import dev.auctoritas.auth.repository.OrganizationMemberRepository;
 import dev.auctoritas.auth.repository.OrganizationRepository;
+import java.time.Instant;
 import java.util.Locale;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -17,21 +22,24 @@ import org.springframework.web.server.ResponseStatusException;
 public class OrgAuthService {
   private final OrganizationRepository organizationRepository;
   private final OrganizationMemberRepository organizationMemberRepository;
+  private final OrgMemberRefreshTokenRepository refreshTokenRepository;
   private final PasswordEncoder passwordEncoder;
   private final TokenService tokenService;
 
   public OrgAuthService(
       OrganizationRepository organizationRepository,
       OrganizationMemberRepository organizationMemberRepository,
+      OrgMemberRefreshTokenRepository refreshTokenRepository,
       PasswordEncoder passwordEncoder,
       TokenService tokenService) {
     this.organizationRepository = organizationRepository;
     this.organizationMemberRepository = organizationMemberRepository;
+    this.refreshTokenRepository = refreshTokenRepository;
     this.passwordEncoder = passwordEncoder;
     this.tokenService = tokenService;
   }
 
-  @Transactional(readOnly = true)
+  @Transactional
   public OrgLoginResponse login(OrgLoginRequest request) {
     String slug = normalizeSlug(requireValue(request.orgSlug(), "org_slug_required"));
     String email = normalizeEmail(requireValue(request.email(), "email_required"));
@@ -57,12 +65,62 @@ public class OrgAuthService {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "email_not_verified");
     }
 
+    String rawRefreshToken = tokenService.generateRefreshToken();
+    persistRefreshToken(member, rawRefreshToken, null, null);
+
     return new OrgLoginResponse(
         new OrgLoginResponse.OrganizationSummary(
             organization.getId(), organization.getName(), organization.getSlug()),
         new OrgLoginResponse.MemberSummary(member.getId(), member.getEmail(), member.getRole()),
         tokenService.generateAccessToken(),
-        tokenService.generateRefreshToken());
+        rawRefreshToken);
+  }
+
+  @Transactional
+  public OrgRefreshResponse refresh(OrgRefreshRequest request) {
+    String rawToken = requireValue(request.refreshToken(), "refresh_token_required");
+    String tokenHash = tokenService.hashToken(rawToken);
+
+    OrgMemberRefreshToken existingToken =
+        refreshTokenRepository
+            .findByTokenHash(tokenHash)
+            .orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid_refresh_token"));
+
+    if (existingToken.getRevoked()) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "refresh_token_revoked");
+    }
+
+    if (existingToken.getExpiresAt().isBefore(Instant.now())) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "refresh_token_expired");
+    }
+
+    // Rotate: revoke old token and issue new one
+    existingToken.setRevoked(true);
+
+    String newRawRefreshToken = tokenService.generateRefreshToken();
+    OrgMemberRefreshToken newToken =
+        persistRefreshToken(
+            existingToken.getMember(),
+            newRawRefreshToken,
+            existingToken.getIpAddress(),
+            existingToken.getUserAgent());
+
+    existingToken.setReplacedBy(newToken);
+
+    return new OrgRefreshResponse(tokenService.generateAccessToken(), newRawRefreshToken);
+  }
+
+  private OrgMemberRefreshToken persistRefreshToken(
+      OrganizationMember member, String rawToken, String ipAddress, String userAgent) {
+    OrgMemberRefreshToken token = new OrgMemberRefreshToken();
+    token.setMember(member);
+    token.setTokenHash(tokenService.hashToken(rawToken));
+    token.setExpiresAt(tokenService.getRefreshTokenExpiry());
+    token.setRevoked(false);
+    token.setIpAddress(ipAddress);
+    token.setUserAgent(userAgent);
+    return refreshTokenRepository.save(token);
   }
 
   private String normalizeSlug(String slug) {

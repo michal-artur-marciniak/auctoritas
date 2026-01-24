@@ -2,8 +2,10 @@ package dev.auctoritas.auth.service;
 
 import dev.auctoritas.auth.api.OrgRegistrationRequest;
 import dev.auctoritas.auth.api.OrgRegistrationResponse;
+import dev.auctoritas.auth.entity.organization.OrgMemberRefreshToken;
 import dev.auctoritas.auth.entity.organization.Organization;
 import dev.auctoritas.auth.entity.organization.OrganizationMember;
+import dev.auctoritas.auth.repository.OrgMemberRefreshTokenRepository;
 import dev.auctoritas.auth.repository.OrganizationMemberRepository;
 import dev.auctoritas.auth.repository.OrganizationRepository;
 import dev.auctoritas.common.enums.OrgMemberRole;
@@ -18,16 +20,19 @@ import org.springframework.web.server.ResponseStatusException;
 public class OrganizationRegistrationService {
   private final OrganizationRepository organizationRepository;
   private final OrganizationMemberRepository organizationMemberRepository;
+  private final OrgMemberRefreshTokenRepository refreshTokenRepository;
   private final PasswordEncoder passwordEncoder;
   private final TokenService tokenService;
 
   public OrganizationRegistrationService(
       OrganizationRepository organizationRepository,
       OrganizationMemberRepository organizationMemberRepository,
+      OrgMemberRefreshTokenRepository refreshTokenRepository,
       PasswordEncoder passwordEncoder,
       TokenService tokenService) {
     this.organizationRepository = organizationRepository;
     this.organizationMemberRepository = organizationMemberRepository;
+    this.refreshTokenRepository = refreshTokenRepository;
     this.passwordEncoder = passwordEncoder;
     this.tokenService = tokenService;
   }
@@ -57,13 +62,25 @@ public class OrganizationRegistrationService {
     Organization savedOrganization = organizationRepository.save(organization);
     OrganizationMember savedMember = organizationMemberRepository.save(member);
 
+    String rawRefreshToken = tokenService.generateRefreshToken();
+    persistRefreshToken(savedMember, rawRefreshToken);
+
     return new OrgRegistrationResponse(
         new OrgRegistrationResponse.OrganizationSummary(
             savedOrganization.getId(), savedOrganization.getName(), savedOrganization.getSlug()),
         new OrgRegistrationResponse.MemberSummary(
             savedMember.getId(), savedMember.getEmail(), savedMember.getRole()),
         tokenService.generateAccessToken(),
-        tokenService.generateRefreshToken());
+        rawRefreshToken);
+  }
+
+  private void persistRefreshToken(OrganizationMember member, String rawToken) {
+    OrgMemberRefreshToken token = new OrgMemberRefreshToken();
+    token.setMember(member);
+    token.setTokenHash(tokenService.hashToken(rawToken));
+    token.setExpiresAt(tokenService.getRefreshTokenExpiry());
+    token.setRevoked(false);
+    refreshTokenRepository.save(token);
   }
 
   private String normalizeSlug(String slug) {

@@ -20,4 +20,9 @@ public class OrgAuthController {
   public ResponseEntity<OrgLoginResponse> login(@RequestBody OrgLoginRequest request) {
     return ResponseEntity.ok(orgAuthService.login(request));
   }
+
+  @PostMapping("/refresh")
+  public ResponseEntity<OrgRefreshResponse> refresh(@RequestBody OrgRefreshRequest request) {
+    return ResponseEntity.ok(orgAuthService.refresh(request));
+  }
 }
