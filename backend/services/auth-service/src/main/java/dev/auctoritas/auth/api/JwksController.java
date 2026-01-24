@@ -1,6 +1,8 @@
 package dev.auctoritas.auth.api;
 
+import dev.auctoritas.auth.config.JwtProperties;
 import dev.auctoritas.auth.service.JwtService;
+import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.RSAPublicKey;
@@ -8,6 +10,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.MediaType;
+import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -22,9 +25,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class JwksController {
 
   private final JwtService jwtService;
+  private final JwtProperties jwtProperties;
 
-  public JwksController(JwtService jwtService) {
+  public JwksController(JwtService jwtService, JwtProperties jwtProperties) {
     this.jwtService = jwtService;
+    this.jwtProperties = jwtProperties;
   }
 
   /**
@@ -34,12 +39,10 @@ public class JwksController {
   @GetMapping(value = "/jwks.json", produces = MediaType.APPLICATION_JSON_VALUE)
   public JwksResponse getJwks() {
     RSAPublicKey rsaPublicKey = (RSAPublicKey) jwtService.getPublicKey();
-    
+
     String kid = generateKeyId(rsaPublicKey);
-    String n = Base64.getUrlEncoder().withoutPadding()
-        .encodeToString(rsaPublicKey.getModulus().toByteArray());
-    String e = Base64.getUrlEncoder().withoutPadding()
-        .encodeToString(rsaPublicKey.getPublicExponent().toByteArray());
+    String n = base64UrlUnsigned(rsaPublicKey.getModulus());
+    String e = base64UrlUnsigned(rsaPublicKey.getPublicExponent());
 
     Jwk jwk = new Jwk(
         "RSA",      // kty - Key Type
@@ -59,9 +62,14 @@ public class JwksController {
    */
   @GetMapping(value = "/openid-configuration", produces = MediaType.APPLICATION_JSON_VALUE)
   public Map<String, Object> getOpenIdConfiguration() {
+    String issuer = jwtProperties.issuer();
+    String jwksUri = UriComponentsBuilder.fromUriString(issuer)
+        .path("/.well-known/jwks.json")
+        .build()
+        .toUriString();
     return Map.of(
-        "issuer", "auctoritas",
-        "jwks_uri", "/.well-known/jwks.json",
+        "issuer", issuer,
+        "jwks_uri", jwksUri,
         "id_token_signing_alg_values_supported", List.of("RS256"),
         "token_endpoint_auth_methods_supported", List.of("client_secret_post", "client_secret_basic")
     );
@@ -83,6 +91,16 @@ public class JwksController {
       // SHA-256 is always available
       throw new RuntimeException("SHA-256 not available", e);
     }
+  }
+
+  private String base64UrlUnsigned(BigInteger value) {
+    byte[] bytes = value.toByteArray();
+    if (bytes.length > 1 && bytes[0] == 0) {
+      byte[] unsignedBytes = new byte[bytes.length - 1];
+      System.arraycopy(bytes, 1, unsignedBytes, 0, unsignedBytes.length);
+      bytes = unsignedBytes;
+    }
+    return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
   }
 
   public record JwksResponse(List<Jwk> keys) {}

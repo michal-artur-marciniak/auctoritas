@@ -54,19 +54,42 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     Claims claims = result.claims();
-    OrgMemberPrincipal principal = extractPrincipal(claims);
+    OrgMemberPrincipal principal;
+    try {
+      principal = extractPrincipal(claims);
+    } catch (IllegalArgumentException | NullPointerException ex) {
+      writeErrorResponse(response, "invalid_token_claims");
+      return;
+    }
     SecurityContextHolder.getContext().setAuthentication(principal);
 
     filterChain.doFilter(request, response);
   }
 
   private OrgMemberPrincipal extractPrincipal(Claims claims) {
-    UUID orgMemberId = UUID.fromString(claims.get(JwtService.CLAIM_ORG_MEMBER_ID, String.class));
-    UUID orgId = UUID.fromString(claims.get(JwtService.CLAIM_ORG_ID, String.class));
-    String email = claims.get(JwtService.CLAIM_EMAIL, String.class);
-    OrgMemberRole role = OrgMemberRole.valueOf(claims.get(JwtService.CLAIM_ROLE, String.class));
+    UUID orgMemberId = parseRequiredUuid(claims, JwtService.CLAIM_ORG_MEMBER_ID);
+    UUID orgId = parseRequiredUuid(claims, JwtService.CLAIM_ORG_ID);
+    String email = requireClaim(claims, JwtService.CLAIM_EMAIL);
+    OrgMemberRole role = parseRequiredRole(claims, JwtService.CLAIM_ROLE);
 
     return new OrgMemberPrincipal(orgMemberId, orgId, email, role);
+  }
+
+  private String requireClaim(Claims claims, String name) {
+    String value = claims.get(name, String.class);
+    if (value == null || value.isBlank()) {
+      throw new IllegalArgumentException("Missing claim: " + name);
+    }
+    return value;
+  }
+
+  private UUID parseRequiredUuid(Claims claims, String name) {
+    return UUID.fromString(requireClaim(claims, name));
+  }
+
+  private OrgMemberRole parseRequiredRole(Claims claims, String name) {
+    String value = requireClaim(claims, name);
+    return OrgMemberRole.valueOf(value);
   }
 
   private void writeErrorResponse(HttpServletResponse response, String errorCode)
