@@ -1,0 +1,1 @@
+2026-01-24: Implemented US-001 org registration endpoint with Argon2 hashing and token issuance; fixed auth-service context test profile.

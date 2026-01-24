@@ -1,0 +1,78 @@
+{
+  "project": "Auctoritas",
+  "branchName": "ralph/v0-2-0-org-auth-release",
+  "description": "Backend-only organization registration and authentication for the v0.2.0 org signup flow.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Register organization and return tokens",
+      "description": "As a developer, I want to register an organization and receive access/refresh tokens so I can immediately call protected org endpoints.",
+      "acceptanceCriteria": [
+        "POST /api/v1/org/register creates organization and owner member",
+        "Response includes accessToken and refreshToken (raw token, not hash)",
+        "Password is hashed with Argon2 before storage",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Org member login with JWT",
+      "description": "As an org member, I want to log in with email/password so that I can access the dashboard API.",
+      "acceptanceCriteria": [
+        "POST /api/v1/org/auth/login accepts org slug and returns JWTs",
+        "Login rejected when org member email is not verified",
+        "Invalid credentials return 400 with an error code",
+        "Failed-login attempts are rate limited (5 attempts/15 min)",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Refresh token rotation",
+      "description": "As an authenticated org member, I want to refresh my session so I stay signed in securely.",
+      "acceptanceCriteria": [
+        "POST /api/v1/org/auth/refresh accepts a refresh token and returns new access + refresh tokens",
+        "Refresh tokens are rotated and old token is marked revoked",
+        "Expired/revoked tokens are rejected with a clear error code",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Protect org endpoints with JWT",
+      "description": "As an org member, I want to access org endpoints using a JWT so that unauthorized users are blocked.",
+      "acceptanceCriteria": [
+        "/api/v1/org/** routes require JWT auth except public endpoints",
+        "JWT validation rejects malformed/expired tokens",
+        "JWT contains org member identity + org id claims",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Gateway routes and CORS for org APIs",
+      "description": "As a platform developer, I want the gateway to route org endpoints and allow CORS so clients can call the API.",
+      "acceptanceCriteria": [
+        "Gateway routes /api/v1/org/** to auth-service",
+        "Gateway applies rate limiting for org routes",
+        "CORS headers are set for org endpoints",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}
