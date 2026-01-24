@@ -1,8 +1,12 @@
 package dev.auctoritas.auth.api;
 
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
 public record OrgRegistrationRequest(
-    String orgName,
-    String slug,
-    String ownerEmail,
-    String ownerPassword,
-    String ownerName) {}
+    @NotBlank String orgName,
+    @NotBlank String slug,
+    @Email @NotBlank String ownerEmail,
+    @NotBlank @Size(min = 12, max = 128) String ownerPassword,
+    @NotBlank String ownerName) {}

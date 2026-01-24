@@ -3,6 +3,7 @@ package dev.auctoritas.auth.service;
 import dev.auctoritas.auth.api.OrgMemberProfileResponse;
 import dev.auctoritas.auth.entity.organization.OrganizationMember;
 import dev.auctoritas.auth.repository.OrganizationMemberRepository;
+import jakarta.persistence.EntityNotFoundException;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,14 +24,14 @@ public class OrgMemberProfileService {
    *
    * @param memberId the ID of the authenticated org member
    * @return the member's profile with organization info
-   * @throws IllegalArgumentException if member not found
+   * @throws EntityNotFoundException if member not found
    */
   @Transactional(readOnly = true)
   public OrgMemberProfileResponse getProfile(UUID memberId) {
     OrganizationMember member =
         memberRepository
             .findByIdWithOrganization(memberId)
-            .orElseThrow(() -> new IllegalArgumentException("Member not found"));
+            .orElseThrow(() -> new EntityNotFoundException("Member not found: " + memberId));
 
     return new OrgMemberProfileResponse(
         member.getId(),

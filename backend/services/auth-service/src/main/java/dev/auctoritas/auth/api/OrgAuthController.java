@@ -1,6 +1,7 @@
 package dev.auctoritas.auth.api;
 
 import dev.auctoritas.auth.service.OrgAuthService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -17,12 +18,13 @@ public class OrgAuthController {
   }
 
   @PostMapping("/login")
-  public ResponseEntity<OrgLoginResponse> login(@RequestBody OrgLoginRequest request) {
+  public ResponseEntity<OrgLoginResponse> login(@Valid @RequestBody OrgLoginRequest request) {
     return ResponseEntity.ok(orgAuthService.login(request));
   }
 
   @PostMapping("/refresh")
-  public ResponseEntity<OrgRefreshResponse> refresh(@RequestBody OrgRefreshRequest request) {
+  public ResponseEntity<OrgRefreshResponse> refresh(
+      @Valid @RequestBody OrgRefreshRequest request) {
     return ResponseEntity.ok(orgAuthService.refresh(request));
   }
 }

@@ -1,3 +1,5 @@
 package dev.auctoritas.auth.api;
 
-public record OrgRefreshRequest(String refreshToken) {}
+import jakarta.validation.constraints.NotBlank;
+
+public record OrgRefreshRequest(@NotBlank String refreshToken) {}

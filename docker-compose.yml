@@ -55,6 +55,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
   gateway-service:
     build:
       context: .
@@ -62,6 +64,9 @@ services:
     container_name: auctoritas-gateway-service
     ports:
       - "8080:8080"
+    depends_on:
+      redis:
+        condition: service_healthy
   worker-service:
     build:
       context: .

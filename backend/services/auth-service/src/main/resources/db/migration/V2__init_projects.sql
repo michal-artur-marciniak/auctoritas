@@ -18,7 +18,8 @@ CREATE TABLE project_settings (
     mfa_enabled                 BOOLEAN NOT NULL DEFAULT FALSE,
     mfa_required                BOOLEAN NOT NULL DEFAULT FALSE,
     
-    created_at                  TIMESTAMP NOT NULL DEFAULT NOW()
+    created_at                  TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at                  TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 -- Projects (isolated environments per organization)
@@ -28,7 +29,7 @@ CREATE TABLE projects (
     name            VARCHAR(100) NOT NULL,
     slug            VARCHAR(50) NOT NULL,
     status          VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
-    settings_id     UUID REFERENCES project_settings(id),
+    settings_id     UUID REFERENCES project_settings(id) ON DELETE SET NULL,
     created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMP NOT NULL DEFAULT NOW(),
     
@@ -44,7 +45,7 @@ CREATE TABLE api_keys (
     name            VARCHAR(50) NOT NULL,
     prefix          VARCHAR(10) NOT NULL,
     key_hash        VARCHAR(64) NOT NULL UNIQUE,
-    last_used_at    TIMESTAMP NOT NULL,
+    last_used_at    TIMESTAMP,
     status          VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
     created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMP NOT NULL DEFAULT NOW()

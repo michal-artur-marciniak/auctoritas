@@ -30,7 +30,7 @@ public class OrgMemberRefreshToken extends BaseEntity {
   private Instant expiresAt;
 
   @Column(nullable = false)
-  private Boolean revoked = false;
+  private boolean revoked = false;
 
   @OneToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "replaced_by_id")

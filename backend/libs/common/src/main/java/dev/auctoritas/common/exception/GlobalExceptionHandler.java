@@ -1,6 +1,7 @@
 package dev.auctoritas.common.exception;
 
 import dev.auctoritas.common.dto.ApiResponse;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.ConstraintViolationException;
 import java.util.HashMap;
 import java.util.Map;
@@ -70,7 +71,17 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ApiResponse<Void>> handleIllegalArgument(IllegalArgumentException ex) {
     log.warn("Illegal argument: {}", ex.getMessage());
     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-        .body(ApiResponse.error("invalid_argument", ex.getMessage()));
+        .body(ApiResponse.error("invalid_argument", "Invalid request parameter"));
+  }
+
+  /**
+   * Handles entity not found errors.
+   */
+  @ExceptionHandler(EntityNotFoundException.class)
+  public ResponseEntity<ApiResponse<Void>> handleEntityNotFound(EntityNotFoundException ex) {
+    log.warn("Entity not found: {}", ex.getMessage());
+    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        .body(ApiResponse.error("not_found", "Resource not found"));
   }
 
   /**

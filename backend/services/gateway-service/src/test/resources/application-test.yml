@@ -13,7 +13,7 @@ spring:
         webflux:
           routes:
             - id: org-routes-test
-              uri: http://localhost:8081
+              uri: ${AUTH_SERVICE_URL:http://localhost:8081}
               predicates:
                 - Path=/api/v1/org/**
 

@@ -71,7 +71,7 @@ public class PasswordValidator {
       errors.add("Password must contain at least " + policy.minUniqueChars() + " unique characters");
     }
 
-    return new ValidationResult(errors.isEmpty(), errors);
+    return new ValidationResult(errors.isEmpty(), List.copyOf(errors));
   }
 
   private int countUniqueChars(String password) {

@@ -11,16 +11,11 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class TokenService {
-  private static final int ACCESS_TOKEN_BYTES = 32;
   private static final int REFRESH_TOKEN_BYTES = 48;
   private static final Duration REFRESH_TOKEN_TTL = Duration.ofDays(30);
 
   private final SecureRandom secureRandom = new SecureRandom();
   private final Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();
-
-  public String generateAccessToken() {
-    return generateToken(ACCESS_TOKEN_BYTES);
-  }
 
   public String generateRefreshToken() {
     return generateToken(REFRESH_TOKEN_BYTES);

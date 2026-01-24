@@ -3,6 +3,7 @@ package dev.auctoritas.auth.security;
 import dev.auctoritas.common.enums.OrgMemberRole;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -14,6 +15,13 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
  */
 public record OrgMemberPrincipal(UUID orgMemberId, UUID orgId, String email, OrgMemberRole role)
     implements Authentication {
+
+  public OrgMemberPrincipal {
+    Objects.requireNonNull(orgMemberId, "orgMemberId");
+    Objects.requireNonNull(orgId, "orgId");
+    Objects.requireNonNull(email, "email");
+    Objects.requireNonNull(role, "role");
+  }
 
   @Override
   public Collection<? extends GrantedAuthority> getAuthorities() {

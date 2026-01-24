@@ -3,6 +3,7 @@ package dev.auctoritas.auth.api;
 import dev.auctoritas.auth.security.OrgMemberPrincipal;
 import dev.auctoritas.auth.service.OrgMemberProfileService;
 import dev.auctoritas.auth.service.OrganizationRegistrationService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -27,7 +28,7 @@ public class OrganizationController {
 
   @PostMapping("/register")
   public ResponseEntity<OrgRegistrationResponse> register(
-      @RequestBody OrgRegistrationRequest request) {
+      @Valid @RequestBody OrgRegistrationRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(organizationRegistrationService.register(request));
   }

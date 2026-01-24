@@ -17,11 +17,11 @@ public interface OrgMemberRefreshTokenRepository extends JpaRepository<OrgMember
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   Optional<OrgMemberRefreshToken> findByTokenHash(String tokenHash);
 
-  @Modifying
+  @Modifying(clearAutomatically = true)
   @Query("DELETE FROM OrgMemberRefreshToken t WHERE t.expiresAt < :now")
   void deleteExpiredTokens(Instant now);
 
-  @Modifying
+  @Modifying(clearAutomatically = true)
   @Query("UPDATE OrgMemberRefreshToken t SET t.revoked = true WHERE t.member.id = :memberId")
   void revokeAllByMemberId(UUID memberId);
 }

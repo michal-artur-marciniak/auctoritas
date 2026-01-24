@@ -13,6 +13,18 @@ public record PasswordPolicy(
     boolean requireSpecialChars,
     int minUniqueChars) {
 
+  public PasswordPolicy {
+    if (minLength < 1) {
+      throw new IllegalArgumentException("minLength must be at least 1");
+    }
+    if (maxLength < minLength) {
+      throw new IllegalArgumentException("maxLength must be >= minLength");
+    }
+    if (minUniqueChars < 1 || minUniqueChars > minLength) {
+      throw new IllegalArgumentException("minUniqueChars must be between 1 and minLength");
+    }
+  }
+
   /**
    * Creates a default password policy with sensible defaults.
    */
