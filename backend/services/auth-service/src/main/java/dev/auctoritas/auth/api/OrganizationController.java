@@ -6,6 +6,7 @@ import dev.auctoritas.auth.service.OrganizationRegistrationService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -37,9 +38,13 @@ public class OrganizationController {
    * Get the current authenticated org member's profile.
    * Requires a valid JWT token in the Authorization header.
    */
+  @PreAuthorize("isAuthenticated()")
   @GetMapping("/me")
   public ResponseEntity<OrgMemberProfileResponse> getCurrentMember(
       @AuthenticationPrincipal OrgMemberPrincipal principal) {
+    if (principal == null) {
+      throw new IllegalStateException("Authenticated org member principal is required.");
+    }
     return ResponseEntity.ok(orgMemberProfileService.getProfile(principal.orgMemberId()));
   }
 }

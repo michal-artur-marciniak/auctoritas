@@ -62,6 +62,8 @@ services:
       context: .
       dockerfile: infra/docker/Dockerfile.gateway
     container_name: auctoritas-gateway-service
+    environment:
+      AUTH_SERVICE_URL: http://auth-service:8081
     ports:
       - "8080:8080"
     depends_on:

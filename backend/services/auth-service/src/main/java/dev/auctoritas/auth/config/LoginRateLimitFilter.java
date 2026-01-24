@@ -10,6 +10,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -39,9 +41,18 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
 
   private final StringRedisTemplate redisTemplate;
   private final ObjectMapper objectMapper = new ObjectMapper();
+  private final List<String> trustedProxies;
 
-  public LoginRateLimitFilter(StringRedisTemplate redisTemplate) {
+  public LoginRateLimitFilter(
+      StringRedisTemplate redisTemplate,
+      @Value("${auth.security.trusted-proxies:}") List<String> trustedProxies) {
     this.redisTemplate = redisTemplate;
+    this.trustedProxies = trustedProxies == null
+        ? List.of()
+        : trustedProxies.stream()
+            .map(String::trim)
+            .filter(value -> !value.isBlank())
+            .collect(Collectors.toUnmodifiableList());
   }
 
   @Override
@@ -92,15 +103,24 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
   }
 
   private String getClientIp(HttpServletRequest request) {
-    String xForwardedFor = request.getHeader("X-Forwarded-For");
-    if (xForwardedFor != null && !xForwardedFor.isBlank()) {
-      // Take the first IP in case of multiple proxies
-      return xForwardedFor.split(",")[0].trim();
-    }
-    String xRealIp = request.getHeader("X-Real-IP");
-    if (xRealIp != null && !xRealIp.isBlank()) {
-      return xRealIp.trim();
+    if (isFromTrustedProxy(request)) {
+      String xForwardedFor = request.getHeader("X-Forwarded-For");
+      if (xForwardedFor != null && !xForwardedFor.isBlank()) {
+        // Take the first IP in case of multiple proxies
+        return xForwardedFor.split(",")[0].trim();
+      }
+      String xRealIp = request.getHeader("X-Real-IP");
+      if (xRealIp != null && !xRealIp.isBlank()) {
+        return xRealIp.trim();
+      }
     }
     return request.getRemoteAddr();
+  }
+
+  private boolean isFromTrustedProxy(HttpServletRequest request) {
+    if (trustedProxies.isEmpty()) {
+      return false;
+    }
+    return trustedProxies.contains(request.getRemoteAddr());
   }
 }
