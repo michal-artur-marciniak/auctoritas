@@ -22,7 +22,9 @@ public class SecurityConfig {
     "/api/v1/org/register",
     "/api/v1/org/auth/login",
     "/api/v1/org/auth/refresh",
-    "/actuator/health"
+    "/actuator/health",
+    "/.well-known/jwks.json",
+    "/.well-known/openid-configuration"
   };
 
   private final JwtAuthenticationFilter jwtAuthenticationFilter;
