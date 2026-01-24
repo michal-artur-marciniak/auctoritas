@@ -6,30 +6,35 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.springframework.core.annotation.Order;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Rate limiting filter for login endpoint. Limits requests to 5 attempts per 15 minutes per IP
- * address.
+ * Rate limiting filter for login endpoint using Redis. Limits requests to 5 attempts per 15 minutes
+ * per IP address.
  */
 @Component
 @Order(2)
 public class LoginRateLimitFilter extends OncePerRequestFilter {
 
   private static final String LOGIN_PATH = "/api/v1/org/auth/login";
+  private static final String REDIS_KEY_PREFIX = "rate_limit:login:";
   private static final int MAX_ATTEMPTS = 5;
-  private static final long WINDOW_MILLIS = 15 * 60 * 1000; // 15 minutes
+  private static final Duration WINDOW_DURATION = Duration.ofMinutes(15);
 
-  private final Map<String, RateLimitEntry> rateLimitMap = new ConcurrentHashMap<>();
+  private final StringRedisTemplate redisTemplate;
   private final ObjectMapper objectMapper = new ObjectMapper();
+
+  public LoginRateLimitFilter(StringRedisTemplate redisTemplate) {
+    this.redisTemplate = redisTemplate;
+  }
 
   @Override
   protected void doFilterInternal(
@@ -46,29 +51,33 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
     }
 
     String clientIp = getClientIp(request);
-    RateLimitEntry entry = rateLimitMap.compute(clientIp, (key, existing) -> {
-      long now = System.currentTimeMillis();
-      if (existing == null || now - existing.windowStart > WINDOW_MILLIS) {
-        return new RateLimitEntry(now, new AtomicInteger(1));
-      }
-      existing.attempts.incrementAndGet();
-      return existing;
-    });
+    String redisKey = REDIS_KEY_PREFIX + clientIp;
 
-    if (entry.attempts.get() > MAX_ATTEMPTS) {
-      long remainingMillis = WINDOW_MILLIS - (System.currentTimeMillis() - entry.windowStart);
-      long remainingSeconds = Math.max(1, remainingMillis / 1000);
+    Long attempts = redisTemplate.opsForValue().increment(redisKey);
+    if (attempts == null) {
+      attempts = 1L;
+    }
+
+    // Set expiry on first attempt
+    if (attempts == 1) {
+      redisTemplate.expire(redisKey, WINDOW_DURATION);
+    }
+
+    if (attempts > MAX_ATTEMPTS) {
+      Long ttl = redisTemplate.getExpire(redisKey);
+      long remainingSeconds = ttl != null && ttl > 0 ? ttl : 1;
 
       response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
       response.setContentType(MediaType.APPLICATION_JSON_VALUE);
       response.setHeader("Retry-After", String.valueOf(remainingSeconds));
-      
-      Map<String, Object> errorBody = Map.of(
-          "error", "rate_limit_exceeded",
-          "message", "Too many login attempts. Please try again later.",
-          "retryAfterSeconds", remainingSeconds,
-          "timestamp", Instant.now().toString());
-      
+
+      Map<String, Object> errorBody =
+          Map.of(
+              "error", "rate_limit_exceeded",
+              "message", "Too many login attempts. Please try again later.",
+              "retryAfterSeconds", remainingSeconds,
+              "timestamp", Instant.now().toString());
+
       objectMapper.writeValue(response.getWriter(), errorBody);
       return;
     }
@@ -87,15 +96,5 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
       return xRealIp.trim();
     }
     return request.getRemoteAddr();
-  }
-
-  private static class RateLimitEntry {
-    final long windowStart;
-    final AtomicInteger attempts;
-
-    RateLimitEntry(long windowStart, AtomicInteger attempts) {
-      this.windowStart = windowStart;
-      this.attempts = attempts;
-    }
   }
 }

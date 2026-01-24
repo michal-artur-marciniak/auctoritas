@@ -1,1 +1,2 @@
 2026-01-24: Implemented US-001 org registration endpoint with Argon2 hashing and token issuance; fixed auth-service context test profile.
+2026-01-24: Implemented US-002 org member login with JWT; added OrgAuthController, OrgAuthService, LoginRateLimitFilter (5 attempts/15min per IP); validates email verified status and returns tokens on success.
