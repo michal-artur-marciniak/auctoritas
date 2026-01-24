@@ -25,18 +25,21 @@ public class OrgAuthService {
   private final OrgMemberRefreshTokenRepository refreshTokenRepository;
   private final PasswordEncoder passwordEncoder;
   private final TokenService tokenService;
+  private final JwtService jwtService;
 
   public OrgAuthService(
       OrganizationRepository organizationRepository,
       OrganizationMemberRepository organizationMemberRepository,
       OrgMemberRefreshTokenRepository refreshTokenRepository,
       PasswordEncoder passwordEncoder,
-      TokenService tokenService) {
+      TokenService tokenService,
+      JwtService jwtService) {
     this.organizationRepository = organizationRepository;
     this.organizationMemberRepository = organizationMemberRepository;
     this.refreshTokenRepository = refreshTokenRepository;
     this.passwordEncoder = passwordEncoder;
     this.tokenService = tokenService;
+    this.jwtService = jwtService;
   }
 
   @Transactional
@@ -68,11 +71,15 @@ public class OrgAuthService {
     String rawRefreshToken = tokenService.generateRefreshToken();
     persistRefreshToken(member, rawRefreshToken, null, null);
 
+    String accessToken =
+        jwtService.generateAccessToken(
+            member.getId(), organization.getId(), member.getEmail(), member.getRole());
+
     return new OrgLoginResponse(
         new OrgLoginResponse.OrganizationSummary(
             organization.getId(), organization.getName(), organization.getSlug()),
         new OrgLoginResponse.MemberSummary(member.getId(), member.getEmail(), member.getRole()),
-        tokenService.generateAccessToken(),
+        accessToken,
         rawRefreshToken);
   }
 
@@ -108,7 +115,15 @@ public class OrgAuthService {
 
     existingToken.setReplacedBy(newToken);
 
-    return new OrgRefreshResponse(tokenService.generateAccessToken(), newRawRefreshToken);
+    OrganizationMember member = existingToken.getMember();
+    String accessToken =
+        jwtService.generateAccessToken(
+            member.getId(),
+            member.getOrganization().getId(),
+            member.getEmail(),
+            member.getRole());
+
+    return new OrgRefreshResponse(accessToken, newRawRefreshToken);
   }
 
   private OrgMemberRefreshToken persistRefreshToken(

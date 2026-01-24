@@ -23,18 +23,21 @@ public class OrganizationRegistrationService {
   private final OrgMemberRefreshTokenRepository refreshTokenRepository;
   private final PasswordEncoder passwordEncoder;
   private final TokenService tokenService;
+  private final JwtService jwtService;
 
   public OrganizationRegistrationService(
       OrganizationRepository organizationRepository,
       OrganizationMemberRepository organizationMemberRepository,
       OrgMemberRefreshTokenRepository refreshTokenRepository,
       PasswordEncoder passwordEncoder,
-      TokenService tokenService) {
+      TokenService tokenService,
+      JwtService jwtService) {
     this.organizationRepository = organizationRepository;
     this.organizationMemberRepository = organizationMemberRepository;
     this.refreshTokenRepository = refreshTokenRepository;
     this.passwordEncoder = passwordEncoder;
     this.tokenService = tokenService;
+    this.jwtService = jwtService;
   }
 
   @Transactional
@@ -65,12 +68,19 @@ public class OrganizationRegistrationService {
     String rawRefreshToken = tokenService.generateRefreshToken();
     persistRefreshToken(savedMember, rawRefreshToken);
 
+    String accessToken =
+        jwtService.generateAccessToken(
+            savedMember.getId(),
+            savedOrganization.getId(),
+            savedMember.getEmail(),
+            savedMember.getRole());
+
     return new OrgRegistrationResponse(
         new OrgRegistrationResponse.OrganizationSummary(
             savedOrganization.getId(), savedOrganization.getName(), savedOrganization.getSlug()),
         new OrgRegistrationResponse.MemberSummary(
             savedMember.getId(), savedMember.getEmail(), savedMember.getRole()),
-        tokenService.generateAccessToken(),
+        accessToken,
         rawRefreshToken);
   }
 

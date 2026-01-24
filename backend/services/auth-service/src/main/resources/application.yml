@@ -40,3 +40,9 @@ logging:
   level:
     dev.auctoritas: INFO
     org.flywaydb: INFO
+
+auctoritas:
+  jwt:
+    secret: ${JWT_SECRET:this-is-a-dev-secret-that-is-at-least-32-characters-long}
+    issuer: ${JWT_ISSUER:auctoritas}
+    access-token-ttl-seconds: ${JWT_ACCESS_TOKEN_TTL:3600}

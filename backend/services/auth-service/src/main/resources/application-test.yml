@@ -21,3 +21,9 @@ logging:
   level:
     dev.auctoritas: DEBUG
     org.hibernate: WARN
+
+auctoritas:
+  jwt:
+    secret: test-jwt-secret-that-is-at-least-32-characters-long
+    issuer: auctoritas-test
+    access-token-ttl-seconds: 3600
