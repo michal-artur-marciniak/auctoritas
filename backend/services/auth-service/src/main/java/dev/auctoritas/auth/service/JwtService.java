@@ -59,7 +59,12 @@ public class JwtService {
   public JwtValidationResult validateToken(String token) {
     try {
       Claims claims =
-          Jwts.parser().verifyWith(publicKey).build().parseSignedClaims(token).getPayload();
+          Jwts.parser()
+              .requireIssuer(jwtProperties.issuer())
+              .verifyWith(publicKey)
+              .build()
+              .parseSignedClaims(token)
+              .getPayload();
       return JwtValidationResult.valid(claims);
     } catch (ExpiredJwtException e) {
       return JwtValidationResult.expired();

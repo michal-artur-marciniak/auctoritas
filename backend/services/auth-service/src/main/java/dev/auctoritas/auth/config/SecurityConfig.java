@@ -55,8 +55,8 @@ public class SecurityConfig {
     return new Argon2PasswordEncoder(
         16, // salt length bytes
         32, // hash length bytes
-        65536, // memory in KB (64MB)
         4, // parallelism
+        65536, // memory in KB (64MB)
         3 // iterations
         );
   }
