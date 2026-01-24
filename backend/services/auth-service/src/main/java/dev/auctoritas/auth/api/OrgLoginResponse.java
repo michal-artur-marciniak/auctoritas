@@ -1,0 +1,15 @@
+package dev.auctoritas.auth.api;
+
+import dev.auctoritas.common.enums.OrgMemberRole;
+import java.util.UUID;
+
+public record OrgLoginResponse(
+    OrganizationSummary organization,
+    MemberSummary member,
+    String accessToken,
+    String refreshToken) {
+
+  public record OrganizationSummary(UUID id, String name, String slug) {}
+
+  public record MemberSummary(UUID id, String email, OrgMemberRole role) {}
+}
