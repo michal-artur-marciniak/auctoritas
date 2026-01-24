@@ -102,7 +102,7 @@ public class OrgAuthService {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid_refresh_token");
     }
 
-    if (existingToken.getRevoked()) {
+    if (existingToken.isRevoked()) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "refresh_token_revoked");
     }
 
