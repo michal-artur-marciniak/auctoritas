@@ -10,6 +10,8 @@ import dev.auctoritas.auth.entity.organization.OrganizationMember;
 import dev.auctoritas.auth.repository.OrgMemberRefreshTokenRepository;
 import dev.auctoritas.auth.repository.OrganizationMemberRepository;
 import dev.auctoritas.auth.repository.OrganizationRepository;
+import jakarta.persistence.LockTimeoutException;
+import jakarta.persistence.PessimisticLockException;
 import java.time.Instant;
 import java.util.Locale;
 import org.springframework.http.HttpStatus;
@@ -88,11 +90,17 @@ public class OrgAuthService {
     String rawToken = requireValue(request.refreshToken(), "refresh_token_required");
     String tokenHash = tokenService.hashToken(rawToken);
 
-    OrgMemberRefreshToken existingToken =
-        refreshTokenRepository
-            .findByTokenHash(tokenHash)
-            .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid_refresh_token"));
+    OrgMemberRefreshToken existingToken;
+    try {
+      existingToken =
+          refreshTokenRepository
+              .findByTokenHash(tokenHash)
+              .orElseThrow(
+                  () -> new ResponseStatusException(
+                      HttpStatus.BAD_REQUEST, "invalid_refresh_token"));
+    } catch (PessimisticLockException | LockTimeoutException ex) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid_refresh_token");
+    }
 
     if (existingToken.getRevoked()) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "refresh_token_revoked");

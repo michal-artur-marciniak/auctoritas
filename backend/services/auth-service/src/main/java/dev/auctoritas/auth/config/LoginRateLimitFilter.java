@@ -8,9 +8,12 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import org.springframework.core.annotation.Order;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -28,6 +31,11 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
   private static final String REDIS_KEY_PREFIX = "rate_limit:login:";
   private static final int MAX_ATTEMPTS = 5;
   private static final Duration WINDOW_DURATION = Duration.ofMinutes(15);
+  private static final RedisScript<Long> RATE_LIMIT_SCRIPT = new DefaultRedisScript<>(
+      "local current = redis.call('INCR', KEYS[1]); "
+          + "if current == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]); end; "
+          + "return current;",
+      Long.class);
 
   private final StringRedisTemplate redisTemplate;
   private final ObjectMapper objectMapper = new ObjectMapper();
@@ -53,14 +61,12 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
     String clientIp = getClientIp(request);
     String redisKey = REDIS_KEY_PREFIX + clientIp;
 
-    Long attempts = redisTemplate.opsForValue().increment(redisKey);
+    Long attempts = redisTemplate.execute(
+        RATE_LIMIT_SCRIPT,
+        List.of(redisKey),
+        String.valueOf(WINDOW_DURATION.getSeconds()));
     if (attempts == null) {
       attempts = 1L;
-    }
-
-    // Set expiry on first attempt
-    if (attempts == 1) {
-      redisTemplate.expire(redisKey, WINDOW_DURATION);
     }
 
     if (attempts > MAX_ATTEMPTS) {
