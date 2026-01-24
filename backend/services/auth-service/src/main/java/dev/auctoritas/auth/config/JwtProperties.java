@@ -3,10 +3,18 @@ package dev.auctoritas.auth.config;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "auctoritas.jwt")
-public record JwtProperties(String secret, String issuer, long accessTokenTtlSeconds) {
+public record JwtProperties(
+    String privateKey,
+    String publicKey,
+    String issuer,
+    long accessTokenTtlSeconds) {
+
   public JwtProperties {
-    if (secret == null || secret.length() < 32) {
-      throw new IllegalArgumentException("JWT secret must be at least 32 characters");
+    if (privateKey == null || privateKey.isBlank()) {
+      throw new IllegalArgumentException("JWT private key is required");
+    }
+    if (publicKey == null || publicKey.isBlank()) {
+      throw new IllegalArgumentException("JWT public key is required");
     }
     if (issuer == null || issuer.isBlank()) {
       throw new IllegalArgumentException("JWT issuer is required");

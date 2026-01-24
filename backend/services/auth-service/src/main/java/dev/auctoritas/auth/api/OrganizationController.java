@@ -1,8 +1,12 @@
 package dev.auctoritas.auth.api;
 
+import dev.auctoritas.auth.security.OrgMemberPrincipal;
+import dev.auctoritas.auth.service.OrgMemberProfileService;
 import dev.auctoritas.auth.service.OrganizationRegistrationService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -12,9 +16,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/org")
 public class OrganizationController {
   private final OrganizationRegistrationService organizationRegistrationService;
+  private final OrgMemberProfileService orgMemberProfileService;
 
-  public OrganizationController(OrganizationRegistrationService organizationRegistrationService) {
+  public OrganizationController(
+      OrganizationRegistrationService organizationRegistrationService,
+      OrgMemberProfileService orgMemberProfileService) {
     this.organizationRegistrationService = organizationRegistrationService;
+    this.orgMemberProfileService = orgMemberProfileService;
   }
 
   @PostMapping("/register")
@@ -22,5 +30,15 @@ public class OrganizationController {
       @RequestBody OrgRegistrationRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(organizationRegistrationService.register(request));
+  }
+
+  /**
+   * Get the current authenticated org member's profile.
+   * Requires a valid JWT token in the Authorization header.
+   */
+  @GetMapping("/me")
+  public ResponseEntity<OrgMemberProfileResponse> getCurrentMember(
+      @AuthenticationPrincipal OrgMemberPrincipal principal) {
+    return ResponseEntity.ok(orgMemberProfileService.getProfile(principal.orgMemberId()));
   }
 }
