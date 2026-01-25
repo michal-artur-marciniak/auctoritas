@@ -11,8 +11,11 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
+import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.data.redis.core.script.RedisScript;
@@ -33,6 +36,7 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
   private static final String REDIS_KEY_PREFIX = "rate_limit:login:";
   private static final int MAX_ATTEMPTS = 5;
   private static final Duration WINDOW_DURATION = Duration.ofMinutes(15);
+  private static final Logger LOGGER = LoggerFactory.getLogger(LoginRateLimitFilter.class);
   private static final RedisScript<Long> RATE_LIMIT_SCRIPT = new DefaultRedisScript<>(
       "local current = redis.call('INCR', KEYS[1]); "
           + "if current == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]); end; "
@@ -72,16 +76,30 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
     String clientIp = getClientIp(request);
     String redisKey = REDIS_KEY_PREFIX + clientIp;
 
-    Long attempts = redisTemplate.execute(
-        RATE_LIMIT_SCRIPT,
-        List.of(redisKey),
-        String.valueOf(WINDOW_DURATION.getSeconds()));
+    Long attempts;
+    try {
+      attempts = redisTemplate.execute(
+          RATE_LIMIT_SCRIPT,
+          List.of(redisKey),
+          String.valueOf(WINDOW_DURATION.getSeconds()));
+    } catch (DataAccessException ex) {
+      LOGGER.warn("Login rate limit lookup failed; allowing request.", ex);
+      filterChain.doFilter(request, response);
+      return;
+    }
     if (attempts == null) {
       attempts = 1L;
     }
 
     if (attempts > MAX_ATTEMPTS) {
-      Long ttl = redisTemplate.getExpire(redisKey);
+      Long ttl;
+      try {
+        ttl = redisTemplate.getExpire(redisKey);
+      } catch (DataAccessException ex) {
+        LOGGER.warn("Login rate limit TTL lookup failed; allowing request.", ex);
+        filterChain.doFilter(request, response);
+        return;
+      }
       long remainingSeconds = ttl != null && ttl > 0 ? ttl : 1;
 
       response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
