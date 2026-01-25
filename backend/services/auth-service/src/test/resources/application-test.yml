@@ -1,0 +1,28 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password: sa
+    driver-class-name: org.h2.Driver
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: false
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+auctoritas:
+  jwt:
+    issuer: auctoritas-test
+    access-token-ttl-seconds: 3600
+    private-key: "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC/T+VJ6t7uBAmJ\nFnSXaa0bV+v2HNL5jMlaQJaeQvPECZdOUP/os55ugwQvrvp3zCQ5fXrOclC3mZLs\nTc9g2DgBuHiF4XfjR/GKTlhwyc4nvobYNPyoU7moTsUo8E0bDVFT0C1es2lKeBQL\ndz7hP7gjRfJCwktT45KTx/6obLJuNpwRTUFLq5zR5ydfmWq8O7YWypubXyp0O/A1\nkW7puB/ANKtUJP1sehZfzkbF5mz4Skn2XAQ59ry/ZodHYJ0QtsemTNx8Phu6lRrS\nIKK7OLYhRBD0n6ZT/xbVu2kEOuS/xEToaZ2wpktfIjKrE3C5W0Y2pb4+H/vZoK4n\noQI2oSQhAgMBAAECggEACke3KtXKwSg5IXNSFE1OyqJ6uNzDZvq+WqHQHiS7n9gC\nmAgg+j6Fp8tVQyEwTxXqh+bS3atVpEoFs7o6J6pytv/0RQBwvmcwJuYPGU90yxyx\nNwbA4WQvXKiP7mNcR1T7vujXuUgjgyeI7zVLDRRNFyMj8Zuqa9F1n8iOSfteSq7/\nTdk6kopwjHZnuwQtBrVuUzUwb6EvSi3qUNrhAQQ1nvfSzYfJWtKQnvk4U8q/+TOi\nh5GmgQaW8SE7OUXWp0hbBf808ksefq4j8Pze6XmLWKQwLmQyiGfrQl2s8EQ4HTzD\nqC7xU1UTmYaCV1OOU66efGUZRO0Ev7VIGwVDhHOB+QKBgQD8iOYhYiBBTbmb4z7S\nyuyRi/0IdSLYE1lw4kxyJJ9GH4fp3tUwH6YIEvLeub7PPVEElZPxZ/7GpEYThO5l\ngtyvzcgdhLzwKY5MnTtdJVRh/sDIM32bAIJ7x+/GScBZB2MOmWIC4LeZvrCAESgW\n7FKnL3/BfCENyL3isowztUSnSQKBgQDB7+843OwK7vDp0hWx6WglnQn9sfZcJcBu\nfsWHeiS3aY8RYJ+1s/yPOEA4RxqOsgPzAqX06X8S9WCGL+ZzVfx0fIkArpHgu9xQ\n9taBDRXkOj6smkAsFdY+QgDclnc15j15Ak2nUFENqvDB/zwOkqfMlB9jNW5BuqHy\nhHAwYYBeGQKBgAfpLfRbw5DoI2lbvAsUakbA8OND8Bx+tq2PmT92IDstH6/W2CzS\nwPu9xDfv76dET3ZqTSEh1dxZJwzTfDhX2hvzwVITZ2vKkXea8VIgqj0LovRikIu7\nf1rrT3qRsuHXFmZNrcFTUs0RKSxJ3UyiiJBOL51bCxoIcNJaL4QrKIRpAoGAOHMi\naqbDfhs2vJiOAA80ZV5kfhfC4eeLL55u2JRRA6ISJri9RCJzrSxuZPMtY8OlKqLm\ns3cTqe0Kf4SJy6CHr1BggHZPt952ropqvX2VlazueUcczrg8eDq2DX8ui93MnuBw\nwfa64QOUuKMWVBeUCBRFXpc61J8CbJjoHu0CdGECgYEAsqrya8Vk2fkMDUftLImk\njmXsG3peyJdkfyLlTLRIGHvC/xntcmoae2SPhZ1BDUDUWjvwCuBbAwNYTZLRL3pA\nVxsaTxd6toO1diBDicr7fQNS3d10Gv8ZGY9sakN1WSA/HL4fQjXTVxhiK8zhl1RT\npHSgsgrWx2zgOQDjWmksDdU=\n-----END PRIVATE KEY-----"
+    public-key: "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAv0/lSere7gQJiRZ0l2mt\nG1fr9hzS+YzJWkCWnkLzxAmXTlD/6LOeboMEL676d8wkOX16znJQt5mS7E3PYNg4\nAbh4heF340fxik5YcMnOJ76G2DT8qFO5qE7FKPBNGw1RU9AtXrNpSngUC3c+4T+4\nI0XyQsJLU+OSk8f+qGyybjacEU1BS6uc0ecnX5lqvDu2Fsqbm18qdDvwNZFu6bgf\nwDSrVCT9bHoWX85GxeZs+EpJ9lwEOfa8v2aHR2CdELbHpkzcfD4bupUa0iCiuzi2\nIUQQ9J+mU/8W1btpBDrkv8RE6GmdsKZLXyIyqxNwuVtGNqW+Ph/72aCuJ6ECNqEk\nIQIDAQAB\n-----END PUBLIC KEY-----"

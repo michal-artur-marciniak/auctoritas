@@ -1,11 +1,13 @@
 -- Organizations (billing entity, dashboard access)
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 CREATE TABLE organizations (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name        VARCHAR(100) NOT NULL,
   slug        VARCHAR(50) NOT NULL UNIQUE,
   status      VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
   created_at  TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at  TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_organizations_slug ON organizations(slug);
@@ -59,10 +61,9 @@ CREATE TABLE org_member_mfa (
 -- Session for org members (dashboard sessions)
 CREATE TABLE org_member_sessions (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  member_id       UUID NOT NULL UNIQUE REFERENCES organization_members(id) ON DELETE CASCADE,
-  user_agent      TEXT,
+  member_id       UUID NOT NULL REFERENCES organization_members(id) ON DELETE CASCADE,
   device_info     JSONB,
-  ip_address      INET,
+  ip_address      VARCHAR(45),
   expires_at      TIMESTAMP NOT NULL,
   created_at      TIMESTAMP NOT NULL DEFAULT NOW()
 );
