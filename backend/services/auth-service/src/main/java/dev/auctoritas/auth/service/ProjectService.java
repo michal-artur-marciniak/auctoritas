@@ -3,6 +3,10 @@ package dev.auctoritas.auth.service;
 import dev.auctoritas.auth.api.ApiKeySecretResponse;
 import dev.auctoritas.auth.api.ProjectCreateRequest;
 import dev.auctoritas.auth.api.ProjectCreateResponse;
+import dev.auctoritas.auth.api.ProjectOAuthSettingsRequest;
+import dev.auctoritas.auth.api.ProjectPasswordSettingsRequest;
+import dev.auctoritas.auth.api.ProjectSessionSettingsRequest;
+import dev.auctoritas.auth.api.ProjectSettingsResponse;
 import dev.auctoritas.auth.api.ProjectSummaryResponse;
 import dev.auctoritas.auth.api.ProjectUpdateRequest;
 import dev.auctoritas.auth.entity.organization.Organization;
@@ -10,8 +14,10 @@ import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
 import dev.auctoritas.auth.repository.OrganizationRepository;
 import dev.auctoritas.auth.repository.ProjectRepository;
+import dev.auctoritas.auth.repository.ProjectSettingsRepository;
 import dev.auctoritas.auth.security.OrgMemberPrincipal;
 import dev.auctoritas.common.enums.ProjectStatus;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -24,14 +30,17 @@ import org.springframework.web.server.ResponseStatusException;
 public class ProjectService {
   private final OrganizationRepository organizationRepository;
   private final ProjectRepository projectRepository;
+  private final ProjectSettingsRepository projectSettingsRepository;
   private final ApiKeyService apiKeyService;
 
   public ProjectService(
       OrganizationRepository organizationRepository,
       ProjectRepository projectRepository,
+      ProjectSettingsRepository projectSettingsRepository,
       ApiKeyService apiKeyService) {
     this.organizationRepository = organizationRepository;
     this.projectRepository = projectRepository;
+    this.projectSettingsRepository = projectSettingsRepository;
     this.apiKeyService = apiKeyService;
   }
 
@@ -116,6 +125,58 @@ public class ProjectService {
     apiKeyService.revokeAllByProjectId(projectId);
   }
 
+  @Transactional(readOnly = true)
+  public ProjectSettingsResponse getProjectSettings(
+      UUID orgId, UUID projectId, OrgMemberPrincipal principal) {
+    enforceOrgAccess(orgId, principal);
+    Project project = loadProject(orgId, projectId);
+    return toSettingsResponse(project.getSettings());
+  }
+
+  @Transactional
+  public ProjectSettingsResponse updatePasswordSettings(
+      UUID orgId,
+      UUID projectId,
+      OrgMemberPrincipal principal,
+      ProjectPasswordSettingsRequest request) {
+    enforceOrgAccess(orgId, principal);
+    ProjectSettings settings = loadProject(orgId, projectId).getSettings();
+    settings.setMinLength(request.minLength());
+    settings.setRequireUppercase(request.requireUppercase());
+    settings.setRequireNumbers(request.requireNumbers());
+    settings.setRequireSpecialChars(request.requireSpecialChars());
+    settings.setPasswordHistoryCount(request.passwordHistoryCount());
+    return toSettingsResponse(projectSettingsRepository.save(settings));
+  }
+
+  @Transactional
+  public ProjectSettingsResponse updateSessionSettings(
+      UUID orgId,
+      UUID projectId,
+      OrgMemberPrincipal principal,
+      ProjectSessionSettingsRequest request) {
+    enforceOrgAccess(orgId, principal);
+    ProjectSettings settings = loadProject(orgId, projectId).getSettings();
+    settings.setAccessTokenTtlSeconds(request.accessTokenTtlSeconds());
+    settings.setRefreshTokenTtlSeconds(request.refreshTokenTtlSeconds());
+    settings.setMaxSessions(request.maxSessions());
+    settings.setMfaEnabled(request.mfaEnabled());
+    settings.setMfaRequired(request.mfaRequired());
+    return toSettingsResponse(projectSettingsRepository.save(settings));
+  }
+
+  @Transactional
+  public ProjectSettingsResponse updateOAuthSettings(
+      UUID orgId,
+      UUID projectId,
+      OrgMemberPrincipal principal,
+      ProjectOAuthSettingsRequest request) {
+    enforceOrgAccess(orgId, principal);
+    ProjectSettings settings = loadProject(orgId, projectId).getSettings();
+    settings.setOauthConfig(new HashMap<>(request.config()));
+    return toSettingsResponse(projectSettingsRepository.save(settings));
+  }
+
   private ProjectSummaryResponse toSummary(Project project) {
     return new ProjectSummaryResponse(
         project.getId(),
@@ -124,6 +185,21 @@ public class ProjectService {
         project.getStatus(),
         project.getCreatedAt(),
         project.getUpdatedAt());
+  }
+
+  private ProjectSettingsResponse toSettingsResponse(ProjectSettings settings) {
+    return new ProjectSettingsResponse(
+        settings.getMinLength(),
+        settings.isRequireUppercase(),
+        settings.isRequireNumbers(),
+        settings.isRequireSpecialChars(),
+        settings.getPasswordHistoryCount(),
+        settings.getAccessTokenTtlSeconds(),
+        settings.getRefreshTokenTtlSeconds(),
+        settings.getMaxSessions(),
+        settings.isMfaEnabled(),
+        settings.isMfaRequired(),
+        settings.getOauthConfig());
   }
 
   private void enforceOrgAccess(UUID orgId, OrgMemberPrincipal principal) {

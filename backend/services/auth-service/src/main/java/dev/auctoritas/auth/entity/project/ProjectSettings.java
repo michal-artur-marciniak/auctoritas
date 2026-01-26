@@ -7,9 +7,13 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import java.util.HashMap;
+import java.util.Map;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "project_settings")
@@ -50,4 +54,8 @@ public class ProjectSettings extends BaseEntity {
 
   @Column(nullable = false)
   private boolean mfaRequired = false;
+
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "oauth_config", columnDefinition = "json", nullable = false)
+  private Map<String, Object> oauthConfig = new HashMap<>();
 }

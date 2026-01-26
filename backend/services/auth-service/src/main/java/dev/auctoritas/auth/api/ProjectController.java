@@ -63,4 +63,46 @@ public class ProjectController {
     projectService.deleteProject(orgId, projectId, principal);
     return ResponseEntity.noContent().build();
   }
+
+  @PreAuthorize("isAuthenticated()")
+  @GetMapping("/{projectId}/settings")
+  public ResponseEntity<ProjectSettingsResponse> getProjectSettings(
+      @PathVariable UUID orgId,
+      @PathVariable UUID projectId,
+      @AuthenticationPrincipal OrgMemberPrincipal principal) {
+    return ResponseEntity.ok(projectService.getProjectSettings(orgId, projectId, principal));
+  }
+
+  @PreAuthorize("isAuthenticated()")
+  @PutMapping("/{projectId}/settings/password")
+  public ResponseEntity<ProjectSettingsResponse> updatePasswordSettings(
+      @PathVariable UUID orgId,
+      @PathVariable UUID projectId,
+      @Valid @RequestBody ProjectPasswordSettingsRequest request,
+      @AuthenticationPrincipal OrgMemberPrincipal principal) {
+    return ResponseEntity.ok(
+        projectService.updatePasswordSettings(orgId, projectId, principal, request));
+  }
+
+  @PreAuthorize("isAuthenticated()")
+  @PutMapping("/{projectId}/settings/session")
+  public ResponseEntity<ProjectSettingsResponse> updateSessionSettings(
+      @PathVariable UUID orgId,
+      @PathVariable UUID projectId,
+      @Valid @RequestBody ProjectSessionSettingsRequest request,
+      @AuthenticationPrincipal OrgMemberPrincipal principal) {
+    return ResponseEntity.ok(
+        projectService.updateSessionSettings(orgId, projectId, principal, request));
+  }
+
+  @PreAuthorize("isAuthenticated()")
+  @PutMapping("/{projectId}/settings/oauth")
+  public ResponseEntity<ProjectSettingsResponse> updateOAuthSettings(
+      @PathVariable UUID orgId,
+      @PathVariable UUID projectId,
+      @Valid @RequestBody ProjectOAuthSettingsRequest request,
+      @AuthenticationPrincipal OrgMemberPrincipal principal) {
+    return ResponseEntity.ok(
+        projectService.updateOAuthSettings(orgId, projectId, principal, request));
+  }
 }

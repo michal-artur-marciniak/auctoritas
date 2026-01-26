@@ -2,6 +2,7 @@
 - Auth-service database migrations live in `backend/services/auth-service/src/main/resources/db/migration` and use Flyway `V{n}__description.sql` naming.
 - Project creation flows initialize `ProjectSettings` and a default API key via `ApiKeyService`.
 - Soft-deleting projects sets `ProjectStatus.DELETED` and revokes API keys via `ApiKeyService.revokeAllByProjectId`.
+- Project settings responses are mapped via `ProjectService.toSettingsResponse`, with OAuth config stored on `ProjectSettings.oauthConfig` as JSON.
 
 ## 2026-01-26 15:36 - US-001
 Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
@@ -31,4 +32,14 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
   - Patterns discovered: use `ProjectService.loadProject` to enforce org ownership checks and 404 on mismatches.
   - Gotchas encountered: slug updates must check uniqueness only when the normalized slug changes.
   - Useful context: project deletion revokes API keys by updating status to `REVOKED` via a repository bulk update.
+---
+
+## 2026-01-26 16:04 - US-004
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented project settings endpoints for fetching and updating password, session, and OAuth configuration.
+- Files changed: `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/ProjectController.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/ProjectOAuthSettingsRequest.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/ProjectPasswordSettingsRequest.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/ProjectSessionSettingsRequest.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/ProjectSettingsResponse.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/entity/project/ProjectSettings.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/ProjectService.java`, `backend/services/auth-service/src/main/resources/db/migration/V5__project_settings_oauth_config.sql`, `prd.json`, `progress.txt`.
+- **Learnings for future iterations:**
+  - Patterns discovered: project settings are updated through dedicated request records and returned as `ProjectSettingsResponse` from `ProjectService`.
+  - Gotchas encountered: H2 schema generation requires JSON column definitions compatible with the test dialect.
+  - Useful context: OAuth configuration is stored on `ProjectSettings.oauthConfig` as a JSON column.
 ---
