@@ -32,6 +32,9 @@ public class ProjectSettings extends BaseEntity {
   private boolean requireUppercase = true;
 
   @Column(nullable = false)
+  private boolean requireLowercase = true;
+
+  @Column(nullable = false)
   private boolean requireNumbers = true;
 
   @Column(nullable = false)
@@ -48,6 +51,12 @@ public class ProjectSettings extends BaseEntity {
 
   @Column(nullable = false)
   private int maxSessions = 5;
+
+  @Column(nullable = false)
+  private int failedLoginMaxAttempts = 5;
+
+  @Column(nullable = false)
+  private int failedLoginWindowSeconds = 900;
 
   @Column(nullable = false)
   private boolean mfaEnabled = false;

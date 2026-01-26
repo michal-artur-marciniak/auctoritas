@@ -1,0 +1,2 @@
+ALTER TABLE project_settings
+  ADD COLUMN IF NOT EXISTS require_lowercase BOOLEAN NOT NULL DEFAULT TRUE;

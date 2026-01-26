@@ -5,6 +5,7 @@ import java.util.Map;
 public record ProjectSettingsResponse(
     int minLength,
     boolean requireUppercase,
+    boolean requireLowercase,
     boolean requireNumbers,
     boolean requireSpecialChars,
     int passwordHistoryCount,
