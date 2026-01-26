@@ -1,11 +1,14 @@
 package dev.auctoritas.auth.api;
 
+import dev.auctoritas.auth.security.EndUserPrincipal;
 import dev.auctoritas.auth.service.EndUserLoginService;
+import dev.auctoritas.auth.service.EndUserLogoutService;
 import dev.auctoritas.auth.service.EndUserRegistrationService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -20,12 +23,15 @@ public class EndUserAuthController {
 
   private final EndUserRegistrationService endUserRegistrationService;
   private final EndUserLoginService endUserLoginService;
+  private final EndUserLogoutService endUserLogoutService;
 
   public EndUserAuthController(
       EndUserRegistrationService endUserRegistrationService,
-      EndUserLoginService endUserLoginService) {
+      EndUserLoginService endUserLoginService,
+      EndUserLogoutService endUserLogoutService) {
     this.endUserRegistrationService = endUserRegistrationService;
     this.endUserLoginService = endUserLoginService;
+    this.endUserLogoutService = endUserLogoutService;
   }
 
   @PostMapping("/register")
@@ -47,6 +53,14 @@ public class EndUserAuthController {
     String ipAddress = resolveIpAddress(httpRequest);
     String userAgent = resolveUserAgent(httpRequest);
     return ResponseEntity.ok(endUserLoginService.login(apiKey, request, ipAddress, userAgent));
+  }
+
+  @PostMapping("/logout")
+  public ResponseEntity<EndUserLogoutResponse> logout(
+      @RequestHeader(value = API_KEY_HEADER, required = false) String apiKey,
+      @AuthenticationPrincipal EndUserPrincipal principal) {
+    endUserLogoutService.logout(apiKey, principal);
+    return ResponseEntity.ok(new EndUserLogoutResponse("Logged out"));
   }
 
   private String resolveIpAddress(HttpServletRequest request) {

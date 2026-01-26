@@ -12,6 +12,8 @@ import org.springframework.stereotype.Repository;
 public interface EndUserSessionRepository extends JpaRepository<EndUserSession, UUID> {
   Optional<EndUserSession> findByUserId(UUID userId);
 
+  void deleteByUserId(UUID userId);
+
   List<EndUserSession> findByExpiresAtBefore(Instant now);
 
   void deleteByExpiresAtBefore(Instant now);

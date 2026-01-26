@@ -2,6 +2,7 @@
 - SDK-facing auth endpoints should validate X-API-Key via ApiKeyService to resolve the Project context.
 - Password policy for end-user flows is derived from ProjectSettings (min length, uppercase, numbers, special chars).
 - End-user login lockouts use ProjectSettings failedLoginMaxAttempts/failedLoginWindowSeconds and EndUser failedLogin fields.
+- End-user JWTs are authenticated via EndUserPrincipal from JwtAuthenticationFilter; use @AuthenticationPrincipal EndUserPrincipal for SDK auth endpoints.
 
 ## 2026-01-26 19:32 - US-001
 Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
@@ -18,4 +19,14 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
   - Patterns discovered: End-user logins update the existing session from EndUserSessionRepository.findByUserId when available.
   - Gotchas encountered: Add new auth endpoints to SecurityConfig.PUBLIC_ENDPOINTS or they will require JWT.
   - Useful context: Login lockout defaults are stored on ProjectSettings and enforced via EndUser failed_login fields.
+---
+
+## 2026-01-26 19:45 - US-003
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented end-user logout endpoint with end-user JWT authentication, API key validation, and session/refresh token invalidation.
+- Files changed: backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserAuthController.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserLogoutResponse.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/EndUserRefreshTokenRepository.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/EndUserSessionRepository.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/security/EndUserPrincipal.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/security/JwtAuthenticationFilter.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserLogoutService.java, prd.json, progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: End-user JWTs now surface an EndUserPrincipal for SDK auth endpoints like logout.
+  - Gotchas encountered: Logout requires both X-API-Key and a valid end-user JWT; missing either yields 401.
+  - Useful context: Logout revokes refresh tokens via EndUserRefreshTokenRepository.revokeActiveByUserId and deletes sessions via EndUserSessionRepository.deleteByUserId.
 ---

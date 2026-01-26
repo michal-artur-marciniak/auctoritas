@@ -15,14 +15,15 @@ import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Filter that extracts and validates JWT from Authorization header. Sets the OrgMemberPrincipal in
- * SecurityContext on successful validation.
- */
+  * Filter that extracts and validates JWT from Authorization header. Sets the authenticated
+  * principal in SecurityContext on successful validation.
+  */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
   private static final String BEARER_PREFIX = "Bearer ";
@@ -55,7 +56,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     Claims claims = result.claims();
-    OrgMemberPrincipal principal;
+    Authentication principal;
     try {
       principal = extractPrincipal(claims);
     } catch (IllegalArgumentException | NullPointerException ex) {
@@ -67,7 +68,27 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     filterChain.doFilter(request, response);
   }
 
-  private OrgMemberPrincipal extractPrincipal(Claims claims) {
+  private Authentication extractPrincipal(Claims claims) {
+    String endUserId = claims.get(JwtService.CLAIM_END_USER_ID, String.class);
+    if (endUserId != null && !endUserId.isBlank()) {
+      return extractEndUserPrincipal(claims);
+    }
+    String orgMemberId = claims.get(JwtService.CLAIM_ORG_MEMBER_ID, String.class);
+    if (orgMemberId != null && !orgMemberId.isBlank()) {
+      return extractOrgMemberPrincipal(claims);
+    }
+    throw new IllegalArgumentException("Unsupported token claims");
+  }
+
+  private EndUserPrincipal extractEndUserPrincipal(Claims claims) {
+    UUID endUserId = parseRequiredUuid(claims, JwtService.CLAIM_END_USER_ID);
+    UUID projectId = parseRequiredUuid(claims, JwtService.CLAIM_PROJECT_ID);
+    String email = requireClaim(claims, JwtService.CLAIM_EMAIL);
+
+    return new EndUserPrincipal(endUserId, projectId, email);
+  }
+
+  private OrgMemberPrincipal extractOrgMemberPrincipal(Claims claims) {
     UUID orgMemberId = parseRequiredUuid(claims, JwtService.CLAIM_ORG_MEMBER_ID);
     UUID orgId = parseRequiredUuid(claims, JwtService.CLAIM_ORG_ID);
     String email = requireClaim(claims, JwtService.CLAIM_EMAIL);
