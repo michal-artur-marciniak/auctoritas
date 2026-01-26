@@ -3,6 +3,7 @@ package dev.auctoritas.auth.api;
 import dev.auctoritas.auth.security.EndUserPrincipal;
 import dev.auctoritas.auth.service.EndUserLoginService;
 import dev.auctoritas.auth.service.EndUserLogoutService;
+import dev.auctoritas.auth.service.EndUserPasswordResetService;
 import dev.auctoritas.auth.service.EndUserRefreshService;
 import dev.auctoritas.auth.service.EndUserRegistrationService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,16 +27,19 @@ public class EndUserAuthController {
   private final EndUserLoginService endUserLoginService;
   private final EndUserLogoutService endUserLogoutService;
   private final EndUserRefreshService endUserRefreshService;
+  private final EndUserPasswordResetService endUserPasswordResetService;
 
   public EndUserAuthController(
       EndUserRegistrationService endUserRegistrationService,
       EndUserLoginService endUserLoginService,
       EndUserLogoutService endUserLogoutService,
-      EndUserRefreshService endUserRefreshService) {
+      EndUserRefreshService endUserRefreshService,
+      EndUserPasswordResetService endUserPasswordResetService) {
     this.endUserRegistrationService = endUserRegistrationService;
     this.endUserLoginService = endUserLoginService;
     this.endUserLogoutService = endUserLogoutService;
     this.endUserRefreshService = endUserRefreshService;
+    this.endUserPasswordResetService = endUserPasswordResetService;
   }
 
   @PostMapping("/register")
@@ -75,6 +79,20 @@ public class EndUserAuthController {
     String ipAddress = resolveIpAddress(httpRequest);
     String userAgent = resolveUserAgent(httpRequest);
     return ResponseEntity.ok(endUserRefreshService.refresh(apiKey, request, ipAddress, userAgent));
+  }
+
+  @PostMapping("/password/forgot")
+  public ResponseEntity<EndUserPasswordResetResponse> forgotPassword(
+      @RequestHeader(value = API_KEY_HEADER, required = false) String apiKey,
+      @Valid @RequestBody EndUserPasswordForgotRequest request) {
+    return ResponseEntity.ok(endUserPasswordResetService.requestReset(apiKey, request));
+  }
+
+  @PostMapping("/password/reset")
+  public ResponseEntity<EndUserPasswordResetResponse> resetPassword(
+      @RequestHeader(value = API_KEY_HEADER, required = false) String apiKey,
+      @Valid @RequestBody EndUserPasswordResetRequest request) {
+    return ResponseEntity.ok(endUserPasswordResetService.resetPassword(apiKey, request));
   }
 
   private String resolveIpAddress(HttpServletRequest request) {
