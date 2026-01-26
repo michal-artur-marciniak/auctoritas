@@ -5,6 +5,7 @@
 - End-user JWTs are authenticated via EndUserPrincipal from JwtAuthenticationFilter; use @AuthenticationPrincipal EndUserPrincipal for SDK auth endpoints.
 - Refresh token rotation should lock the refresh token row to prevent concurrent reuse.
 - End-user password reset tokens are stored hashed with 1-hour expiry and a used_at marker for single-use enforcement.
+- End-user email verification tokens are stored hashed with 24-hour expiry and a used_at marker; resends mark existing tokens used.
 
 ## 2026-01-26 19:32 - US-001
 Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
@@ -51,4 +52,14 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
   - Patterns discovered: Password reset tokens are hashed with TokenService and stored with used_at for single-use enforcement.
   - Gotchas encountered: Password reset endpoints must be in SecurityConfig.PUBLIC_ENDPOINTS to avoid JWT gating.
   - Useful context: Reset should clear failed login counters so users can log in immediately after changing passwords.
+---
+
+## 2026-01-26 20:02 - US-006
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented end-user email verification endpoints with token/code validation, resend flow, and verification token persistence.
+- Files changed: backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserAuthController.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserEmailVerificationRequest.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserEmailVerificationResponse.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserResendVerificationRequest.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/config/SecurityConfig.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/entity/enduser/EndUserEmailVerificationToken.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/EndUserEmailVerificationTokenRepository.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserEmailVerificationService.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserRegistrationService.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/TokenService.java, backend/services/auth-service/src/main/resources/db/migration/V11__end_user_email_verification_tokens.sql, prd.json, progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Email verification tokens are issued on registration and resends mark prior tokens used.
+  - Gotchas encountered: Verification endpoints must be added to SecurityConfig.PUBLIC_ENDPOINTS to avoid JWT gating.
+  - Useful context: Verification tokens store hashed token/code with 24-hour expiry in end_user_email_verification_tokens.
 ---

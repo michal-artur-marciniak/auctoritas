@@ -1,6 +1,7 @@
 package dev.auctoritas.auth.api;
 
 import dev.auctoritas.auth.security.EndUserPrincipal;
+import dev.auctoritas.auth.service.EndUserEmailVerificationService;
 import dev.auctoritas.auth.service.EndUserLoginService;
 import dev.auctoritas.auth.service.EndUserLogoutService;
 import dev.auctoritas.auth.service.EndUserPasswordResetService;
@@ -28,18 +29,21 @@ public class EndUserAuthController {
   private final EndUserLogoutService endUserLogoutService;
   private final EndUserRefreshService endUserRefreshService;
   private final EndUserPasswordResetService endUserPasswordResetService;
+  private final EndUserEmailVerificationService endUserEmailVerificationService;
 
   public EndUserAuthController(
       EndUserRegistrationService endUserRegistrationService,
       EndUserLoginService endUserLoginService,
       EndUserLogoutService endUserLogoutService,
       EndUserRefreshService endUserRefreshService,
-      EndUserPasswordResetService endUserPasswordResetService) {
+      EndUserPasswordResetService endUserPasswordResetService,
+      EndUserEmailVerificationService endUserEmailVerificationService) {
     this.endUserRegistrationService = endUserRegistrationService;
     this.endUserLoginService = endUserLoginService;
     this.endUserLogoutService = endUserLogoutService;
     this.endUserRefreshService = endUserRefreshService;
     this.endUserPasswordResetService = endUserPasswordResetService;
+    this.endUserEmailVerificationService = endUserEmailVerificationService;
   }
 
   @PostMapping("/register")
@@ -93,6 +97,20 @@ public class EndUserAuthController {
       @RequestHeader(value = API_KEY_HEADER, required = false) String apiKey,
       @Valid @RequestBody EndUserPasswordResetRequest request) {
     return ResponseEntity.ok(endUserPasswordResetService.resetPassword(apiKey, request));
+  }
+
+  @PostMapping("/register/verify-email")
+  public ResponseEntity<EndUserEmailVerificationResponse> verifyEmail(
+      @RequestHeader(value = API_KEY_HEADER, required = false) String apiKey,
+      @Valid @RequestBody EndUserEmailVerificationRequest request) {
+    return ResponseEntity.ok(endUserEmailVerificationService.verifyEmail(apiKey, request));
+  }
+
+  @PostMapping("/register/resend-verification")
+  public ResponseEntity<EndUserEmailVerificationResponse> resendVerification(
+      @RequestHeader(value = API_KEY_HEADER, required = false) String apiKey,
+      @Valid @RequestBody EndUserResendVerificationRequest request) {
+    return ResponseEntity.ok(endUserEmailVerificationService.resendVerification(apiKey, request));
   }
 
   private String resolveIpAddress(HttpServletRequest request) {

@@ -35,6 +35,7 @@ public class EndUserRegistrationService {
   private final PasswordEncoder passwordEncoder;
   private final TokenService tokenService;
   private final JwtService jwtService;
+  private final EndUserEmailVerificationService endUserEmailVerificationService;
 
   public EndUserRegistrationService(
       ApiKeyService apiKeyService,
@@ -43,7 +44,8 @@ public class EndUserRegistrationService {
       EndUserRefreshTokenRepository endUserRefreshTokenRepository,
       PasswordEncoder passwordEncoder,
       TokenService tokenService,
-      JwtService jwtService) {
+      JwtService jwtService,
+      EndUserEmailVerificationService endUserEmailVerificationService) {
     this.apiKeyService = apiKeyService;
     this.endUserRepository = endUserRepository;
     this.endUserSessionRepository = endUserSessionRepository;
@@ -51,6 +53,7 @@ public class EndUserRegistrationService {
     this.passwordEncoder = passwordEncoder;
     this.tokenService = tokenService;
     this.jwtService = jwtService;
+    this.endUserEmailVerificationService = endUserEmailVerificationService;
   }
 
   @Transactional
@@ -82,6 +85,7 @@ public class EndUserRegistrationService {
     user.setName(trimToNull(request.name()));
 
     EndUser savedUser = endUserRepository.save(user);
+    endUserEmailVerificationService.issueVerificationToken(savedUser);
 
     Instant refreshExpiresAt = tokenService.getRefreshTokenExpiry();
     String rawRefreshToken = tokenService.generateRefreshToken();
