@@ -3,6 +3,7 @@ package dev.auctoritas.auth.repository;
 import dev.auctoritas.auth.entity.enduser.EndUserSession;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -10,6 +11,10 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface EndUserSessionRepository extends JpaRepository<EndUserSession, UUID> {
   List<EndUserSession> findByUserId(UUID userId);
+
+  Optional<EndUserSession> findTopByUserIdOrderByCreatedAtDesc(UUID userId);
+
+  void deleteByUserIdAndIdNot(UUID userId, UUID id);
 
   void deleteByUserId(UUID userId);
 

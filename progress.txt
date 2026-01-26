@@ -6,6 +6,7 @@
 - Refresh token rotation should lock the refresh token row to prevent concurrent reuse.
 - End-user password reset tokens are stored hashed with 1-hour expiry and a used_at marker for single-use enforcement.
 - Password history enforcement should use ProjectSettings.passwordHistoryCount; treat <=0 as default 5 and compare via PasswordEncoder.matches.
+- For end-user password changes that keep the current session, the "current" session/token is treated as the most recently created record (access JWTs don't include session ids).
 - End-user email verification tokens are stored hashed with 24-hour expiry and a used_at marker; resends mark existing tokens used.
 - Gateway SDK routes resolve API keys via /internal/api-keys/resolve and forward X-Project-Id.
 - Maven modules live under `backend/`; run per-service tests from there (e.g. `mvn -pl services/auth-service test`).
@@ -110,4 +111,14 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
   - Patterns discovered: Store the previous password hash in password_history on change/reset; enforce reuse by comparing candidate password against current + last (N-1) history hashes.
   - Gotchas encountered: In transactional tests, persisting entities after entityManager.clear() requires reloading the referenced entities first.
   - Useful context: End-user password resets should clear login lockouts and revoke all refresh tokens + sessions (logout everywhere).
+---
+
+## 2026-01-27 00:06 - US-004
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented authenticated end-user password change endpoint with current password verification, password policy + history enforcement, and best-effort keep-current session revocation.
+- Files changed: backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserAccountController.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserPasswordChangeRequest.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserPasswordChangeResponse.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserPasswordChangeService.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/EndUserRepository.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/EndUserRefreshTokenRepository.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/EndUserSessionRepository.java, backend/services/auth-service/src/test/java/dev/auctoritas/auth/service/EndUserPasswordChangeServiceTest.java, prd.json, progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Keeping the current session requires picking the most recently created session/refresh token since end-user access tokens don't carry session identifiers.
+  - Gotchas encountered: Don't attach a new entity with only an id for @ManyToOne relations in JPA; use the managed entity (or getReference) to avoid transient entity persistence.
+  - Useful context: Password changes should record the previous password hash in password_history before updating the user's password.
 ---
