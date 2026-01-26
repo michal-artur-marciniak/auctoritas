@@ -111,7 +111,7 @@ public class EndUserRegistrationService {
             minLength,
             DEFAULT_MAX_PASSWORD_LENGTH,
             settings.isRequireUppercase(),
-            true,
+            settings.isRequireLowercase(),
             settings.isRequireNumbers(),
             settings.isRequireSpecialChars(),
             minUnique);

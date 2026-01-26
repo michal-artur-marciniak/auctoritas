@@ -6,8 +6,8 @@ CREATE TABLE end_users (
   password_hash   VARCHAR(255) NOT NULL,
   name            VARCHAR(100),
   email_verified  BOOLEAN NOT NULL DEFAULT FALSE,
-  created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at      TIMESTAMP NOT NULL DEFAULT NOW(),
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
   CONSTRAINT uq_end_user_email UNIQUE(project_id, email)
 );
@@ -21,8 +21,8 @@ CREATE TABLE end_user_sessions (
   user_id         UUID NOT NULL REFERENCES end_users(id) ON DELETE CASCADE,
   device_info     JSONB,
   ip_address      VARCHAR(45),
-  expires_at      TIMESTAMP NOT NULL,
-  created_at      TIMESTAMP NOT NULL DEFAULT NOW()
+  expires_at      TIMESTAMPTZ NOT NULL,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_end_user_sessions_user ON end_user_sessions(user_id);

@@ -32,6 +32,9 @@ public class ProjectSettings extends BaseEntity {
   private boolean requireUppercase = true;
 
   @Column(nullable = false)
+  private boolean requireLowercase = true;
+
+  @Column(nullable = false)
   private boolean requireNumbers = true;
 
   @Column(nullable = false)

@@ -9,6 +9,9 @@ import dev.auctoritas.auth.service.EndUserRefreshService;
 import dev.auctoritas.auth.service.EndUserRegistrationService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import java.util.List;
+import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -30,6 +33,7 @@ public class EndUserAuthController {
   private final EndUserRefreshService endUserRefreshService;
   private final EndUserPasswordResetService endUserPasswordResetService;
   private final EndUserEmailVerificationService endUserEmailVerificationService;
+  private final List<String> trustedProxies;
 
   public EndUserAuthController(
       EndUserRegistrationService endUserRegistrationService,
@@ -37,13 +41,21 @@ public class EndUserAuthController {
       EndUserLogoutService endUserLogoutService,
       EndUserRefreshService endUserRefreshService,
       EndUserPasswordResetService endUserPasswordResetService,
-      EndUserEmailVerificationService endUserEmailVerificationService) {
+      EndUserEmailVerificationService endUserEmailVerificationService,
+      @Value("${auth.security.trusted-proxies:}") List<String> trustedProxies) {
     this.endUserRegistrationService = endUserRegistrationService;
     this.endUserLoginService = endUserLoginService;
     this.endUserLogoutService = endUserLogoutService;
     this.endUserRefreshService = endUserRefreshService;
     this.endUserPasswordResetService = endUserPasswordResetService;
     this.endUserEmailVerificationService = endUserEmailVerificationService;
+    this.trustedProxies =
+        trustedProxies == null
+            ? List.of()
+            : trustedProxies.stream()
+                .map(String::trim)
+                .filter(value -> !value.isBlank())
+                .collect(Collectors.toUnmodifiableList());
   }
 
   @PostMapping("/register")
@@ -114,14 +126,23 @@ public class EndUserAuthController {
   }
 
   private String resolveIpAddress(HttpServletRequest request) {
-    String forwarded = request.getHeader(FORWARDED_FOR_HEADER);
-    if (forwarded != null && !forwarded.isBlank()) {
-      String[] parts = forwarded.split(",");
-      if (parts.length > 0) {
-        return parts[0].trim();
+    if (isFromTrustedProxy(request)) {
+      String forwarded = request.getHeader(FORWARDED_FOR_HEADER);
+      if (forwarded != null && !forwarded.isBlank()) {
+        String[] parts = forwarded.split(",");
+        if (parts.length > 0) {
+          return parts[0].trim();
+        }
       }
     }
     return request.getRemoteAddr();
+  }
+
+  private boolean isFromTrustedProxy(HttpServletRequest request) {
+    if (trustedProxies.isEmpty()) {
+      return false;
+    }
+    return trustedProxies.contains(request.getRemoteAddr());
   }
 
   private String resolveUserAgent(HttpServletRequest request) {

@@ -1,3 +1,3 @@
 package dev.auctoritas.auth.api;
 
-public record EndUserPasswordResetResponse(String message) {}
+public record EndUserPasswordResetResponse(String message, String resetToken) {}

@@ -12,7 +12,9 @@ import dev.auctoritas.auth.repository.EndUserRefreshTokenRepository;
 import dev.auctoritas.auth.repository.EndUserRepository;
 import dev.auctoritas.auth.repository.EndUserSessionRepository;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -70,7 +72,7 @@ public class EndUserLoginService {
 
     EndUser user =
         endUserRepository
-            .findByEmailAndProjectId(email, project.getId())
+            .findByEmailAndProjectIdForUpdate(email, project.getId())
             .orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid_credentials"));
 
@@ -185,8 +187,11 @@ public class EndUserLoginService {
 
   private void persistSession(
       EndUser user, Instant expiresAt, String ipAddress, String userAgent) {
+    List<EndUserSession> sessions = endUserSessionRepository.findByUserId(user.getId());
     EndUserSession session =
-        endUserSessionRepository.findByUserId(user.getId()).orElseGet(EndUserSession::new);
+        sessions.stream()
+            .max(Comparator.comparing(EndUserSession::getCreatedAt))
+            .orElseGet(EndUserSession::new);
     session.setUser(user);
     session.setDeviceInfo(buildDeviceInfo(userAgent));
     session.setIpAddress(trimToNull(ipAddress));

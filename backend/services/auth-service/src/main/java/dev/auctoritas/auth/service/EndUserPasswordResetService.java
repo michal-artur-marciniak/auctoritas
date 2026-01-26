@@ -8,8 +8,10 @@ import dev.auctoritas.auth.entity.enduser.EndUserPasswordResetToken;
 import dev.auctoritas.auth.entity.project.ApiKey;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
+import dev.auctoritas.auth.repository.EndUserRefreshTokenRepository;
 import dev.auctoritas.auth.repository.EndUserPasswordResetTokenRepository;
 import dev.auctoritas.auth.repository.EndUserRepository;
+import dev.auctoritas.auth.repository.EndUserSessionRepository;
 import dev.auctoritas.common.dto.PasswordPolicy;
 import dev.auctoritas.common.validation.PasswordValidator;
 import jakarta.persistence.LockTimeoutException;
@@ -32,6 +34,8 @@ public class EndUserPasswordResetService {
   private final ApiKeyService apiKeyService;
   private final EndUserRepository endUserRepository;
   private final EndUserPasswordResetTokenRepository resetTokenRepository;
+  private final EndUserRefreshTokenRepository refreshTokenRepository;
+  private final EndUserSessionRepository endUserSessionRepository;
   private final PasswordEncoder passwordEncoder;
   private final TokenService tokenService;
 
@@ -39,11 +43,15 @@ public class EndUserPasswordResetService {
       ApiKeyService apiKeyService,
       EndUserRepository endUserRepository,
       EndUserPasswordResetTokenRepository resetTokenRepository,
+      EndUserRefreshTokenRepository refreshTokenRepository,
+      EndUserSessionRepository endUserSessionRepository,
       PasswordEncoder passwordEncoder,
       TokenService tokenService) {
     this.apiKeyService = apiKeyService;
     this.endUserRepository = endUserRepository;
     this.resetTokenRepository = resetTokenRepository;
+    this.refreshTokenRepository = refreshTokenRepository;
+    this.endUserSessionRepository = endUserSessionRepository;
     this.passwordEncoder = passwordEncoder;
     this.tokenService = tokenService;
   }
@@ -69,9 +77,9 @@ public class EndUserPasswordResetService {
           token.setTokenHash(tokenService.hashToken(rawToken));
           token.setExpiresAt(tokenService.getPasswordResetTokenExpiry());
           resetTokenRepository.save(token);
-          return new EndUserPasswordResetResponse(GENERIC_MESSAGE);
+          return new EndUserPasswordResetResponse(GENERIC_MESSAGE, rawToken);
         })
-        .orElseGet(() -> new EndUserPasswordResetResponse(GENERIC_MESSAGE));
+        .orElseGet(() -> new EndUserPasswordResetResponse(GENERIC_MESSAGE, null));
   }
 
   @Transactional
@@ -119,10 +127,13 @@ public class EndUserPasswordResetService {
     user.setLockoutUntil(null);
     endUserRepository.save(user);
 
+    refreshTokenRepository.revokeActiveByUserId(user.getId());
+    endUserSessionRepository.deleteByUserId(user.getId());
+
     resetToken.setUsedAt(Instant.now());
     resetTokenRepository.save(resetToken);
 
-    return new EndUserPasswordResetResponse("Password reset");
+    return new EndUserPasswordResetResponse("Password reset", null);
   }
 
   private void validatePassword(ProjectSettings settings, String password) {
@@ -133,7 +144,7 @@ public class EndUserPasswordResetService {
             minLength,
             DEFAULT_MAX_PASSWORD_LENGTH,
             settings.isRequireUppercase(),
-            true,
+            settings.isRequireLowercase(),
             settings.isRequireNumbers(),
             settings.isRequireSpecialChars(),
             minUnique);

@@ -1,5 +1,9 @@
 package dev.auctoritas.gateway.config;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import org.springframework.cloud.gateway.filter.ratelimit.KeyResolver;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -34,12 +38,22 @@ public class RateLimiterConfig {
     return exchange -> {
       String apiKey = exchange.getRequest().getHeaders().getFirst("X-API-Key");
       if (apiKey != null && !apiKey.isBlank()) {
-        return Mono.just(apiKey.trim());
+        return Mono.just(hashApiKey(apiKey.trim()));
       }
       String ip = exchange.getRequest().getRemoteAddress() != null
           ? exchange.getRequest().getRemoteAddress().getAddress().getHostAddress()
           : "unknown";
       return Mono.just(ip);
     };
+  }
+
+  private String hashApiKey(String apiKey) {
+    try {
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      byte[] hashed = digest.digest(apiKey.getBytes(StandardCharsets.UTF_8));
+      return HexFormat.of().formatHex(hashed);
+    } catch (NoSuchAlgorithmException ex) {
+      throw new IllegalStateException("SHA-256 not available", ex);
+    }
   }
 }

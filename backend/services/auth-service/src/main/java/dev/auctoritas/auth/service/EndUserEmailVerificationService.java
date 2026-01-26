@@ -13,6 +13,7 @@ import jakarta.persistence.LockTimeoutException;
 import jakarta.persistence.PessimisticLockException;
 import java.time.Instant;
 import java.util.Locale;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -106,16 +107,23 @@ public class EndUserEmailVerificationService {
   }
 
   @Transactional
-  public EndUserEmailVerificationToken issueVerificationToken(EndUser user) {
+  public EmailVerificationPayload issueVerificationToken(EndUser user) {
     verificationTokenRepository.markUsedByUserId(user.getId(), Instant.now());
 
+    String rawToken = tokenService.generateEmailVerificationToken();
+    String rawCode = tokenService.generateEmailVerificationCode();
+    Instant expiresAt = tokenService.getEmailVerificationTokenExpiry();
     EndUserEmailVerificationToken token = new EndUserEmailVerificationToken();
     token.setUser(user);
-    token.setTokenHash(tokenService.hashToken(tokenService.generateEmailVerificationToken()));
-    token.setCodeHash(tokenService.hashToken(tokenService.generateEmailVerificationCode()));
-    token.setExpiresAt(tokenService.getEmailVerificationTokenExpiry());
-    return verificationTokenRepository.save(token);
+    token.setTokenHash(tokenService.hashToken(rawToken));
+    token.setCodeHash(tokenService.hashToken(rawCode));
+    token.setExpiresAt(expiresAt);
+    EndUserEmailVerificationToken saved = verificationTokenRepository.save(token);
+    return new EmailVerificationPayload(saved.getId(), rawToken, rawCode, expiresAt);
   }
+
+  public record EmailVerificationPayload(
+      UUID tokenId, String token, String code, Instant expiresAt) {}
 
   private String normalizeEmail(String email) {
     return email.trim().toLowerCase(Locale.ROOT);

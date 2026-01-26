@@ -148,6 +148,7 @@ public class ProjectService {
     ProjectSettings settings = loadProject(orgId, projectId).getSettings();
     settings.setMinLength(request.minLength());
     settings.setRequireUppercase(request.requireUppercase());
+    settings.setRequireLowercase(request.requireLowercase());
     settings.setRequireNumbers(request.requireNumbers());
     settings.setRequireSpecialChars(request.requireSpecialChars());
     settings.setPasswordHistoryCount(request.passwordHistoryCount());
@@ -232,6 +233,7 @@ public class ProjectService {
     return new ProjectSettingsResponse(
         settings.getMinLength(),
         settings.isRequireUppercase(),
+        settings.isRequireLowercase(),
         settings.isRequireNumbers(),
         settings.isRequireSpecialChars(),
         settings.getPasswordHistoryCount(),

@@ -5,6 +5,7 @@ CREATE TABLE project_settings (
     -- Password policy
     min_length                  INT NOT NULL DEFAULT 8,
     require_uppercase           BOOLEAN NOT NULL DEFAULT TRUE,
+    require_lowercase           BOOLEAN NOT NULL DEFAULT TRUE,
     require_numbers             BOOLEAN NOT NULL DEFAULT TRUE,
     require_special_chars       BOOLEAN NOT NULL DEFAULT FALSE,
     password_history_count      INT NOT NULL DEFAULT 0,

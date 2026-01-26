@@ -13,7 +13,9 @@ import dev.auctoritas.auth.repository.EndUserSessionRepository;
 import jakarta.persistence.LockTimeoutException;
 import jakarta.persistence.PessimisticLockException;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -123,8 +125,11 @@ public class EndUserRefreshService {
 
   private void persistSession(
       EndUser user, Instant expiresAt, String ipAddress, String userAgent) {
+    List<EndUserSession> sessions = endUserSessionRepository.findByUserId(user.getId());
     EndUserSession session =
-        endUserSessionRepository.findByUserId(user.getId()).orElseGet(EndUserSession::new);
+        sessions.stream()
+            .max(Comparator.comparing(EndUserSession::getCreatedAt))
+            .orElseGet(EndUserSession::new);
     session.setUser(user);
     session.setDeviceInfo(buildDeviceInfo(userAgent));
     session.setIpAddress(trimToNull(ipAddress));
