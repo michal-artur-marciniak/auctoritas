@@ -3,10 +3,13 @@ package dev.auctoritas.gateway.config;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.HexFormat;
 import org.springframework.cloud.gateway.filter.ratelimit.KeyResolver;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 /**
@@ -23,9 +26,7 @@ public class RateLimiterConfig {
   @Bean
   public KeyResolver ipKeyResolver() {
     return exchange -> {
-      String ip = exchange.getRequest().getRemoteAddress() != null
-          ? exchange.getRequest().getRemoteAddress().getAddress().getHostAddress()
-          : "unknown";
+      String ip = resolveClientIp(exchange);
       return Mono.just(ip);
     };
   }
@@ -40,11 +41,29 @@ public class RateLimiterConfig {
       if (apiKey != null && !apiKey.isBlank()) {
         return Mono.just(hashApiKey(apiKey.trim()));
       }
-      String ip = exchange.getRequest().getRemoteAddress() != null
-          ? exchange.getRequest().getRemoteAddress().getAddress().getHostAddress()
-          : "unknown";
+      String ip = resolveClientIp(exchange);
       return Mono.just(ip);
     };
+  }
+
+  private String resolveClientIp(ServerWebExchange exchange) {
+    InetSocketAddress remoteAddr = exchange.getRequest().getRemoteAddress();
+    if (remoteAddr == null) {
+      return "unknown";
+    }
+    InetAddress address = remoteAddr.getAddress();
+    if (address != null) {
+      return address.getHostAddress();
+    }
+    String hostString = remoteAddr.getHostString();
+    if (hostString != null && !hostString.isBlank()) {
+      return hostString;
+    }
+    String fallback = remoteAddr.toString();
+    if (fallback != null && !fallback.isBlank()) {
+      return fallback;
+    }
+    return "unknown";
   }
 
   private String hashApiKey(String apiKey) {

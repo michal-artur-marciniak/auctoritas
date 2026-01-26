@@ -71,6 +71,7 @@ public class EndUserPasswordResetService {
     return endUserRepository
         .findByEmailAndProjectId(email, project.getId())
         .map(user -> {
+          resetTokenRepository.markUsedByUserId(user.getId(), Instant.now());
           String rawToken = tokenService.generatePasswordResetToken();
           EndUserPasswordResetToken token = new EndUserPasswordResetToken();
           token.setUser(user);
