@@ -9,6 +9,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.time.Instant;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -36,4 +37,13 @@ public class EndUser extends BaseAuditEntity {
 
   @Column(name = "email_verified", nullable = false)
   private Boolean emailVerified = false;
+
+  @Column(name = "failed_login_attempts", nullable = false)
+  private int failedLoginAttempts = 0;
+
+  @Column(name = "failed_login_window_start")
+  private Instant failedLoginWindowStart;
+
+  @Column(name = "lockout_until")
+  private Instant lockoutUntil;
 }
