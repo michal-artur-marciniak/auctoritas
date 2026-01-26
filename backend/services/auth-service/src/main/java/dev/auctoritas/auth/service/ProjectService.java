@@ -4,12 +4,14 @@ import dev.auctoritas.auth.api.ApiKeySecretResponse;
 import dev.auctoritas.auth.api.ProjectCreateRequest;
 import dev.auctoritas.auth.api.ProjectCreateResponse;
 import dev.auctoritas.auth.api.ProjectSummaryResponse;
+import dev.auctoritas.auth.api.ProjectUpdateRequest;
 import dev.auctoritas.auth.entity.organization.Organization;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
 import dev.auctoritas.auth.repository.OrganizationRepository;
 import dev.auctoritas.auth.repository.ProjectRepository;
 import dev.auctoritas.auth.security.OrgMemberPrincipal;
+import dev.auctoritas.common.enums.ProjectStatus;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -79,6 +81,41 @@ public class ProjectService {
     return projectRepository.findAllByOrganizationId(orgId).stream().map(this::toSummary).toList();
   }
 
+  @Transactional
+  public ProjectSummaryResponse updateProject(
+      UUID orgId, UUID projectId, OrgMemberPrincipal principal, ProjectUpdateRequest request) {
+    enforceOrgAccess(orgId, principal);
+    Project project = loadProject(orgId, projectId);
+
+    if (request.name() != null) {
+      project.setName(requireValue(request.name(), "project_name_required"));
+    }
+
+    if (request.slug() != null) {
+      String normalized = normalizeSlug(requireValue(request.slug(), "project_slug_required"));
+      if (!normalized.equals(project.getSlug())
+          && projectRepository.existsBySlugAndOrganizationId(normalized, orgId)) {
+        throw new ResponseStatusException(HttpStatus.CONFLICT, "project_slug_taken");
+      }
+      project.setSlug(normalized);
+    }
+
+    if (request.status() != null) {
+      project.setStatus(request.status());
+    }
+
+    return toSummary(projectRepository.save(project));
+  }
+
+  @Transactional
+  public void deleteProject(UUID orgId, UUID projectId, OrgMemberPrincipal principal) {
+    enforceOrgAccess(orgId, principal);
+    Project project = loadProject(orgId, projectId);
+    project.setStatus(ProjectStatus.DELETED);
+    projectRepository.save(project);
+    apiKeyService.revokeAllByProjectId(projectId);
+  }
+
   private ProjectSummaryResponse toSummary(Project project) {
     return new ProjectSummaryResponse(
         project.getId(),
@@ -100,6 +137,17 @@ public class ProjectService {
 
   private String normalizeSlug(String slug) {
     return slug.trim().toLowerCase(Locale.ROOT);
+  }
+
+  private Project loadProject(UUID orgId, UUID projectId) {
+    Project project =
+        projectRepository
+            .findById(projectId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "project_not_found"));
+    if (!orgId.equals(project.getOrganization().getId())) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "project_not_found");
+    }
+    return project;
   }
 
   private String requireValue(String value, String errorCode) {

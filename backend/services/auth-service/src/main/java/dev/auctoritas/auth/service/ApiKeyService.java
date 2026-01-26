@@ -3,9 +3,11 @@ package dev.auctoritas.auth.service;
 import dev.auctoritas.auth.entity.project.ApiKey;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.repository.ApiKeyRepository;
+import dev.auctoritas.common.enums.ApiKeyStatus;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Base64;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,6 +51,11 @@ public class ApiKeyService {
     byte[] buffer = new byte[length];
     secureRandom.nextBytes(buffer);
     return encoder.encodeToString(buffer);
+  }
+
+  @Transactional
+  public void revokeAllByProjectId(UUID projectId) {
+    apiKeyRepository.updateStatusByProjectId(projectId, ApiKeyStatus.REVOKED);
   }
 
   public record ApiKeySecret(ApiKey apiKey, String rawKey) {}

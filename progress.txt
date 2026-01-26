@@ -1,6 +1,7 @@
 ## Codebase Patterns
 - Auth-service database migrations live in `backend/services/auth-service/src/main/resources/db/migration` and use Flyway `V{n}__description.sql` naming.
 - Project creation flows initialize `ProjectSettings` and a default API key via `ApiKeyService`.
+- Soft-deleting projects sets `ProjectStatus.DELETED` and revokes API keys via `ApiKeyService.revokeAllByProjectId`.
 
 ## 2026-01-26 15:36 - US-001
 Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
@@ -20,4 +21,14 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
   - Patterns discovered: API key creation uses a SHA-256 hash of the full key (prefix + token) and returns the raw key only once.
   - Gotchas encountered: project creation should attach `ProjectSettings` on the `Project` entity before saving to satisfy the `project_id` constraint.
   - Useful context: project listing uses `ProjectRepository.findAllByOrganizationId` and maps to `ProjectSummaryResponse`.
+---
+
+## 2026-01-26 15:55 - US-003
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented project update/delete endpoints with status updates and API key revocation on delete.
+- Files changed: `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/ProjectController.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/ProjectUpdateRequest.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/ProjectService.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/ApiKeyService.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/ApiKeyRepository.java`, `prd.json`, `progress.txt`.
+- **Learnings for future iterations:**
+  - Patterns discovered: use `ProjectService.loadProject` to enforce org ownership checks and 404 on mismatches.
+  - Gotchas encountered: slug updates must check uniqueness only when the normalized slug changes.
+  - Useful context: project deletion revokes API keys by updating status to `REVOKED` via a repository bulk update.
 ---
