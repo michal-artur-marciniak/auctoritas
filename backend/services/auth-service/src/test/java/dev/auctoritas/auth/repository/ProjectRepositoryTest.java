@@ -26,7 +26,6 @@ class ProjectRepositoryTest {
 
   @Autowired private ProjectRepository projectRepository;
   @Autowired private OrganizationRepository organizationRepository;
-  @Autowired private ProjectSettingsRepository settingsRepository;
   @Autowired private EntityManager entityManager;
 
   private Organization testOrg;
@@ -45,8 +44,6 @@ class ProjectRepositoryTest {
     settings.setMinLength(8);
     settings.setRequireUppercase(true);
     settings.setRequireNumbers(true);
-    entityManager.persist(settings);
-    entityManager.flush();
 
     testProject = new Project();
     testProject.setOrganization(testOrg);
@@ -54,6 +51,8 @@ class ProjectRepositoryTest {
     testProject.setSlug("test-project");
     testProject.setStatus(ProjectStatus.ACTIVE);
     testProject.setSettings(settings);
+    settings.setProject(testProject);
+
     entityManager.persist(testProject);
     entityManager.flush();
   }

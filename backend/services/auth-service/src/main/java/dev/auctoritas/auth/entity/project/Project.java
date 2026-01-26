@@ -40,7 +40,6 @@ public class Project extends BaseAuditEntity {
   @Column(nullable = false, length = 20)
   private ProjectStatus status = ProjectStatus.ACTIVE;
 
-  @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
-  @JoinColumn(name = "settings_id")
+  @OneToOne(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
   private ProjectSettings settings;
 }

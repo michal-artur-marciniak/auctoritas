@@ -3,6 +3,9 @@ package dev.auctoritas.auth.entity.project;
 import dev.auctoritas.common.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,6 +17,10 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 public class ProjectSettings extends BaseEntity {
+  @OneToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "project_id", nullable = false, unique = true)
+  private Project project;
+
   @Column(nullable = false)
   private int minLength = 8;
 

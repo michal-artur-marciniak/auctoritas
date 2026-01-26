@@ -1,0 +1,97 @@
+{
+  "project": "Auctoritas",
+  "branchName": "ralph/project-management-v0-2-1",
+  "description": "v0.2.1 Project Management - Core project CRUD, settings, and API key management for orgs.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Add project management schema",
+      "description": "As a developer, I need database tables for projects, project settings, and API keys so that project data is stored reliably.",
+      "acceptanceCriteria": [
+        "Create projects table with name, slug, status (ACTIVE | ARCHIVED), and org_id",
+        "Create project_settings table keyed by project_id",
+        "Create api_keys table with project_id and hashed key storage",
+        "Enforce unique project slug per organization",
+        "Generate and run migrations successfully",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Create and list projects",
+      "description": "As an org admin, I want to create and list projects so that I can manage multiple applications under one organization.",
+      "acceptanceCriteria": [
+        "POST /api/v1/org/{orgId}/projects creates a project with { name, slug }",
+        "Response includes the project and a default API key shown only once",
+        "GET /api/v1/org/{orgId}/projects returns projects with basic metadata",
+        "Project slug is unique per organization",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Update and delete projects",
+      "description": "As an org admin, I want to update and delete projects so that I can keep project data accurate and remove obsolete projects.",
+      "acceptanceCriteria": [
+        "PUT /api/v1/org/{orgId}/projects/{projectId} updates project fields (name, slug, status)",
+        "DELETE /api/v1/org/{orgId}/projects/{projectId} soft-deletes the project",
+        "Delete invalidates or disables related API keys",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Manage project settings",
+      "description": "As an org admin, I want to update project settings so that each project can enforce its own auth policies.",
+      "acceptanceCriteria": [
+        "GET /api/v1/org/{orgId}/projects/{projectId}/settings returns current settings",
+        "PUT /api/v1/org/{orgId}/projects/{projectId}/settings/password updates password policy",
+        "PUT /api/v1/org/{orgId}/projects/{projectId}/settings/session updates session settings",
+        "PUT /api/v1/org/{orgId}/projects/{projectId}/settings/oauth updates OAuth provider config",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Create and revoke API keys",
+      "description": "As an org admin, I want to create and revoke API keys so that projects can authenticate SDK requests securely.",
+      "acceptanceCriteria": [
+        "POST /api/v1/org/{orgId}/projects/{projectId}/api-keys returns a new key shown only once",
+        "API keys are stored as SHA-256 hashes and never retrievable in full",
+        "Keys use prefixes pk_live_ and pk_test_ as configured",
+        "GET /api/v1/org/{orgId}/projects/{projectId}/api-keys lists metadata only (no full key)",
+        "DELETE /api/v1/org/{orgId}/projects/{projectId}/api-keys/{keyId} revokes key",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Enforce project authorization rules",
+      "description": "As a platform owner, I want strict authorization checks so that only permitted org members can perform sensitive project actions.",
+      "acceptanceCriteria": [
+        "OWNER/ADMIN required for delete project and revoke API keys",
+        "MEMBER roles can view projects but cannot delete or revoke keys",
+        "Unauthorized requests return standardized 403 response",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}

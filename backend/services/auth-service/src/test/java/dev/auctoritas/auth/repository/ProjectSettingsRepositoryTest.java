@@ -50,14 +50,14 @@ class ProjectSettingsRepositoryTest {
     testSettings.setMaxSessions(10);
     testSettings.setMfaEnabled(true);
     testSettings.setMfaRequired(false);
-    entityManager.persist(testSettings);
-    entityManager.flush();
 
     testProject = new Project();
     testProject.setOrganization(testOrg);
     testProject.setName("Test Project");
     testProject.setSlug("test-project-settings");
     testProject.setSettings(testSettings);
+    testSettings.setProject(testProject);
+
     entityManager.persist(testProject);
     entityManager.flush();
   }
@@ -76,7 +76,14 @@ class ProjectSettingsRepositoryTest {
   @DisplayName("Should have default values when not set")
   void shouldHaveDefaultValues() {
     ProjectSettings defaultSettings = new ProjectSettings();
-    entityManager.persist(defaultSettings);
+    Project defaultProject = new Project();
+    defaultProject.setOrganization(testOrg);
+    defaultProject.setName("Default Project");
+    defaultProject.setSlug("default-project");
+    defaultProject.setSettings(defaultSettings);
+    defaultSettings.setProject(defaultProject);
+
+    entityManager.persist(defaultProject);
     entityManager.flush();
 
     Optional<ProjectSettings> found = settingsRepository.findById(defaultSettings.getId());

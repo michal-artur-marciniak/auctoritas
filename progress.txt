@@ -1,0 +1,12 @@
+## Codebase Patterns
+- Auth-service database migrations live in `backend/services/auth-service/src/main/resources/db/migration` and use Flyway `V{n}__description.sql` naming.
+
+## 2026-01-26 15:36 - US-001
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Moved project settings to be keyed by `project_id` with a new migration and updated JPA mappings/tests.
+- Files changed: `backend/services/auth-service/src/main/resources/db/migration/V4__project_settings_project_id.sql`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/entity/project/Project.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/entity/project/ProjectSettings.java`, `backend/services/auth-service/src/test/java/dev/auctoritas/auth/repository/ProjectRepositoryTest.java`, `backend/services/auth-service/src/test/java/dev/auctoritas/auth/repository/ProjectSettingsRepositoryTest.java`, `prd.json`.
+- **Learnings for future iterations:**
+  - Patterns discovered: project settings are now owned by `ProjectSettings.project` via the `project_id` foreign key.
+  - Gotchas encountered: tests must persist a `Project` with linked settings since `project_id` is required.
+  - Useful context: cascade persistence is handled from `Project` to `ProjectSettings` when both sides are linked.
+---
