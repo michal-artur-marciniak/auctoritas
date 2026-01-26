@@ -6,6 +6,7 @@
 - Refresh token rotation should lock the refresh token row to prevent concurrent reuse.
 - End-user password reset tokens are stored hashed with 1-hour expiry and a used_at marker for single-use enforcement.
 - End-user email verification tokens are stored hashed with 24-hour expiry and a used_at marker; resends mark existing tokens used.
+- Gateway SDK routes resolve API keys via /internal/api-keys/resolve and forward X-Project-Id.
 
 ## 2026-01-26 19:32 - US-001
 Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
@@ -62,4 +63,14 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
   - Patterns discovered: Email verification tokens are issued on registration and resends mark prior tokens used.
   - Gotchas encountered: Verification endpoints must be added to SecurityConfig.PUBLIC_ENDPOINTS to avoid JWT gating.
   - Useful context: Verification tokens store hashed token/code with 24-hour expiry in end_user_email_verification_tokens.
+---
+
+## 2026-01-26 20:10 - US-007
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented gateway API key enforcement for SDK routes, resolving project context and forwarding it to auth-service.
+- Files changed: backend/services/gateway-service/src/main/java/dev/auctoritas/gateway/filter/ApiKeyGatewayFilter.java, backend/services/gateway-service/src/main/java/dev/auctoritas/gateway/filter/ApiKeyResolutionResponse.java, backend/services/gateway-service/src/main/java/dev/auctoritas/gateway/config/RateLimiterConfig.java, backend/services/gateway-service/src/main/resources/application.yml, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/ApiKeyResolutionController.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/ApiKeyResolveResponse.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/config/SecurityConfig.java, prd.json, progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Gateway SDK routes use a separate RequestRateLimiter with apiKeyResolver to enforce per-key limits.
+  - Gotchas encountered: The gateway API-key filter must run before route handling to ensure 401s on missing keys.
+  - Useful context: Project context is forwarded via X-Project-Id after resolving X-API-Key.
 ---
