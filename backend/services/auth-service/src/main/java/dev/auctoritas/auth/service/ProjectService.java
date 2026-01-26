@@ -1,6 +1,8 @@
 package dev.auctoritas.auth.service;
 
+import dev.auctoritas.auth.api.ApiKeyCreateRequest;
 import dev.auctoritas.auth.api.ApiKeySecretResponse;
+import dev.auctoritas.auth.api.ApiKeySummaryResponse;
 import dev.auctoritas.auth.api.ProjectCreateRequest;
 import dev.auctoritas.auth.api.ProjectCreateResponse;
 import dev.auctoritas.auth.api.ProjectOAuthSettingsRequest;
@@ -10,6 +12,7 @@ import dev.auctoritas.auth.api.ProjectSettingsResponse;
 import dev.auctoritas.auth.api.ProjectSummaryResponse;
 import dev.auctoritas.auth.api.ProjectUpdateRequest;
 import dev.auctoritas.auth.entity.organization.Organization;
+import dev.auctoritas.auth.entity.project.ApiKey;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
 import dev.auctoritas.auth.repository.OrganizationRepository;
@@ -177,6 +180,41 @@ public class ProjectService {
     return toSettingsResponse(projectSettingsRepository.save(settings));
   }
 
+  @Transactional
+  public ApiKeySecretResponse createApiKey(
+      UUID orgId,
+      UUID projectId,
+      OrgMemberPrincipal principal,
+      ApiKeyCreateRequest request) {
+    enforceOrgAccess(orgId, principal);
+    Project project = loadProject(orgId, projectId);
+    String name = requireValue(request.name(), "api_key_name_required");
+    ApiKeyService.ApiKeySecret apiKeySecret = apiKeyService.createKey(project, name, request.environment());
+    return new ApiKeySecretResponse(
+        apiKeySecret.apiKey().getId(),
+        apiKeySecret.apiKey().getName(),
+        apiKeySecret.apiKey().getPrefix(),
+        apiKeySecret.rawKey(),
+        apiKeySecret.apiKey().getStatus(),
+        apiKeySecret.apiKey().getCreatedAt());
+  }
+
+  @Transactional(readOnly = true)
+  public List<ApiKeySummaryResponse> listApiKeys(
+      UUID orgId, UUID projectId, OrgMemberPrincipal principal) {
+    enforceOrgAccess(orgId, principal);
+    loadProject(orgId, projectId);
+    return apiKeyService.listKeys(projectId).stream().map(this::toApiKeySummary).toList();
+  }
+
+  @Transactional
+  public void revokeApiKey(
+      UUID orgId, UUID projectId, UUID keyId, OrgMemberPrincipal principal) {
+    enforceOrgAccess(orgId, principal);
+    loadProject(orgId, projectId);
+    apiKeyService.revokeKey(projectId, keyId);
+  }
+
   private ProjectSummaryResponse toSummary(Project project) {
     return new ProjectSummaryResponse(
         project.getId(),
@@ -200,6 +238,16 @@ public class ProjectService {
         settings.isMfaEnabled(),
         settings.isMfaRequired(),
         settings.getOauthConfig());
+  }
+
+  private ApiKeySummaryResponse toApiKeySummary(ApiKey apiKey) {
+    return new ApiKeySummaryResponse(
+        apiKey.getId(),
+        apiKey.getName(),
+        apiKey.getPrefix(),
+        apiKey.getStatus(),
+        apiKey.getLastUsedAt(),
+        apiKey.getCreatedAt());
   }
 
   private void enforceOrgAccess(UUID orgId, OrgMemberPrincipal principal) {

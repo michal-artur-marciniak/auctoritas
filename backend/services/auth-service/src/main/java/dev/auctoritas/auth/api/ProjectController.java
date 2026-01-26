@@ -105,4 +105,35 @@ public class ProjectController {
     return ResponseEntity.ok(
         projectService.updateOAuthSettings(orgId, projectId, principal, request));
   }
+
+  @PreAuthorize("isAuthenticated()")
+  @PostMapping("/{projectId}/api-keys")
+  public ResponseEntity<ApiKeySecretResponse> createApiKey(
+      @PathVariable UUID orgId,
+      @PathVariable UUID projectId,
+      @Valid @RequestBody ApiKeyCreateRequest request,
+      @AuthenticationPrincipal OrgMemberPrincipal principal) {
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(projectService.createApiKey(orgId, projectId, principal, request));
+  }
+
+  @PreAuthorize("isAuthenticated()")
+  @GetMapping("/{projectId}/api-keys")
+  public ResponseEntity<List<ApiKeySummaryResponse>> listApiKeys(
+      @PathVariable UUID orgId,
+      @PathVariable UUID projectId,
+      @AuthenticationPrincipal OrgMemberPrincipal principal) {
+    return ResponseEntity.ok(projectService.listApiKeys(orgId, projectId, principal));
+  }
+
+  @PreAuthorize("isAuthenticated()")
+  @DeleteMapping("/{projectId}/api-keys/{keyId}")
+  public ResponseEntity<Void> revokeApiKey(
+      @PathVariable UUID orgId,
+      @PathVariable UUID projectId,
+      @PathVariable UUID keyId,
+      @AuthenticationPrincipal OrgMemberPrincipal principal) {
+    projectService.revokeApiKey(orgId, projectId, keyId, principal);
+    return ResponseEntity.noContent().build();
+  }
 }

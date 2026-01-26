@@ -3,6 +3,7 @@
 - Project creation flows initialize `ProjectSettings` and a default API key via `ApiKeyService`.
 - Soft-deleting projects sets `ProjectStatus.DELETED` and revokes API keys via `ApiKeyService.revokeAllByProjectId`.
 - Project settings responses are mapped via `ProjectService.toSettingsResponse`, with OAuth config stored on `ProjectSettings.oauthConfig` as JSON.
+- API key prefixes are resolved from `ApiKeyEnvironment` (LIVE/TEST) inside `ApiKeyService`.
 
 ## 2026-01-26 15:36 - US-001
 Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
@@ -42,4 +43,14 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
   - Patterns discovered: project settings are updated through dedicated request records and returned as `ProjectSettingsResponse` from `ProjectService`.
   - Gotchas encountered: H2 schema generation requires JSON column definitions compatible with the test dialect.
   - Useful context: OAuth configuration is stored on `ProjectSettings.oauthConfig` as a JSON column.
+---
+
+## 2026-01-26 16:25 - US-005
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented API key create/list/revoke endpoints with live/test prefix handling and metadata-only listing.
+- Files changed: `backend/libs/common/src/main/java/dev/auctoritas/common/enums/ApiKeyEnvironment.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/ApiKeyCreateRequest.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/ApiKeySummaryResponse.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/ProjectController.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/ApiKeyRepository.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/ApiKeyService.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/ProjectService.java`, `prd.json`, `progress.txt`.
+- **Learnings for future iterations:**
+  - Patterns discovered: API key metadata responses are mapped via `ProjectService.toApiKeySummary` without exposing secrets.
+  - Gotchas encountered: `ApiKeyService` enforces per-project key name uniqueness and resolves prefixes via `ApiKeyEnvironment`.
+  - Useful context: revoke endpoints look up keys by `{keyId, projectId}` before setting status to `REVOKED`.
 ---
