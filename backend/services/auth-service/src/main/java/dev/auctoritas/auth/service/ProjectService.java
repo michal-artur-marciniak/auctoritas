@@ -19,6 +19,7 @@ import dev.auctoritas.auth.repository.OrganizationRepository;
 import dev.auctoritas.auth.repository.ProjectRepository;
 import dev.auctoritas.auth.repository.ProjectSettingsRepository;
 import dev.auctoritas.auth.security.OrgMemberPrincipal;
+import dev.auctoritas.common.enums.OrgMemberRole;
 import dev.auctoritas.common.enums.ProjectStatus;
 import java.util.HashMap;
 import java.util.List;
@@ -122,6 +123,7 @@ public class ProjectService {
   @Transactional
   public void deleteProject(UUID orgId, UUID projectId, OrgMemberPrincipal principal) {
     enforceOrgAccess(orgId, principal);
+    enforceAdminAccess(principal);
     Project project = loadProject(orgId, projectId);
     project.setStatus(ProjectStatus.DELETED);
     projectRepository.save(project);
@@ -211,6 +213,7 @@ public class ProjectService {
   public void revokeApiKey(
       UUID orgId, UUID projectId, UUID keyId, OrgMemberPrincipal principal) {
     enforceOrgAccess(orgId, principal);
+    enforceAdminAccess(principal);
     loadProject(orgId, projectId);
     apiKeyService.revokeKey(projectId, keyId);
   }
@@ -256,6 +259,13 @@ public class ProjectService {
     }
     if (!orgId.equals(principal.orgId())) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "org_access_denied");
+    }
+  }
+
+  private void enforceAdminAccess(OrgMemberPrincipal principal) {
+    OrgMemberRole role = principal.role();
+    if (role != OrgMemberRole.OWNER && role != OrgMemberRole.ADMIN) {
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "insufficient_role");
     }
   }
 

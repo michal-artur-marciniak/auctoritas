@@ -4,6 +4,7 @@
 - Soft-deleting projects sets `ProjectStatus.DELETED` and revokes API keys via `ApiKeyService.revokeAllByProjectId`.
 - Project settings responses are mapped via `ProjectService.toSettingsResponse`, with OAuth config stored on `ProjectSettings.oauthConfig` as JSON.
 - API key prefixes are resolved from `ApiKeyEnvironment` (LIVE/TEST) inside `ApiKeyService`.
+- Auth-service `ResponseStatusException` errors are serialized as `{ "error": "<code>" }` via `ApiExceptionHandler`.
 
 ## 2026-01-26 15:36 - US-001
 Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
@@ -53,4 +54,14 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
   - Patterns discovered: API key metadata responses are mapped via `ProjectService.toApiKeySummary` without exposing secrets.
   - Gotchas encountered: `ApiKeyService` enforces per-project key name uniqueness and resolves prefixes via `ApiKeyEnvironment`.
   - Useful context: revoke endpoints look up keys by `{keyId, projectId}` before setting status to `REVOKED`.
+---
+
+## 2026-01-26 16:33 - US-006
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Enforced ADMIN/OWNER-only access for project deletion and API key revocation, with standardized forbidden error responses.
+- Files changed: `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/ApiExceptionHandler.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/ProjectService.java`, `prd.json`, `progress.txt`.
+- **Learnings for future iterations:**
+  - Patterns discovered: role checks for sensitive project actions should use `ProjectService.enforceAdminAccess` with a `insufficient_role` 403 error.
+  - Gotchas encountered: `ResponseStatusException` bodies are now normalized to `{ "error": "<code>" }` by `ApiExceptionHandler`.
+  - Useful context: org access mismatches still use `org_access_denied` and now serialize through the shared exception handler.
 ---
