@@ -21,6 +21,7 @@ public interface EndUserPasswordResetTokenRepository
   @Modifying
   @Query(
       "update EndUserPasswordResetToken token set token.usedAt = :usedAt "
-          + "where token.user.id = :userId and token.usedAt is null")
-  int markUsedByUserId(@Param("userId") UUID userId, @Param("usedAt") Instant usedAt);
+          + "where token.user.id = :userId and token.project.id = :projectId and token.usedAt is null")
+  int markUsedByUserIdAndProjectId(
+      @Param("userId") UUID userId, @Param("projectId") UUID projectId, @Param("usedAt") Instant usedAt);
 }

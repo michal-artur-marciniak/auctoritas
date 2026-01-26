@@ -30,6 +30,12 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
 
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
 management:
   endpoints:
     web:
@@ -42,9 +48,16 @@ logging:
     org.flywaydb: INFO
 
 auctoritas:
+  messaging:
+    rabbit:
+      enabled: ${RABBITMQ_ENABLED:true}
   jwt:
     issuer: ${JWT_ISSUER:auctoritas}
     access-token-ttl-seconds: ${JWT_ACCESS_TOKEN_TTL:3600}
     # RS256 key pair - use environment variables in production
     private-key: ${JWT_PRIVATE_KEY:}
     public-key: ${JWT_PUBLIC_KEY:}
+
+  auth:
+    password-reset:
+      log-token: false

@@ -9,6 +9,7 @@
 - Gateway SDK routes resolve API keys via /internal/api-keys/resolve and forward X-Project-Id.
 - Maven modules live under `backend/`; run per-service tests from there (e.g. `mvn -pl services/auth-service test`).
 - Auth-service repository tests rely on Hibernate DDL from entity mappings (keep Flyway migrations and JPA entities in sync).
+- Domain events from auth-service use DomainEventPublisher; RabbitMQ publishes JSON to the default exchange with routing key = event type (disable in tests via `auctoritas.messaging.rabbit.enabled=false` and `spring.rabbitmq.dynamic=false`).
 
 ## 2026-01-26 19:32 - US-001
 Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
@@ -86,4 +87,15 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
   - Patterns discovered: Auth-service tests use Hibernate schema generation; add/adjust JPA entities when adding Flyway tables.
   - Gotchas encountered: The Maven reactor root is `backend/` (module path is `services/auth-service`).
   - Useful context: `password_reset_tokens` backfills and replaces legacy `end_user_password_reset_tokens`.
+---
+
+## 2026-01-26 23:49 - US-002
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Updated password reset request to always return generic success (no reset token leakage), invalidate prior tokens per user+project, and emit `user.password_reset_requested`.
+- Added RabbitMQ DomainEventPublisher wiring, plus dev-only stub email log for reset tokens.
+- Files changed: backend/services/auth-service/pom.xml, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserPasswordResetService.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/EndUserPasswordResetTokenRepository.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/messaging/DomainEventPublisher.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/messaging/NoopDomainEventPublisher.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/messaging/PasswordResetRequestedEvent.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/messaging/RabbitMqDomainEventPublisher.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/messaging/MessagingConfig.java, backend/services/auth-service/src/main/resources/application.yml, backend/services/auth-service/src/main/resources/application-dev.yml, backend/services/auth-service/src/main/resources/application-test.yml, backend/services/auth-service/src/test/java/dev/auctoritas/auth/service/EndUserPasswordResetServiceTest.java, docker-compose.yml, prd.json, progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Auth-service emits RabbitMQ domain events via DomainEventPublisher; publish failures should not block generic-success endpoints.
+  - Gotchas encountered: When asserting bulk update queries in transactional tests, flush inserted rows before running the update.
+  - Useful context: docker-compose wires auth-service to RabbitMQ via `RABBITMQ_HOST=rabbitmq`.
 ---

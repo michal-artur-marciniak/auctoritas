@@ -8,6 +8,8 @@ import dev.auctoritas.auth.entity.enduser.EndUserPasswordResetToken;
 import dev.auctoritas.auth.entity.project.ApiKey;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
+import dev.auctoritas.auth.messaging.DomainEventPublisher;
+import dev.auctoritas.auth.messaging.PasswordResetRequestedEvent;
 import dev.auctoritas.auth.repository.EndUserRefreshTokenRepository;
 import dev.auctoritas.auth.repository.EndUserPasswordResetTokenRepository;
 import dev.auctoritas.auth.repository.EndUserRepository;
@@ -18,14 +20,18 @@ import jakarta.persistence.LockTimeoutException;
 import jakarta.persistence.PessimisticLockException;
 import java.time.Instant;
 import java.util.Locale;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class EndUserPasswordResetService {
+  private static final Logger log = LoggerFactory.getLogger(EndUserPasswordResetService.class);
   private static final int DEFAULT_MAX_PASSWORD_LENGTH = 128;
   private static final int DEFAULT_MIN_UNIQUE = 4;
   private static final String GENERIC_MESSAGE =
@@ -38,6 +44,8 @@ public class EndUserPasswordResetService {
   private final EndUserSessionRepository endUserSessionRepository;
   private final PasswordEncoder passwordEncoder;
   private final TokenService tokenService;
+  private final DomainEventPublisher domainEventPublisher;
+  private final boolean logResetToken;
 
   public EndUserPasswordResetService(
       ApiKeyService apiKeyService,
@@ -46,7 +54,9 @@ public class EndUserPasswordResetService {
       EndUserRefreshTokenRepository refreshTokenRepository,
       EndUserSessionRepository endUserSessionRepository,
       PasswordEncoder passwordEncoder,
-      TokenService tokenService) {
+      TokenService tokenService,
+      DomainEventPublisher domainEventPublisher,
+      @Value("${auctoritas.auth.password-reset.log-token:false}") boolean logResetToken) {
     this.apiKeyService = apiKeyService;
     this.endUserRepository = endUserRepository;
     this.resetTokenRepository = resetTokenRepository;
@@ -54,6 +64,8 @@ public class EndUserPasswordResetService {
     this.endUserSessionRepository = endUserSessionRepository;
     this.passwordEncoder = passwordEncoder;
     this.tokenService = tokenService;
+    this.domainEventPublisher = domainEventPublisher;
+    this.logResetToken = logResetToken;
   }
 
   @Transactional
@@ -71,7 +83,7 @@ public class EndUserPasswordResetService {
     return endUserRepository
         .findByEmailAndProjectId(email, project.getId())
         .map(user -> {
-          resetTokenRepository.markUsedByUserId(user.getId(), Instant.now());
+          resetTokenRepository.markUsedByUserIdAndProjectId(user.getId(), project.getId(), Instant.now());
           String rawToken = tokenService.generatePasswordResetToken();
           EndUserPasswordResetToken token = new EndUserPasswordResetToken();
           token.setProject(project);
@@ -81,7 +93,37 @@ public class EndUserPasswordResetService {
           token.setIpAddress(trimToNull(ipAddress));
           token.setUserAgent(trimToNull(userAgent));
           resetTokenRepository.save(token);
-          return new EndUserPasswordResetResponse(GENERIC_MESSAGE, rawToken);
+
+          PasswordResetRequestedEvent event =
+              new PasswordResetRequestedEvent(
+                  project.getId(),
+                  user.getId(),
+                  user.getEmail(),
+                  rawToken,
+                  token.getExpiresAt(),
+                  trimToNull(ipAddress),
+                  trimToNull(userAgent));
+          try {
+            domainEventPublisher.publish(PasswordResetRequestedEvent.EVENT_TYPE, event);
+          } catch (RuntimeException ex) {
+            log.warn(
+                "Failed to publish password reset event projectId={} userId={}",
+                project.getId(),
+                user.getId(),
+                ex);
+          }
+
+          if (logResetToken) {
+            log.info(
+                "Stub password reset email projectId={} userId={} email={} resetToken={} expiresAt={}",
+                project.getId(),
+                user.getId(),
+                user.getEmail(),
+                rawToken,
+                token.getExpiresAt());
+          }
+
+          return new EndUserPasswordResetResponse(GENERIC_MESSAGE, null);
         })
         .orElseGet(() -> new EndUserPasswordResetResponse(GENERIC_MESSAGE, null));
   }
