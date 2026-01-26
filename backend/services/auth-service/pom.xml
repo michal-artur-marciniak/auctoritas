@@ -4,7 +4,7 @@
   <parent>
     <groupId>dev.auctoritas</groupId>
     <artifactId>auctoritas-backend</artifactId>
-    <version>0.2.0</version>
+    <version>0.2.1</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
   <artifactId>auth-service</artifactId>
