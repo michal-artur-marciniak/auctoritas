@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,12 +54,19 @@ public class ApiKeyService {
     apiKey.setPrefix(prefix);
     apiKey.setKeyHash(tokenService.hashToken(rawKey));
 
-    ApiKey savedKey = apiKeyRepository.save(apiKey);
-    return new ApiKeySecret(savedKey, rawKey);
+    try {
+      ApiKey savedKey = apiKeyRepository.save(apiKey);
+      return new ApiKeySecret(savedKey, rawKey);
+    } catch (DataIntegrityViolationException ex) {
+      throw new ResponseStatusException(HttpStatus.CONFLICT, "api_key_name_taken", ex);
+    }
   }
 
   @Transactional
   public ApiKey validateActiveKey(String rawKey) {
+    if (rawKey == null || rawKey.isBlank()) {
+      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api_key_invalid");
+    }
     String keyHash = tokenService.hashToken(rawKey);
     ApiKey apiKey =
         apiKeyRepository

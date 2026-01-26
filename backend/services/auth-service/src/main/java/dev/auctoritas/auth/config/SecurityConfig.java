@@ -3,6 +3,7 @@ package dev.auctoritas.auth.config;
 import dev.auctoritas.auth.security.JwtAuthenticationFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -79,8 +80,12 @@ public class SecurityConfig {
 
   private void writeErrorResponse(HttpServletResponse response, int status, String errorCode)
       throws IOException {
-    response.setStatus(status);
+    if (response.isCommitted()) {
+      return;
+    }
+    response.setCharacterEncoding(StandardCharsets.UTF_8.name());
     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+    response.setStatus(status);
     objectMapper.writeValue(response.getWriter(), Map.of("error", errorCode));
   }
 }
