@@ -4,12 +4,14 @@ import dev.auctoritas.auth.api.EndUserPasswordForgotRequest;
 import dev.auctoritas.auth.api.EndUserPasswordResetRequest;
 import dev.auctoritas.auth.api.EndUserPasswordResetResponse;
 import dev.auctoritas.auth.entity.enduser.EndUser;
+import dev.auctoritas.auth.entity.enduser.EndUserPasswordHistory;
 import dev.auctoritas.auth.entity.enduser.EndUserPasswordResetToken;
 import dev.auctoritas.auth.entity.project.ApiKey;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
 import dev.auctoritas.auth.messaging.DomainEventPublisher;
 import dev.auctoritas.auth.messaging.PasswordResetRequestedEvent;
+import dev.auctoritas.auth.repository.EndUserPasswordHistoryRepository;
 import dev.auctoritas.auth.repository.EndUserRefreshTokenRepository;
 import dev.auctoritas.auth.repository.EndUserPasswordResetTokenRepository;
 import dev.auctoritas.auth.repository.EndUserRepository;
@@ -22,6 +24,7 @@ import java.time.Instant;
 import java.util.Locale;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -34,12 +37,14 @@ public class EndUserPasswordResetService {
   private static final Logger log = LoggerFactory.getLogger(EndUserPasswordResetService.class);
   private static final int DEFAULT_MAX_PASSWORD_LENGTH = 128;
   private static final int DEFAULT_MIN_UNIQUE = 4;
+  private static final int DEFAULT_PASSWORD_HISTORY_COUNT = 5;
   private static final String GENERIC_MESSAGE =
       "If an account exists, password reset instructions have been sent";
 
   private final ApiKeyService apiKeyService;
   private final EndUserRepository endUserRepository;
   private final EndUserPasswordResetTokenRepository resetTokenRepository;
+  private final EndUserPasswordHistoryRepository passwordHistoryRepository;
   private final EndUserRefreshTokenRepository refreshTokenRepository;
   private final EndUserSessionRepository endUserSessionRepository;
   private final PasswordEncoder passwordEncoder;
@@ -51,6 +56,7 @@ public class EndUserPasswordResetService {
       ApiKeyService apiKeyService,
       EndUserRepository endUserRepository,
       EndUserPasswordResetTokenRepository resetTokenRepository,
+      EndUserPasswordHistoryRepository passwordHistoryRepository,
       EndUserRefreshTokenRepository refreshTokenRepository,
       EndUserSessionRepository endUserSessionRepository,
       PasswordEncoder passwordEncoder,
@@ -60,6 +66,7 @@ public class EndUserPasswordResetService {
     this.apiKeyService = apiKeyService;
     this.endUserRepository = endUserRepository;
     this.resetTokenRepository = resetTokenRepository;
+    this.passwordHistoryRepository = passwordHistoryRepository;
     this.refreshTokenRepository = refreshTokenRepository;
     this.endUserSessionRepository = endUserSessionRepository;
     this.passwordEncoder = passwordEncoder;
@@ -156,6 +163,10 @@ public class EndUserPasswordResetService {
       throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api_key_invalid");
     }
 
+    if (!resetToken.getProject().getId().equals(project.getId())) {
+      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api_key_invalid");
+    }
+
     if (resetToken.getUsedAt() != null) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reset_token_used");
     }
@@ -167,11 +178,17 @@ public class EndUserPasswordResetService {
     validatePassword(settings, newPassword);
 
     EndUser user = resetToken.getUser();
+
+    enforcePasswordHistory(settings, project, user, newPassword);
+
+    String previousPasswordHash = user.getPasswordHash();
     user.setPasswordHash(passwordEncoder.encode(newPassword));
     user.setFailedLoginAttempts(0);
     user.setFailedLoginWindowStart(null);
     user.setLockoutUntil(null);
     endUserRepository.save(user);
+
+    recordPasswordHistory(project, user, previousPasswordHash);
 
     refreshTokenRepository.revokeActiveByUserId(user.getId());
     endUserSessionRepository.deleteByUserId(user.getId());
@@ -180,6 +197,47 @@ public class EndUserPasswordResetService {
     resetTokenRepository.save(resetToken);
 
     return new EndUserPasswordResetResponse("Password reset", null);
+  }
+
+  private void enforcePasswordHistory(
+      ProjectSettings settings, Project project, EndUser user, String newPassword) {
+    int historyCount = resolvePasswordHistoryCount(settings);
+    if (historyCount <= 1) {
+      if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "password_reuse_not_allowed");
+      }
+      return;
+    }
+
+    if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "password_reuse_not_allowed");
+    }
+
+    passwordHistoryRepository
+        .findRecent(project.getId(), user.getId(), PageRequest.of(0, historyCount - 1))
+        .forEach(
+            entry -> {
+              if (passwordEncoder.matches(newPassword, entry.getPasswordHash())) {
+                throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "password_reuse_not_allowed");
+              }
+            });
+  }
+
+  private void recordPasswordHistory(Project project, EndUser user, String previousPasswordHash) {
+    if (previousPasswordHash == null || previousPasswordHash.isBlank()) {
+      return;
+    }
+    EndUserPasswordHistory history = new EndUserPasswordHistory();
+    history.setProject(project);
+    history.setUser(user);
+    history.setPasswordHash(previousPasswordHash);
+    passwordHistoryRepository.save(history);
+  }
+
+  private int resolvePasswordHistoryCount(ProjectSettings settings) {
+    int configured = settings.getPasswordHistoryCount();
+    return configured > 0 ? configured : DEFAULT_PASSWORD_HISTORY_COUNT;
   }
 
   private void validatePassword(ProjectSettings settings, String password) {

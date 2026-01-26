@@ -1,22 +1,33 @@
 package dev.auctoritas.auth.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.auctoritas.auth.api.EndUserPasswordForgotRequest;
+import dev.auctoritas.auth.api.EndUserPasswordResetRequest;
 import dev.auctoritas.auth.api.EndUserPasswordResetResponse;
 import dev.auctoritas.auth.entity.enduser.EndUser;
+import dev.auctoritas.auth.entity.enduser.EndUserPasswordHistory;
 import dev.auctoritas.auth.entity.enduser.EndUserPasswordResetToken;
+import dev.auctoritas.auth.entity.enduser.EndUserRefreshToken;
+import dev.auctoritas.auth.entity.enduser.EndUserSession;
 import dev.auctoritas.auth.entity.organization.Organization;
 import dev.auctoritas.auth.entity.project.ApiKey;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
 import dev.auctoritas.auth.messaging.DomainEventPublisher;
 import dev.auctoritas.auth.messaging.PasswordResetRequestedEvent;
+import dev.auctoritas.auth.repository.EndUserPasswordHistoryRepository;
 import dev.auctoritas.auth.repository.EndUserPasswordResetTokenRepository;
+import dev.auctoritas.auth.repository.EndUserRefreshTokenRepository;
+import dev.auctoritas.auth.repository.EndUserSessionRepository;
 import dev.auctoritas.common.enums.ApiKeyStatus;
 import dev.auctoritas.common.enums.OrganizationStatus;
 import jakarta.persistence.EntityManager;
+import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -61,6 +72,9 @@ class EndUserPasswordResetServiceTest {
   @Autowired private EntityManager entityManager;
   @Autowired private EndUserPasswordResetService passwordResetService;
   @Autowired private EndUserPasswordResetTokenRepository resetTokenRepository;
+  @Autowired private EndUserPasswordHistoryRepository passwordHistoryRepository;
+  @Autowired private EndUserRefreshTokenRepository refreshTokenRepository;
+  @Autowired private EndUserSessionRepository sessionRepository;
   @Autowired private TokenService tokenService;
   @Autowired private PasswordEncoder passwordEncoder;
   @Autowired private InMemoryDomainEventPublisher domainEventPublisher;
@@ -172,5 +186,126 @@ class EndUserPasswordResetServiceTest {
     assertThat(response.resetToken()).isNull();
     assertThat(resetTokenRepository.findAll()).isEmpty();
     assertThat(domainEventPublisher.events()).isEmpty();
+  }
+
+  @Test
+  void resetPasswordUpdatesPasswordRevokesSessionsAndMarksTokenUsed() {
+    UUID userId = user.getId();
+    EndUser managedUser = entityManager.find(EndUser.class, userId);
+    Project managedProject = entityManager.find(Project.class, project.getId());
+    String previousPasswordHash = managedUser.getPasswordHash();
+
+    String rawResetToken = "reset-token-1";
+    EndUserPasswordResetToken token = new EndUserPasswordResetToken();
+    token.setProject(managedProject);
+    token.setUser(managedUser);
+    token.setTokenHash(tokenService.hashToken(rawResetToken));
+    token.setExpiresAt(Instant.now().plusSeconds(3600));
+    entityManager.persist(token);
+
+    EndUserRefreshToken refreshToken = new EndUserRefreshToken();
+    refreshToken.setUser(managedUser);
+    refreshToken.setTokenHash(tokenService.hashToken("refresh-token-1"));
+    refreshToken.setExpiresAt(Instant.now().plusSeconds(3600));
+    refreshToken.setRevoked(false);
+    entityManager.persist(refreshToken);
+
+    EndUserSession session = new EndUserSession();
+    session.setUser(managedUser);
+    session.setDeviceInfo(Map.of("userAgent", "test"));
+    session.setIpAddress("1.2.3.4");
+    session.setExpiresAt(Instant.now().plusSeconds(3600));
+    entityManager.persist(session);
+
+    entityManager.flush();
+    entityManager.clear();
+
+    EndUserPasswordResetResponse response =
+        passwordResetService.resetPassword(
+            RAW_API_KEY, new EndUserPasswordResetRequest(rawResetToken, "NewPass123!"));
+
+    assertThat(response.message()).contains("Password");
+
+    entityManager.flush();
+    entityManager.clear();
+
+    EndUser updatedUser = entityManager.find(EndUser.class, userId);
+    assertThat(passwordEncoder.matches("NewPass123!", updatedUser.getPasswordHash())).isTrue();
+
+    EndUserPasswordResetToken updatedToken = resetTokenRepository.findAll().getFirst();
+    assertThat(updatedToken.getUsedAt()).isNotNull();
+
+    List<EndUserPasswordHistory> history = passwordHistoryRepository.findAll();
+    assertThat(history).hasSize(1);
+    assertThat(history.getFirst().getPasswordHash()).isEqualTo(previousPasswordHash);
+
+    List<EndUserRefreshToken> refreshTokens = refreshTokenRepository.findAll();
+    assertThat(refreshTokens).hasSize(1);
+    assertThat(refreshTokens.getFirst().isRevoked()).isTrue();
+    assertThat(sessionRepository.findByUserId(userId)).isEmpty();
+
+    entityManager.flush();
+    entityManager.clear();
+
+    assertThatThrownBy(
+            () ->
+                passwordResetService.resetPassword(
+                    RAW_API_KEY,
+                    new EndUserPasswordResetRequest(rawResetToken, "OtherPass123!")))
+        .hasMessageContaining("reset_token_used");
+  }
+
+  @Test
+  void resetPasswordRejectsPasswordReuseFromHistory() {
+    String rawResetToken = "reset-token-2";
+    EndUser managedUser = entityManager.find(EndUser.class, user.getId());
+    Project managedProject = entityManager.find(Project.class, project.getId());
+
+    EndUserPasswordResetToken token = new EndUserPasswordResetToken();
+    token.setProject(managedProject);
+    token.setUser(managedUser);
+    token.setTokenHash(tokenService.hashToken(rawResetToken));
+    token.setExpiresAt(Instant.now().plusSeconds(3600));
+    entityManager.persist(token);
+
+    EndUserPasswordHistory history = new EndUserPasswordHistory();
+    history.setProject(managedProject);
+    history.setUser(managedUser);
+    history.setPasswordHash(passwordEncoder.encode("OldPass123!"));
+    entityManager.persist(history);
+
+    entityManager.flush();
+    entityManager.clear();
+
+    assertThatThrownBy(
+            () ->
+                passwordResetService.resetPassword(
+                    RAW_API_KEY,
+                    new EndUserPasswordResetRequest(rawResetToken, "OldPass123!")))
+        .hasMessageContaining("password_reuse_not_allowed");
+  }
+
+  @Test
+  void resetPasswordRejectsExpiredToken() {
+    String rawResetToken = "reset-token-3";
+    EndUser managedUser = entityManager.find(EndUser.class, user.getId());
+    Project managedProject = entityManager.find(Project.class, project.getId());
+
+    EndUserPasswordResetToken token = new EndUserPasswordResetToken();
+    token.setProject(managedProject);
+    token.setUser(managedUser);
+    token.setTokenHash(tokenService.hashToken(rawResetToken));
+    token.setExpiresAt(Instant.now().minusSeconds(5));
+    entityManager.persist(token);
+
+    entityManager.flush();
+    entityManager.clear();
+
+    assertThatThrownBy(
+            () ->
+                passwordResetService.resetPassword(
+                    RAW_API_KEY,
+                    new EndUserPasswordResetRequest(rawResetToken, "NewPass123!")))
+        .hasMessageContaining("reset_token_expired");
   }
 }

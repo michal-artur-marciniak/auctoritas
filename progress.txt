@@ -5,11 +5,13 @@
 - End-user JWTs are authenticated via EndUserPrincipal from JwtAuthenticationFilter; use @AuthenticationPrincipal EndUserPrincipal for SDK auth endpoints.
 - Refresh token rotation should lock the refresh token row to prevent concurrent reuse.
 - End-user password reset tokens are stored hashed with 1-hour expiry and a used_at marker for single-use enforcement.
+- Password history enforcement should use ProjectSettings.passwordHistoryCount; treat <=0 as default 5 and compare via PasswordEncoder.matches.
 - End-user email verification tokens are stored hashed with 24-hour expiry and a used_at marker; resends mark existing tokens used.
 - Gateway SDK routes resolve API keys via /internal/api-keys/resolve and forward X-Project-Id.
 - Maven modules live under `backend/`; run per-service tests from there (e.g. `mvn -pl services/auth-service test`).
 - Auth-service repository tests rely on Hibernate DDL from entity mappings (keep Flyway migrations and JPA entities in sync).
 - Domain events from auth-service use DomainEventPublisher; RabbitMQ publishes JSON to the default exchange with routing key = event type (disable in tests via `auctoritas.messaging.rabbit.enabled=false` and `spring.rabbitmq.dynamic=false`).
+- In JPA tests, if you `entityManager.clear()`, re-fetch entities (find/getReference) before persisting new rows with @ManyToOne relations.
 
 ## 2026-01-26 19:32 - US-001
 Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
@@ -98,4 +100,14 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
   - Patterns discovered: Auth-service emits RabbitMQ domain events via DomainEventPublisher; publish failures should not block generic-success endpoints.
   - Gotchas encountered: When asserting bulk update queries in transactional tests, flush inserted rows before running the update.
   - Useful context: docker-compose wires auth-service to RabbitMQ via `RABBITMQ_HOST=rabbitmq`.
+---
+
+## 2026-01-26 23:57 - US-003
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented password reset completion safeguards: validate token belongs to API key project, enforce password history, record previous password hash, mark token used, and revoke sessions/refresh tokens.
+- Files changed: backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserPasswordResetService.java, backend/services/auth-service/src/test/java/dev/auctoritas/auth/service/EndUserPasswordResetServiceTest.java, prd.json, progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Store the previous password hash in password_history on change/reset; enforce reuse by comparing candidate password against current + last (N-1) history hashes.
+  - Gotchas encountered: In transactional tests, persisting entities after entityManager.clear() requires reloading the referenced entities first.
+  - Useful context: End-user password resets should clear login lockouts and revoke all refresh tokens + sessions (logout everywhere).
 ---
