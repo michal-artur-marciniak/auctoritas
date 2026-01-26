@@ -3,6 +3,7 @@
 - Password policy for end-user flows is derived from ProjectSettings (min length, uppercase, numbers, special chars).
 - End-user login lockouts use ProjectSettings failedLoginMaxAttempts/failedLoginWindowSeconds and EndUser failedLogin fields.
 - End-user JWTs are authenticated via EndUserPrincipal from JwtAuthenticationFilter; use @AuthenticationPrincipal EndUserPrincipal for SDK auth endpoints.
+- Refresh token rotation should lock the refresh token row to prevent concurrent reuse.
 
 ## 2026-01-26 19:32 - US-001
 Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
@@ -29,4 +30,14 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
   - Patterns discovered: End-user JWTs now surface an EndUserPrincipal for SDK auth endpoints like logout.
   - Gotchas encountered: Logout requires both X-API-Key and a valid end-user JWT; missing either yields 401.
   - Useful context: Logout revokes refresh tokens via EndUserRefreshTokenRepository.revokeActiveByUserId and deletes sessions via EndUserSessionRepository.deleteByUserId.
+---
+
+## 2026-01-26 19:52 - US-004
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented end-user refresh endpoint with API key validation, refresh token rotation, and session refresh.
+- Files changed: backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserAuthController.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserRefreshRequest.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserRefreshResponse.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/config/SecurityConfig.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/EndUserRefreshTokenRepository.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserRefreshService.java, prd.json, progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Refresh flows should rotate tokens by revoking the old refresh token and linking it to the replacement.
+  - Gotchas encountered: End-user refresh endpoints must be added to SecurityConfig.PUBLIC_ENDPOINTS to avoid JWT gating.
+  - Useful context: Refresh updates EndUserSession expiry alongside issuing new tokens.
 ---

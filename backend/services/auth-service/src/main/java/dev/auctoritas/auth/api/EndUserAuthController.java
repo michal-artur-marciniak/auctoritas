@@ -3,6 +3,7 @@ package dev.auctoritas.auth.api;
 import dev.auctoritas.auth.security.EndUserPrincipal;
 import dev.auctoritas.auth.service.EndUserLoginService;
 import dev.auctoritas.auth.service.EndUserLogoutService;
+import dev.auctoritas.auth.service.EndUserRefreshService;
 import dev.auctoritas.auth.service.EndUserRegistrationService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -24,14 +25,17 @@ public class EndUserAuthController {
   private final EndUserRegistrationService endUserRegistrationService;
   private final EndUserLoginService endUserLoginService;
   private final EndUserLogoutService endUserLogoutService;
+  private final EndUserRefreshService endUserRefreshService;
 
   public EndUserAuthController(
       EndUserRegistrationService endUserRegistrationService,
       EndUserLoginService endUserLoginService,
-      EndUserLogoutService endUserLogoutService) {
+      EndUserLogoutService endUserLogoutService,
+      EndUserRefreshService endUserRefreshService) {
     this.endUserRegistrationService = endUserRegistrationService;
     this.endUserLoginService = endUserLoginService;
     this.endUserLogoutService = endUserLogoutService;
+    this.endUserRefreshService = endUserRefreshService;
   }
 
   @PostMapping("/register")
@@ -61,6 +65,16 @@ public class EndUserAuthController {
       @AuthenticationPrincipal EndUserPrincipal principal) {
     endUserLogoutService.logout(apiKey, principal);
     return ResponseEntity.ok(new EndUserLogoutResponse("Logged out"));
+  }
+
+  @PostMapping("/refresh")
+  public ResponseEntity<EndUserRefreshResponse> refresh(
+      @RequestHeader(value = API_KEY_HEADER, required = false) String apiKey,
+      @Valid @RequestBody EndUserRefreshRequest request,
+      HttpServletRequest httpRequest) {
+    String ipAddress = resolveIpAddress(httpRequest);
+    String userAgent = resolveUserAgent(httpRequest);
+    return ResponseEntity.ok(endUserRefreshService.refresh(apiKey, request, ipAddress, userAgent));
   }
 
   private String resolveIpAddress(HttpServletRequest request) {
