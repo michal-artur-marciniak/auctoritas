@@ -27,6 +27,8 @@ public class JwtService {
   public static final String CLAIM_ORG_MEMBER_ID = "org_member_id";
   public static final String CLAIM_EMAIL = "email";
   public static final String CLAIM_ROLE = "role";
+  public static final String CLAIM_PROJECT_ID = "project_id";
+  public static final String CLAIM_END_USER_ID = "end_user_id";
 
   private final JwtProperties jwtProperties;
   private final PrivateKey privateKey;
@@ -49,6 +51,24 @@ public class JwtService {
         .claim(CLAIM_ORG_ID, orgId.toString())
         .claim(CLAIM_EMAIL, email)
         .claim(CLAIM_ROLE, role.name())
+        .issuer(jwtProperties.issuer())
+        .issuedAt(Date.from(now))
+        .expiration(Date.from(expiresAt))
+        .signWith(privateKey, Jwts.SIG.RS256)
+        .compact();
+  }
+
+  public String generateEndUserAccessToken(
+      UUID endUserId, UUID projectId, String email, long ttlSeconds) {
+    long resolvedTtl = ttlSeconds > 0 ? ttlSeconds : jwtProperties.accessTokenTtlSeconds();
+    Instant now = Instant.now();
+    Instant expiresAt = now.plusSeconds(resolvedTtl);
+
+    return Jwts.builder()
+        .subject(endUserId.toString())
+        .claim(CLAIM_END_USER_ID, endUserId.toString())
+        .claim(CLAIM_PROJECT_ID, projectId.toString())
+        .claim(CLAIM_EMAIL, email)
         .issuer(jwtProperties.issuer())
         .issuedAt(Date.from(now))
         .expiration(Date.from(expiresAt))

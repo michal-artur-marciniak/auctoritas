@@ -1,0 +1,10 @@
+## Codebase Patterns
+- SDK-facing auth endpoints should validate X-API-Key via ApiKeyService to resolve the Project context.
+- Password policy for end-user flows is derived from ProjectSettings (min length, uppercase, numbers, special chars).
+
+## 2026-01-26 19:32 - US-001
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented end-user registration endpoint with API key validation, password policy enforcement, token issuance, and session creation.
+- Files changed: backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserAuthController.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserRegistrationRequest.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserRegistrationResponse.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/config/SecurityConfig.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/entity/enduser/EndUser.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/entity/enduser/EndUserRefreshToken.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/entity/enduser/EndUserSession.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/EndUserRefreshTokenRepository.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/EndUserRepository.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/EndUserSessionRepository.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserRegistrationService.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/JwtService.java, backend/services/auth-service/src/main/resources/db/migration/V8__end_users.sql, prd.json, progress.txt
+- **Learnings for future iterations:** Public unauthenticated endpoints must be added to SecurityConfig.PUBLIC_ENDPOINTS; end-user session/device info should be captured from User-Agent and X-Forwarded-For headers; TokenService.getRefreshTokenExpiry is the shared source of refresh token TTL.
+---

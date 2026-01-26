@@ -1,0 +1,111 @@
+{
+  "project": "Auctoritas",
+  "branchName": "ralph/end-user-authentication",
+  "description": "v0.3.0 End User Authentication - API endpoints for end-user auth, sessions, and gateway protections",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Register end user (API)",
+      "description": "As an application developer, I want to register an end user via the API so that new users can access my app.",
+      "acceptanceCriteria": [
+        "POST /api/v1/auth/register requires X-API-Key and accepts { email, password, name? }",
+        "Registration validates password against the project password policy",
+        "Response includes { user, accessToken, refreshToken }",
+        "A session is created with device info and IP address stored",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Login end user (API)",
+      "description": "As an end user, I want to log in with email and password so that I can access my account.",
+      "acceptanceCriteria": [
+        "POST /api/v1/auth/login requires X-API-Key and accepts { email, password }",
+        "Invalid credentials increment per-user, per-project failure counters",
+        "Lockout is enforced after configured failed attempts within a time window",
+        "Response includes { user, accessToken, refreshToken } on success",
+        "A session is created or updated with device info and IP address stored",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Logout end user (API)",
+      "description": "As an end user, I want to log out so that my session is invalidated.",
+      "acceptanceCriteria": [
+        "POST /api/v1/auth/logout requires X-API-Key and end-user JWT",
+        "Current session is invalidated and cannot be used again",
+        "Response returns { message: \"Logged out\" }",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Refresh end user tokens (API)",
+      "description": "As a client app, I want to refresh tokens so that users stay signed in securely.",
+      "acceptanceCriteria": [
+        "POST /api/v1/auth/refresh requires X-API-Key and accepts { refreshToken }",
+        "Refresh token rotation is enforced with old tokens invalidated",
+        "Response includes new { accessToken, refreshToken }",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Password reset flow (API)",
+      "description": "As an end user, I want to reset my password if I forget it.",
+      "acceptanceCriteria": [
+        "POST /api/v1/auth/password/forgot accepts { email } and returns a generic success message",
+        "A secure reset token is generated with 1-hour expiry and stored server-side",
+        "POST /api/v1/auth/password/reset accepts { token, newPassword }",
+        "New password enforces the project password policy",
+        "Reset token is single-use and expired or used tokens are rejected",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Email verification flow (API)",
+      "description": "As an end user, I want to verify my email so that my account is trusted.",
+      "acceptanceCriteria": [
+        "POST /api/v1/auth/register/verify-email accepts { token, code }",
+        "Verification code is 6 digits with 24-hour expiry",
+        "POST /api/v1/auth/register/resend-verification accepts { email }",
+        "Verification status is persisted and returned in the user profile payload",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "API key enforcement at gateway",
+      "description": "As a platform operator, I want API-key validation at the gateway so that only authorized projects can use the SDK endpoints.",
+      "acceptanceCriteria": [
+        "Gateway rejects SDK endpoints without X-API-Key with 401",
+        "API key is resolved to a project and project context is forwarded to the auth service",
+        "SDK endpoints have a dedicated rate limit separate from org routes",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}
