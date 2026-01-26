@@ -12,6 +12,7 @@
 - Maven modules live under `backend/`; run per-service tests from there (e.g. `mvn -pl services/auth-service test`).
 - Auth-service repository tests rely on Hibernate DDL from entity mappings (keep Flyway migrations and JPA entities in sync).
 - Domain events from auth-service use DomainEventPublisher; RabbitMQ publishes JSON to the default exchange with routing key = event type (disable in tests via `auctoritas.messaging.rabbit.enabled=false` and `spring.rabbitmq.dynamic=false`).
+- For structured service logs, prefer `StructuredArguments.kv(...)` so LogstashEncoder emits searchable JSON fields; correlation id is carried via MDC key `correlationId`.
 - In JPA tests, if you `entityManager.clear()`, re-fetch entities (find/getReference) before persisting new rows with @ManyToOne relations.
 
 ## 2026-01-26 19:32 - US-001
@@ -121,4 +122,15 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
   - Patterns discovered: Keeping the current session requires picking the most recently created session/refresh token since end-user access tokens don't carry session identifiers.
   - Gotchas encountered: Don't attach a new entity with only an id for @ManyToOne relations in JPA; use the managed entity (or getReference) to avoid transient entity persistence.
   - Useful context: Password changes should record the previous password hash in password_history before updating the user's password.
+---
+
+## 2026-01-27 00:16 - US-005
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Added a stricter gateway rate limit route for `POST /api/v1/auth/password/forgot` (per API key/IP) ahead of the generic SDK route.
+- Added structured reset-flow logs in auth-service (project id, anonymized user id/email hash, outcome/reason) and surfaced correlation id in dev logs.
+- Files changed: backend/services/gateway-service/src/main/resources/application.yml, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserPasswordResetService.java, backend/services/auth-service/src/main/resources/logback-spring.xml, prd.json, progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Use `StructuredArguments.kv(...)` for LogstashEncoder so important fields are indexed/searchable.
+  - Gotchas encountered: Spring Cloud Gateway route order matters; put more specific paths (e.g. forgot password) before wildcard `/api/v1/auth/**` routes.
+  - Useful context: CorrelationIdFilter uses MDC key `correlationId`; include `%X{correlationId}` in non-JSON dev patterns so it shows up locally.
 ---

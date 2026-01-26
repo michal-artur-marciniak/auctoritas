@@ -32,6 +32,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.server.ResponseStatusException;
 
+import static net.logstash.logback.argument.StructuredArguments.kv;
+
 @Service
 public class EndUserPasswordResetService {
   private static final Logger log = LoggerFactory.getLogger(EndUserPasswordResetService.class);
@@ -86,10 +88,12 @@ public class EndUserPasswordResetService {
     }
 
     String email = normalizeEmail(requireValue(request.email(), "email_required"));
+    String emailHash = shortenHash(tokenService.hashToken(email));
 
     return endUserRepository
         .findByEmailAndProjectId(email, project.getId())
         .map(user -> {
+          String userIdAnon = anonymizeUserId(user);
           resetTokenRepository.markUsedByUserIdAndProjectId(user.getId(), project.getId(), Instant.now());
           String rawToken = tokenService.generatePasswordResetToken();
           EndUserPasswordResetToken token = new EndUserPasswordResetToken();
@@ -100,6 +104,12 @@ public class EndUserPasswordResetService {
           token.setIpAddress(trimToNull(ipAddress));
           token.setUserAgent(trimToNull(userAgent));
           resetTokenRepository.save(token);
+
+          log.info(
+              "password_reset_requested {} {} {}",
+              kv("projectId", project.getId()),
+              kv("userId", userIdAnon),
+              kv("outcome", "issued"));
 
           PasswordResetRequestedEvent event =
               new PasswordResetRequestedEvent(
@@ -114,9 +124,9 @@ public class EndUserPasswordResetService {
             domainEventPublisher.publish(PasswordResetRequestedEvent.EVENT_TYPE, event);
           } catch (RuntimeException ex) {
             log.warn(
-                "Failed to publish password reset event projectId={} userId={}",
-                project.getId(),
-                user.getId(),
+                "password_reset_event_publish_failed {} {}",
+                kv("projectId", project.getId()),
+                kv("userId", userIdAnon),
                 ex);
           }
 
@@ -132,7 +142,15 @@ public class EndUserPasswordResetService {
 
           return new EndUserPasswordResetResponse(GENERIC_MESSAGE, null);
         })
-        .orElseGet(() -> new EndUserPasswordResetResponse(GENERIC_MESSAGE, null));
+        .orElseGet(
+            () -> {
+              log.info(
+                  "password_reset_requested {} {} {}",
+                  kv("projectId", project.getId()),
+                  kv("emailHash", emailHash),
+                  kv("outcome", "email_not_found"));
+              return new EndUserPasswordResetResponse(GENERIC_MESSAGE, null);
+            });
   }
 
   @Transactional
@@ -145,58 +163,86 @@ public class EndUserPasswordResetService {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "project_settings_missing");
     }
 
-    String rawToken = requireValue(request.token(), "reset_token_required");
-    String newPassword = requireValue(request.newPassword(), "password_required");
+    String rawToken = request.token();
+    String tokenHashPrefix = null;
+    if (rawToken != null && !rawToken.isBlank()) {
+      tokenHashPrefix = shortenHash(tokenService.hashToken(rawToken.trim()));
+    }
 
-    EndUserPasswordResetToken resetToken;
     try {
-      resetToken =
-          resetTokenRepository
-              .findByTokenHash(tokenService.hashToken(rawToken))
-              .orElseThrow(
-                  () -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid_reset_token"));
-    } catch (PessimisticLockException | LockTimeoutException ex) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid_reset_token");
+      rawToken = requireValue(request.token(), "reset_token_required");
+      String newPassword = requireValue(request.newPassword(), "password_required");
+
+      String tokenHash = tokenService.hashToken(rawToken);
+      tokenHashPrefix = shortenHash(tokenHash);
+
+      EndUserPasswordResetToken resetToken;
+      try {
+        resetToken =
+            resetTokenRepository
+                .findByTokenHash(tokenHash)
+                .orElseThrow(
+                    () -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid_reset_token"));
+      } catch (PessimisticLockException | LockTimeoutException ex) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid_reset_token");
+      }
+
+      if (!resetToken.getUser().getProject().getId().equals(project.getId())) {
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api_key_invalid");
+      }
+
+      if (!resetToken.getProject().getId().equals(project.getId())) {
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api_key_invalid");
+      }
+
+      if (resetToken.getUsedAt() != null) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reset_token_used");
+      }
+
+      if (resetToken.getExpiresAt().isBefore(Instant.now())) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reset_token_expired");
+      }
+
+      validatePassword(settings, newPassword);
+
+      EndUser user = resetToken.getUser();
+      String userIdAnon = anonymizeUserId(user);
+
+      enforcePasswordHistory(settings, project, user, newPassword);
+
+      String previousPasswordHash = user.getPasswordHash();
+      user.setPasswordHash(passwordEncoder.encode(newPassword));
+      user.setFailedLoginAttempts(0);
+      user.setFailedLoginWindowStart(null);
+      user.setLockoutUntil(null);
+      endUserRepository.save(user);
+
+      recordPasswordHistory(project, user, previousPasswordHash);
+
+      refreshTokenRepository.revokeActiveByUserId(user.getId());
+      endUserSessionRepository.deleteByUserId(user.getId());
+
+      resetToken.setUsedAt(Instant.now());
+      resetTokenRepository.save(resetToken);
+
+      log.info(
+          "password_reset_completed {} {} {} {}",
+          kv("projectId", project.getId()),
+          kv("userId", userIdAnon),
+          kv("token", tokenHashPrefix),
+          kv("outcome", "success"));
+
+      return new EndUserPasswordResetResponse("Password reset", null);
+    } catch (ResponseStatusException ex) {
+      String reason = ex.getReason() != null ? ex.getReason() : "unknown";
+      log.warn(
+          "password_reset_failed {} {} {} {}",
+          kv("projectId", project.getId()),
+          kv("token", tokenHashPrefix),
+          kv("outcome", "failed"),
+          kv("reason", reason));
+      throw ex;
     }
-
-    if (!resetToken.getUser().getProject().getId().equals(project.getId())) {
-      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api_key_invalid");
-    }
-
-    if (!resetToken.getProject().getId().equals(project.getId())) {
-      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api_key_invalid");
-    }
-
-    if (resetToken.getUsedAt() != null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reset_token_used");
-    }
-
-    if (resetToken.getExpiresAt().isBefore(Instant.now())) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reset_token_expired");
-    }
-
-    validatePassword(settings, newPassword);
-
-    EndUser user = resetToken.getUser();
-
-    enforcePasswordHistory(settings, project, user, newPassword);
-
-    String previousPasswordHash = user.getPasswordHash();
-    user.setPasswordHash(passwordEncoder.encode(newPassword));
-    user.setFailedLoginAttempts(0);
-    user.setFailedLoginWindowStart(null);
-    user.setLockoutUntil(null);
-    endUserRepository.save(user);
-
-    recordPasswordHistory(project, user, previousPasswordHash);
-
-    refreshTokenRepository.revokeActiveByUserId(user.getId());
-    endUserSessionRepository.deleteByUserId(user.getId());
-
-    resetToken.setUsedAt(Instant.now());
-    resetTokenRepository.save(resetToken);
-
-    return new EndUserPasswordResetResponse("Password reset", null);
   }
 
   private void enforcePasswordHistory(
@@ -279,5 +325,23 @@ public class EndUserPasswordResetService {
     }
     String trimmed = value.trim();
     return trimmed.isEmpty() ? null : trimmed;
+  }
+
+  private String anonymizeUserId(EndUser user) {
+    if (user == null || user.getId() == null) {
+      return null;
+    }
+    return shortenHash(tokenService.hashToken(user.getId().toString()));
+  }
+
+  private String shortenHash(String value) {
+    if (value == null) {
+      return null;
+    }
+    String trimmed = value.trim();
+    if (trimmed.isEmpty()) {
+      return null;
+    }
+    return trimmed.length() <= 12 ? trimmed : trimmed.substring(0, 12);
   }
 }
