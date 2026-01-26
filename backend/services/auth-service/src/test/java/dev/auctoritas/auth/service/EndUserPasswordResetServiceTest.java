@@ -151,10 +151,12 @@ class EndUserPasswordResetServiceTest {
     assertThat(event.projectId()).isEqualTo(project.getId());
     assertThat(event.userId()).isEqualTo(user.getId());
     assertThat(event.email()).isEqualTo("user@example.com");
-    assertThat(event.resetToken()).isNotBlank();
+    assertThat(event.resetTokenId()).isNotNull();
+    assertThat(event.resetTokenHash()).isNotBlank();
     assertThat(event.expiresAt()).isNotNull();
 
-    assertThat(token.getTokenHash()).isEqualTo(tokenService.hashToken(event.resetToken()));
+    assertThat(event.resetTokenId()).isEqualTo(token.getId());
+    assertThat(event.resetTokenHash()).isEqualTo(token.getTokenHash());
   }
 
   @Test

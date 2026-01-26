@@ -23,4 +23,4 @@ logging:
 auctoritas:
   auth:
     password-reset:
-      log-token: true
+      log-token: ${PASSWORD_RESET_LOG_TOKEN:false}

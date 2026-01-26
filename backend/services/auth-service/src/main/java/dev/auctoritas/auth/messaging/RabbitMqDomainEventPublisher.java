@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.AmqpException;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 public class RabbitMqDomainEventPublisher implements DomainEventPublisher {
@@ -28,6 +29,8 @@ public class RabbitMqDomainEventPublisher implements DomainEventPublisher {
     } catch (JsonProcessingException ex) {
       log.warn("Failed to serialize domain event type={}", eventType, ex);
       throw new IllegalStateException("domain_event_serialization_failed", ex);
+    } catch (AmqpException ex) {
+      log.warn("Failed to publish domain event type={}", eventType, ex);
     }
   }
 }

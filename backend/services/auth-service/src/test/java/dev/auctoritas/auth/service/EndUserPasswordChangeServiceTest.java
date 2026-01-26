@@ -134,6 +134,7 @@ class EndUserPasswordChangeServiceTest {
         passwordChangeService.changePassword(
             RAW_API_KEY,
             new EndUserPrincipal(userId, project.getId(), "user@example.com"),
+            currentSessionId,
             new EndUserPasswordChangeRequest("UserPass123!", "NewPass123!"));
 
     assertThat(response.message()).isEqualTo("Password changed");
@@ -169,6 +170,7 @@ class EndUserPasswordChangeServiceTest {
                 passwordChangeService.changePassword(
                     RAW_API_KEY,
                     new EndUserPrincipal(user.getId(), project.getId(), "user@example.com"),
+                    null,
                     new EndUserPasswordChangeRequest("WrongPass123!", "NewPass123!")))
         .hasMessageContaining("invalid_current_password");
   }
@@ -192,6 +194,7 @@ class EndUserPasswordChangeServiceTest {
                 passwordChangeService.changePassword(
                     RAW_API_KEY,
                     new EndUserPrincipal(userId, project.getId(), "user@example.com"),
+                    null,
                     new EndUserPasswordChangeRequest("UserPass123!", "OldPass123!")))
         .hasMessageContaining("password_reuse_not_allowed");
   }

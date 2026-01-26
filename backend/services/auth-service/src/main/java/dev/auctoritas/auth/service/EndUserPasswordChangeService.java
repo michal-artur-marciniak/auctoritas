@@ -53,7 +53,10 @@ public class EndUserPasswordChangeService {
 
   @Transactional
   public EndUserPasswordChangeResponse changePassword(
-      String apiKey, EndUserPrincipal principal, EndUserPasswordChangeRequest request) {
+      String apiKey,
+      EndUserPrincipal principal,
+      UUID currentSessionId,
+      EndUserPasswordChangeRequest request) {
     if (principal == null) {
       throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "unauthorized");
     }
@@ -89,8 +92,11 @@ public class EndUserPasswordChangeService {
 
     recordPasswordHistory(project, user, previousPasswordHash);
 
-    boolean keptCurrentSession = revokeOtherSessions(user.getId());
-    boolean revokedOtherSessions = revokeOtherRefreshTokens(user.getId());
+    boolean keptCurrentSession =
+        currentSessionId != null && sessionRepository.existsByIdAndUserId(currentSessionId, user.getId());
+    boolean revokedOtherSessions =
+        keptCurrentSession && revokeOtherSessions(user.getId(), currentSessionId);
+    revokeOtherRefreshTokens(user.getId());
 
     return new EndUserPasswordChangeResponse(
         "Password changed",
@@ -98,15 +104,11 @@ public class EndUserPasswordChangeService {
         revokedOtherSessions);
   }
 
-  private boolean revokeOtherSessions(UUID userId) {
-    return sessionRepository
-        .findTopByUserIdOrderByCreatedAtDesc(userId)
-        .map(
-            current -> {
-              sessionRepository.deleteByUserIdAndIdNot(userId, current.getId());
-              return true;
-            })
-        .orElse(false);
+  private boolean revokeOtherSessions(UUID userId, UUID currentSessionId) {
+    if (currentSessionId == null) {
+      return false;
+    }
+    return sessionRepository.deleteByUserIdAndIdNot(userId, currentSessionId) > 0;
   }
 
   private boolean revokeOtherRefreshTokens(UUID userId) {

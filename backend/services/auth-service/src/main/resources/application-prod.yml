@@ -24,3 +24,8 @@ logging:
   level:
     dev.auctoritas: INFO
     org.hibernate: WARN
+
+auctoritas:
+  auth:
+    password-reset:
+      log-token: false

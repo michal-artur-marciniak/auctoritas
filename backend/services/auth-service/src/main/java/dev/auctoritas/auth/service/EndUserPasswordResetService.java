@@ -116,7 +116,8 @@ public class EndUserPasswordResetService {
                   project.getId(),
                   user.getId(),
                   user.getEmail(),
-                  rawToken,
+                  token.getId(),
+                  token.getTokenHash(),
                   token.getExpiresAt(),
                   trimToNull(ipAddress),
                   trimToNull(userAgent));

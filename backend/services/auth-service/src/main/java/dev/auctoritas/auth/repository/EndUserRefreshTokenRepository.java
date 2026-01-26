@@ -16,6 +16,7 @@ public interface EndUserRefreshTokenRepository extends JpaRepository<EndUserRefr
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   Optional<EndUserRefreshToken> findByTokenHash(String tokenHash);
 
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
   Optional<EndUserRefreshToken> findTopByUserIdAndRevokedFalseOrderByCreatedAtDesc(UUID userId);
 
   @Modifying
