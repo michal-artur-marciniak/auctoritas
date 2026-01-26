@@ -1,17 +1,19 @@
 {
   "project": "Auctoritas",
-  "branchName": "ralph/end-user-authentication",
-  "description": "v0.3.0 End User Authentication - API endpoints for end-user auth, sessions, and gateway protections",
+  "branchName": "ralph/v0-3-1-password-reset-flow",
+  "description": "v0.3.1 Password Reset Flow (End Users) - API-only reset request/completion with one-time tokens, session revocation, and password history.",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Register end user (API)",
-      "description": "As an application developer, I want to register an end user via the API so that new users can access my app.",
+      "title": "Add persistence for password reset tokens and password history",
+      "description": "As a developer, I need secure persistence for reset tokens and password history so that the reset flow is safe and auditable.",
       "acceptanceCriteria": [
-        "POST /api/v1/auth/register requires X-API-Key and accepts { email, password, name? }",
-        "Registration validates password against the project password policy",
-        "Response includes { user, accessToken, refreshToken }",
-        "A session is created with device info and IP address stored",
+        "Add migration creating password_reset_tokens with: id, project_id, user_id, token_hash, expires_at, used_at, created_at, ip_address, user_agent",
+        "Add migration creating password_history with: id, project_id, user_id, password_hash, created_at",
+        "Raw reset tokens are never stored; only token_hash (e.g., SHA-256) is persisted",
+        "Reset token expiry is 1 hour",
+        "Migration runs cleanly on startup",
+        "mvn -pl backend/services/auth-service test passes",
         "Typecheck passes"
       ],
       "priority": 1,
@@ -20,91 +22,68 @@
     },
     {
       "id": "US-002",
-      "title": "Login end user (API)",
-      "description": "As an end user, I want to log in with email and password so that I can access my account.",
+      "title": "Request password reset endpoint",
+      "description": "As an end user, I want to request a password reset so that I can regain access if I forgot my password.",
       "acceptanceCriteria": [
-        "POST /api/v1/auth/login requires X-API-Key and accepts { email, password }",
-        "Invalid credentials increment per-user, per-project failure counters",
-        "Lockout is enforced after configured failed attempts within a time window",
-        "Response includes { user, accessToken, refreshToken } on success",
-        "A session is created or updated with device info and IP address stored",
+        "POST /api/v1/auth/password/forgot accepts { email } and requires X-API-Key",
+        "Response is always generic success (no user enumeration)",
+        "A reset token record is created only when the email exists for that project",
+        "Any previously active reset tokens for the same user+project are invalidated",
+        "A domain event user.password_reset_requested is emitted (RabbitMQ)",
+        "A stub email payload (incl. token for dev) is logged without storing the raw token",
+        "mvn -pl backend/services/auth-service test passes",
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-003",
-      "title": "Logout end user (API)",
-      "description": "As an end user, I want to log out so that my session is invalidated.",
+      "title": "Complete password reset using token",
+      "description": "As an end user, I want to set a new password using the reset token so that I can access my account again.",
       "acceptanceCriteria": [
-        "POST /api/v1/auth/logout requires X-API-Key and end-user JWT",
-        "Current session is invalidated and cannot be used again",
-        "Response returns { message: \"Logged out\" }",
+        "POST /api/v1/auth/password/reset accepts { token, newPassword } and requires X-API-Key",
+        "Reset token validation checks: exists, not expired, not used, matches project, matches user",
+        "Reset token is one-time use (marked used and cannot be replayed)",
+        "Password history is enforced (cannot reuse last N passwords; default N=5)",
+        "On success, all refresh tokens/sessions for that user+project are revoked (logout everywhere)",
+        "mvn -pl backend/services/auth-service test passes",
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-004",
-      "title": "Refresh end user tokens (API)",
-      "description": "As a client app, I want to refresh tokens so that users stay signed in securely.",
+      "title": "Change password while authenticated",
+      "description": "As an end user, I want to change my password while logged in so that I can rotate credentials proactively.",
       "acceptanceCriteria": [
-        "POST /api/v1/auth/refresh requires X-API-Key and accepts { refreshToken }",
-        "Refresh token rotation is enforced with old tokens invalidated",
-        "Response includes new { accessToken, refreshToken }",
+        "PUT /api/v1/users/me/password requires Authorization: Bearer <end-user-jwt> and X-API-Key",
+        "Endpoint accepts { currentPassword, newPassword } and verifies currentPassword",
+        "Password history is enforced (cannot reuse last N passwords; default N=5)",
+        "On success, refresh tokens/sessions are revoked except the current session (keep-current behavior is explicit and documented)",
+        "mvn -pl backend/services/auth-service test passes",
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-005",
-      "title": "Password reset flow (API)",
-      "description": "As an end user, I want to reset my password if I forget it.",
+      "title": "Add operational safety (rate limits and structured logging)",
+      "description": "As an operator, I want the reset flow to be rate-limited and logged so that abuse is mitigated.",
       "acceptanceCriteria": [
-        "POST /api/v1/auth/password/forgot accepts { email } and returns a generic success message",
-        "A secure reset token is generated with 1-hour expiry and stored server-side",
-        "POST /api/v1/auth/password/reset accepts { token, newPassword }",
-        "New password enforces the project password policy",
-        "Reset token is single-use and expired or used tokens are rejected",
+        "Gateway rate limits apply to POST /api/v1/auth/password/forgot (SDK endpoints)",
+        "Auth service logs include correlation IDs and key fields (project id, anonymized user id, outcome) for reset flows",
+        "Failed reset attempts are recorded without leaking sensitive details",
+        "mvn -pl backend/services/gateway-service test passes",
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-006",
-      "title": "Email verification flow (API)",
-      "description": "As an end user, I want to verify my email so that my account is trusted.",
-      "acceptanceCriteria": [
-        "POST /api/v1/auth/register/verify-email accepts { token, code }",
-        "Verification code is 6 digits with 24-hour expiry",
-        "POST /api/v1/auth/register/resend-verification accepts { email }",
-        "Verification status is persisted and returned in the user profile payload",
-        "Typecheck passes"
-      ],
-      "priority": 6,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-007",
-      "title": "API key enforcement at gateway",
-      "description": "As a platform operator, I want API-key validation at the gateway so that only authorized projects can use the SDK endpoints.",
-      "acceptanceCriteria": [
-        "Gateway rejects SDK endpoints without X-API-Key with 401",
-        "API key is resolved to a project and project context is forwarded to the auth service",
-        "SDK endpoints have a dedicated rate limit separate from org routes",
-        "Typecheck passes"
-      ],
-      "priority": 7,
-      "passes": true,
+      "passes": false,
       "notes": ""
     }
   ]

@@ -8,17 +8,16 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import java.time.Instant;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "password_reset_tokens")
+@Table(name = "password_history")
 @Getter
 @Setter
 @NoArgsConstructor
-public class EndUserPasswordResetToken extends BaseEntity {
+public class EndUserPasswordHistory extends BaseEntity {
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "project_id", nullable = false)
   private Project project;
@@ -27,18 +26,6 @@ public class EndUserPasswordResetToken extends BaseEntity {
   @JoinColumn(name = "user_id", nullable = false)
   private EndUser user;
 
-  @Column(name = "token_hash", nullable = false, length = 128)
-  private String tokenHash;
-
-  @Column(name = "expires_at", nullable = false)
-  private Instant expiresAt;
-
-  @Column(name = "used_at")
-  private Instant usedAt;
-
-  @Column(name = "ip_address", length = 45)
-  private String ipAddress;
-
-  @Column(name = "user_agent", length = 500)
-  private String userAgent;
+  @Column(name = "password_hash", nullable = false, length = 255)
+  private String passwordHash;
 }

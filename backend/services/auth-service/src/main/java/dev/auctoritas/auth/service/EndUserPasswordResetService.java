@@ -58,7 +58,7 @@ public class EndUserPasswordResetService {
 
   @Transactional
   public EndUserPasswordResetResponse requestReset(
-      String apiKey, EndUserPasswordForgotRequest request) {
+      String apiKey, EndUserPasswordForgotRequest request, String ipAddress, String userAgent) {
     ApiKey resolvedKey = apiKeyService.validateActiveKey(apiKey);
     Project project = resolvedKey.getProject();
     ProjectSettings settings = project.getSettings();
@@ -74,9 +74,12 @@ public class EndUserPasswordResetService {
           resetTokenRepository.markUsedByUserId(user.getId(), Instant.now());
           String rawToken = tokenService.generatePasswordResetToken();
           EndUserPasswordResetToken token = new EndUserPasswordResetToken();
+          token.setProject(project);
           token.setUser(user);
           token.setTokenHash(tokenService.hashToken(rawToken));
           token.setExpiresAt(tokenService.getPasswordResetTokenExpiry());
+          token.setIpAddress(trimToNull(ipAddress));
+          token.setUserAgent(trimToNull(userAgent));
           resetTokenRepository.save(token);
           return new EndUserPasswordResetResponse(GENERIC_MESSAGE, rawToken);
         })
@@ -168,5 +171,13 @@ public class EndUserPasswordResetService {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
     }
     return trimmed;
+  }
+
+  private String trimToNull(String value) {
+    if (value == null) {
+      return null;
+    }
+    String trimmed = value.trim();
+    return trimmed.isEmpty() ? null : trimmed;
   }
 }
