@@ -35,7 +35,7 @@ public class ApiKey extends BaseAuditEntity {
   @Column(nullable = false, length = 64)
   private String keyHash;
 
-  @Column(nullable = false)
+  @Column(nullable = true)
   private LocalDateTime lastUsedAt;
 
   @Enumerated(EnumType.STRING)

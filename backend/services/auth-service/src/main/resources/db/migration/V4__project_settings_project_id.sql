@@ -2,6 +2,13 @@
 ALTER TABLE project_settings
   ADD COLUMN project_id UUID;
 
+DELETE FROM project_settings
+WHERE id NOT IN (
+  SELECT settings_id
+  FROM projects
+  WHERE settings_id IS NOT NULL
+);
+
 UPDATE project_settings
 SET project_id = projects.id
 FROM projects

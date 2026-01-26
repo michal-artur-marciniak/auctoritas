@@ -52,10 +52,20 @@ public class ApiKeyService {
     apiKey.setName(name);
     apiKey.setPrefix(prefix);
     apiKey.setKeyHash(tokenService.hashToken(rawKey));
-    apiKey.setLastUsedAt(LocalDateTime.now());
 
     ApiKey savedKey = apiKeyRepository.save(apiKey);
     return new ApiKeySecret(savedKey, rawKey);
+  }
+
+  @Transactional
+  public ApiKey validateActiveKey(String rawKey) {
+    String keyHash = tokenService.hashToken(rawKey);
+    ApiKey apiKey =
+        apiKeyRepository
+            .findByKeyHashAndStatus(keyHash, ApiKeyStatus.ACTIVE)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api_key_invalid"));
+    apiKey.setLastUsedAt(LocalDateTime.now());
+    return apiKeyRepository.save(apiKey);
   }
 
   @Transactional(readOnly = true)

@@ -33,9 +33,11 @@ public class SecurityConfig {
   };
 
   private final JwtAuthenticationFilter jwtAuthenticationFilter;
+  private final ObjectMapper objectMapper;
 
-  public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+  public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, ObjectMapper objectMapper) {
     this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    this.objectMapper = objectMapper;
   }
 
   @Bean
@@ -79,6 +81,6 @@ public class SecurityConfig {
       throws IOException {
     response.setStatus(status);
     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-    new ObjectMapper().writeValue(response.getWriter(), Map.of("error", errorCode));
+    objectMapper.writeValue(response.getWriter(), Map.of("error", errorCode));
   }
 }
