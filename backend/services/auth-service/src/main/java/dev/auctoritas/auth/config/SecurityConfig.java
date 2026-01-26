@@ -1,9 +1,14 @@
 package dev.auctoritas.auth.config;
 
 import dev.auctoritas.auth.security.JwtAuthenticationFilter;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.util.Map;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -46,6 +51,15 @@ public class SecurityConfig {
                     .authenticated()
                     .anyRequest()
                     .authenticated())
+        .exceptionHandling(
+            exceptions ->
+                exceptions
+                    .authenticationEntryPoint(
+                        (request, response, authException) ->
+                            writeErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "unauthorized"))
+                    .accessDeniedHandler(
+                        (request, response, accessDeniedException) ->
+                            writeErrorResponse(response, HttpServletResponse.SC_FORBIDDEN, "insufficient_role")))
         .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
         .build();
   }
@@ -59,5 +73,12 @@ public class SecurityConfig {
         65536, // memory in KB (64MB)
         3 // iterations
         );
+  }
+
+  private void writeErrorResponse(HttpServletResponse response, int status, String errorCode)
+      throws IOException {
+    response.setStatus(status);
+    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+    new ObjectMapper().writeValue(response.getWriter(), Map.of("error", errorCode));
   }
 }

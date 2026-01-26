@@ -11,7 +11,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U auctoritas"]
       interval: 10s
@@ -50,8 +50,13 @@ services:
       DB_USERNAME: auctoritas
       DB_PASSWORD: auctoritas_dev
       SPRING_PROFILES_ACTIVE: dev
+      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      REDIS_HOST: redis
     ports:
       - "8081:8081"
+    volumes:
+      - ./keys:/run/keys:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -64,6 +69,7 @@ services:
     container_name: auctoritas-gateway-service
     environment:
       AUTH_SERVICE_URL: http://auth-service:8081
+      REDIS_HOST: redis
     ports:
       - "8080:8080"
     depends_on:
