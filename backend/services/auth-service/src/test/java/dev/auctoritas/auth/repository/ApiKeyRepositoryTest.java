@@ -28,7 +28,6 @@ class ApiKeyRepositoryTest {
   @Autowired private ApiKeyRepository apiKeyRepository;
   @Autowired private ProjectRepository projectRepository;
   @Autowired private OrganizationRepository organizationRepository;
-  @Autowired private ProjectSettingsRepository settingsRepository;
   @Autowired private EntityManager entityManager;
 
   private Organization testOrg;
@@ -45,14 +44,14 @@ class ApiKeyRepositoryTest {
     entityManager.flush();
 
     ProjectSettings settings = new ProjectSettings();
-    entityManager.persist(settings);
-    entityManager.flush();
 
     testProject = new Project();
     testProject.setOrganization(testOrg);
     testProject.setName("Test Project");
     testProject.setSlug("test-project-apikey");
     testProject.setSettings(settings);
+    settings.setProject(testProject);
+
     entityManager.persist(testProject);
     entityManager.flush();
 

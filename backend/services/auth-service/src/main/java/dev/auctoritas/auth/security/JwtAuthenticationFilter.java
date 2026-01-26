@@ -10,6 +10,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpHeaders;
@@ -94,8 +95,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
   private void writeErrorResponse(HttpServletResponse response, String errorCode)
       throws IOException {
-    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+    if (response.isCommitted()) {
+      return;
+    }
+    response.setCharacterEncoding(StandardCharsets.UTF_8.name());
     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
     objectMapper.writeValue(response.getWriter(), Map.of("error", errorCode));
   }
 }

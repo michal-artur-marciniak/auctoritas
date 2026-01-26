@@ -6,6 +6,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -92,6 +93,9 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
     }
 
     if (attempts > MAX_ATTEMPTS) {
+      if (response.isCommitted()) {
+        return;
+      }
       Long ttl;
       try {
         ttl = redisTemplate.getExpire(redisKey);
@@ -102,6 +106,7 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
       }
       long remainingSeconds = ttl != null && ttl > 0 ? ttl : 1;
 
+      response.setCharacterEncoding(StandardCharsets.UTF_8.name());
       response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
       response.setContentType(MediaType.APPLICATION_JSON_VALUE);
       response.setHeader("Retry-After", String.valueOf(remainingSeconds));
