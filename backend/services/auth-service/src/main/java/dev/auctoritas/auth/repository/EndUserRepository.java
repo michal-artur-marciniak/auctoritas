@@ -20,4 +20,9 @@ public interface EndUserRepository extends JpaRepository<EndUser, UUID> {
   @Query("select user from EndUser user where user.email = :email and user.project.id = :projectId")
   Optional<EndUser> findByEmailAndProjectIdForUpdate(
       @Param("email") String email, @Param("projectId") UUID projectId);
+
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("select user from EndUser user where user.id = :userId and user.project.id = :projectId")
+  Optional<EndUser> findByIdAndProjectIdForUpdate(
+      @Param("userId") UUID userId, @Param("projectId") UUID projectId);
 }

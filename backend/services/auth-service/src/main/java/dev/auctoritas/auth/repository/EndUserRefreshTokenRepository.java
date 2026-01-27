@@ -16,9 +16,19 @@ public interface EndUserRefreshTokenRepository extends JpaRepository<EndUserRefr
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   Optional<EndUserRefreshToken> findByTokenHash(String tokenHash);
 
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  Optional<EndUserRefreshToken> findTopByUserIdAndRevokedFalseOrderByCreatedAtDesc(UUID userId);
+
   @Modifying
   @Query(
       "update EndUserRefreshToken token set token.revoked = true "
           + "where token.user.id = :userId and token.revoked = false")
   int revokeActiveByUserId(@Param("userId") UUID userId);
+
+  @Modifying
+  @Query(
+      "update EndUserRefreshToken token set token.revoked = true "
+          + "where token.user.id = :userId and token.revoked = false and token.id <> :excludedId")
+  int revokeActiveByUserIdExcludingId(
+      @Param("userId") UUID userId, @Param("excludedId") UUID excludedId);
 }

@@ -100,8 +100,11 @@ public class EndUserAuthController {
   @PostMapping("/password/forgot")
   public ResponseEntity<EndUserPasswordResetResponse> forgotPassword(
       @RequestHeader(value = API_KEY_HEADER, required = false) String apiKey,
-      @Valid @RequestBody EndUserPasswordForgotRequest request) {
-    return ResponseEntity.ok(endUserPasswordResetService.requestReset(apiKey, request));
+      @Valid @RequestBody EndUserPasswordForgotRequest request,
+      HttpServletRequest httpRequest) {
+    String ipAddress = resolveIpAddress(httpRequest);
+    String userAgent = resolveUserAgent(httpRequest);
+    return ResponseEntity.ok(endUserPasswordResetService.requestReset(apiKey, request, ipAddress, userAgent));
   }
 
   @PostMapping("/password/reset")

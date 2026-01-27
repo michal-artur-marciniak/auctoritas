@@ -22,6 +22,18 @@ spring:
                 - Path=/.well-known/**
 
             # SDK endpoints (API key required)
+            - id: sdk-password-forgot
+              uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+              predicates:
+                - Path=/api/v1/auth/password/forgot
+                - Method=POST
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    redis-rate-limiter.replenishRate: 5
+                    redis-rate-limiter.burstCapacity: 10
+                    key-resolver: "#{@apiKeyResolver}"
+
             - id: sdk-routes
               uri: ${AUTH_SERVICE_URL:http://localhost:8081}
               predicates:
