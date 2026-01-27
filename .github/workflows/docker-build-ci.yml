@@ -83,3 +83,21 @@ jobs:
           tags: local/worker-service:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  all:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - auth-service
+      - gateway-service
+      - worker-service
+    if: always()
+    steps:
+      - name: Verify all Docker builds succeeded
+        run: |
+          echo "auth-service:   ${{ needs.auth-service.result }}"
+          echo "gateway-service:${{ needs.gateway-service.result }}"
+          echo "worker-service: ${{ needs.worker-service.result }}"
+          test "${{ needs.auth-service.result }}" = "success"
+          test "${{ needs.gateway-service.result }}" = "success"
+          test "${{ needs.worker-service.result }}" = "success"
