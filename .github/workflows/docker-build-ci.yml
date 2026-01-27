@@ -2,14 +2,14 @@ name: Docker Build CI
 
 on:
   pull_request:
-    branches: [main]
+    branches: [master, main]
     paths:
       - backend/**
       - infra/docker/**
       - docker-compose.yml
       - .github/workflows/docker-build-ci.yml
   push:
-    branches: [main]
+    branches: [master, main]
     paths:
       - backend/**
       - infra/docker/**
