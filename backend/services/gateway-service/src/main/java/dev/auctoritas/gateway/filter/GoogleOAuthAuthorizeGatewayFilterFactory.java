@@ -15,6 +15,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Mono;
@@ -117,11 +119,25 @@ public class GoogleOAuthAuthorizeGatewayFilterFactory
                         err ->
                             writeErrorResponse(
                                 exchange,
-                                resolved,
-                                err == null || err.error() == null || err.error().isBlank()
-                                    ? "oauth_google_authorize_failed"
-                                    : err.error()));
-              });
+                                 resolved,
+                                 err == null || err.error() == null || err.error().isBlank()
+                                     ? "oauth_google_authorize_failed"
+                                     : err.error()));
+              })
+          .onErrorResume(
+              WebClientRequestException.class,
+              ex ->
+                  writeErrorResponse(
+                      exchange, HttpStatus.BAD_GATEWAY, "oauth_google_authorize_failed"))
+          .onErrorResume(
+              WebClientResponseException.class,
+              ex ->
+                  writeErrorResponse(
+                      exchange, HttpStatus.BAD_GATEWAY, "oauth_google_authorize_failed"))
+          .onErrorResume(
+              ex ->
+                  writeErrorResponse(
+                      exchange, HttpStatus.BAD_GATEWAY, "oauth_google_authorize_failed"));
     };
   }
 

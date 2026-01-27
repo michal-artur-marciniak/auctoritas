@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.encrypt.TextEncryptor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -181,8 +182,22 @@ public class OAuthGoogleCallbackService {
     connection.setProvider(PROVIDER);
     connection.setProviderUserId(providerUserId);
     connection.setEmail(email);
-    oauthConnectionRepository.save(connection);
-    return user;
+
+    try {
+      oauthConnectionRepository.save(connection);
+      return user;
+    } catch (DataIntegrityViolationException ex) {
+      OAuthConnection conn =
+          oauthConnectionRepository
+              .findByProjectIdAndProviderAndProviderUserId(projectId, PROVIDER, providerUserId)
+              .orElseThrow(
+                  () -> new ResponseStatusException(HttpStatus.CONFLICT, "oauth_connection_conflict", ex));
+      if (conn.getEmail() == null || !conn.getEmail().equals(email)) {
+        conn.setEmail(email);
+        oauthConnectionRepository.save(conn);
+      }
+      return conn.getUser();
+    }
   }
 
   private GoogleConfig readGoogleConfig(ProjectSettings settings) {

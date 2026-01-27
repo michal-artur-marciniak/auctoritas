@@ -4,6 +4,7 @@ import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.common.entity.BaseAuditEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -13,11 +14,13 @@ import java.time.Instant;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.security.crypto.encrypt.TextEncryptor;
 
 @Entity
 @Table(
     name = "oauth_authorization_requests",
     uniqueConstraints = @UniqueConstraint(columnNames = {"state_hash"}))
+@EntityListeners(OAuthAuthorizationRequestEntityListener.class)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -41,4 +44,12 @@ public class OAuthAuthorizationRequest extends BaseAuditEntity {
 
   @Column(name = "expires_at", nullable = false)
   private Instant expiresAt;
+
+  /** Returns the PKCE code verifier decrypted using the provided encryptor. */
+  public String getCodeVerifierDecrypted(TextEncryptor oauthClientSecretEncryptor) {
+    if (codeVerifier == null || codeVerifier.isBlank()) {
+      return codeVerifier;
+    }
+    return oauthClientSecretEncryptor.decrypt(codeVerifier);
+  }
 }

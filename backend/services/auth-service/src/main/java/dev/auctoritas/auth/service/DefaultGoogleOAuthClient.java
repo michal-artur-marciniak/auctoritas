@@ -3,11 +3,13 @@ package dev.auctoritas.auth.service;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.encrypt.TextEncryptor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -16,9 +18,13 @@ public class DefaultGoogleOAuthClient implements GoogleOAuthClient {
   private static final String GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo";
 
   private final RestClient restClient;
+  private final TextEncryptor oauthClientSecretEncryptor;
 
-  public DefaultGoogleOAuthClient(RestClient.Builder builder) {
+  public DefaultGoogleOAuthClient(
+      RestClient.Builder builder,
+      @Qualifier("oauthClientSecretEncryptor") TextEncryptor oauthClientSecretEncryptor) {
     this.restClient = builder.build();
+    this.oauthClientSecretEncryptor = oauthClientSecretEncryptor;
   }
 
   @Override
@@ -33,7 +39,7 @@ public class DefaultGoogleOAuthClient implements GoogleOAuthClient {
     form.add("client_id", value(request.clientId()));
     form.add("client_secret", value(request.clientSecret()));
     form.add("redirect_uri", value(request.redirectUri()));
-    form.add("code_verifier", value(request.codeVerifier()));
+    form.add("code_verifier", decryptCodeVerifierIfNeeded(value(request.codeVerifier())));
 
     try {
       GoogleTokenResponse response =
@@ -48,7 +54,7 @@ public class DefaultGoogleOAuthClient implements GoogleOAuthClient {
         throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "oauth_google_exchange_failed");
       }
       return response;
-    } catch (RestClientResponseException ex) {
+    } catch (RestClientException ex) {
       throw new ResponseStatusException(
           HttpStatus.BAD_GATEWAY, "oauth_google_exchange_failed", ex);
     }
@@ -73,9 +79,41 @@ public class DefaultGoogleOAuthClient implements GoogleOAuthClient {
         throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "oauth_google_userinfo_failed");
       }
       return info;
-    } catch (RestClientResponseException ex) {
+    } catch (RestClientException ex) {
       throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "oauth_google_userinfo_failed", ex);
     }
+  }
+
+  private String decryptCodeVerifierIfNeeded(String codeVerifier) {
+    if (!isLikelyEncrypted(codeVerifier)) {
+      return codeVerifier;
+    }
+    try {
+      return oauthClientSecretEncryptor.decrypt(codeVerifier);
+    } catch (Exception ex) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_google_exchange_failed", ex);
+    }
+  }
+
+  private static boolean isLikelyEncrypted(String value) {
+    if (value == null) {
+      return false;
+    }
+    int len = value.length();
+    if (len < 32 || (len % 2) != 0) {
+      return false;
+    }
+    for (int i = 0; i < len; i++) {
+      char c = value.charAt(i);
+      boolean hex =
+          (c >= '0' && c <= '9')
+              || (c >= 'a' && c <= 'f')
+              || (c >= 'A' && c <= 'F');
+      if (!hex) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private static String value(String s) {

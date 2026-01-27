@@ -8,12 +8,14 @@ import org.springframework.security.crypto.encrypt.TextEncryptor;
 
 class OAuthCryptoConfigTest {
 
+  private static final String TEST_ENCRYPTION_KEY = "test-key"; // gitleaks:allow
+
   @Test
   void encryptsAndDecrypts() {
     OAuthCryptoConfig config = new OAuthCryptoConfig();
     TextEncryptor encryptor =
         config.oauthClientSecretEncryptor(
-            new OAuthEncryptionProperties("test-key", "0123456789abcdef"));
+            new OAuthEncryptionProperties(TEST_ENCRYPTION_KEY, "0123456789abcdef"));
 
     String ciphertext = encryptor.encrypt("super-secret");
     assertThat(ciphertext).isNotEqualTo("super-secret");
@@ -26,7 +28,7 @@ class OAuthCryptoConfigTest {
     assertThatThrownBy(
             () ->
                 config.oauthClientSecretEncryptor(
-                    new OAuthEncryptionProperties("test-key", "not-hex")))
+                    new OAuthEncryptionProperties(TEST_ENCRYPTION_KEY, "not-hex")))
         .isInstanceOf(IllegalStateException.class);
   }
 }
