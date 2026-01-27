@@ -96,6 +96,10 @@ public class EndUserLoginService {
     clearFailedAttempts(user);
     endUserRepository.save(user);
 
+    if (settings.isRequireVerifiedEmailForLogin() && !Boolean.TRUE.equals(user.getEmailVerified())) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "email_not_verified");
+    }
+
     Instant refreshExpiresAt = tokenService.getRefreshTokenExpiry();
     String rawRefreshToken = tokenService.generateRefreshToken();
     persistRefreshToken(user, rawRefreshToken, refreshExpiresAt, ipAddress, userAgent);
@@ -103,7 +107,11 @@ public class EndUserLoginService {
 
     String accessToken =
         jwtService.generateEndUserAccessToken(
-            user.getId(), project.getId(), user.getEmail(), settings.getAccessTokenTtlSeconds());
+            user.getId(),
+            project.getId(),
+            user.getEmail(),
+            Boolean.TRUE.equals(user.getEmailVerified()),
+            settings.getAccessTokenTtlSeconds());
 
     return new EndUserLoginResponse(
         new EndUserLoginResponse.EndUserSummary(

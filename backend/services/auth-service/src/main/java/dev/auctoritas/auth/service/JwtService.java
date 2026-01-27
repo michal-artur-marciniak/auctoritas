@@ -29,6 +29,7 @@ public class JwtService {
   public static final String CLAIM_ROLE = "role";
   public static final String CLAIM_PROJECT_ID = "project_id";
   public static final String CLAIM_END_USER_ID = "end_user_id";
+  public static final String CLAIM_EMAIL_VERIFIED = "email_verified";
 
   private final JwtProperties jwtProperties;
   private final PrivateKey privateKey;
@@ -59,7 +60,7 @@ public class JwtService {
   }
 
   public String generateEndUserAccessToken(
-      UUID endUserId, UUID projectId, String email, long ttlSeconds) {
+      UUID endUserId, UUID projectId, String email, boolean emailVerified, long ttlSeconds) {
     long resolvedTtl = ttlSeconds > 0 ? ttlSeconds : jwtProperties.accessTokenTtlSeconds();
     Instant now = Instant.now();
     Instant expiresAt = now.plusSeconds(resolvedTtl);
@@ -69,6 +70,7 @@ public class JwtService {
         .claim(CLAIM_END_USER_ID, endUserId.toString())
         .claim(CLAIM_PROJECT_ID, projectId.toString())
         .claim(CLAIM_EMAIL, email)
+        .claim(CLAIM_EMAIL_VERIFIED, emailVerified)
         .issuer(jwtProperties.issuer())
         .issuedAt(Date.from(now))
         .expiration(Date.from(expiresAt))

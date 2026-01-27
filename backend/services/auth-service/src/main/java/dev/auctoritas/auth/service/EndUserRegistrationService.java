@@ -147,7 +147,11 @@ public class EndUserRegistrationService {
 
     String accessToken =
         jwtService.generateEndUserAccessToken(
-            savedUser.getId(), project.getId(), savedUser.getEmail(), settings.getAccessTokenTtlSeconds());
+            savedUser.getId(),
+            project.getId(),
+            savedUser.getEmail(),
+            Boolean.TRUE.equals(savedUser.getEmailVerified()),
+            settings.getAccessTokenTtlSeconds());
 
     return new EndUserRegistrationResponse(
         new EndUserRegistrationResponse.EndUserSummary(

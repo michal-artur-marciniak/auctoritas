@@ -102,7 +102,11 @@ public class EndUserRefreshService {
 
     String accessToken =
         jwtService.generateEndUserAccessToken(
-            user.getId(), project.getId(), user.getEmail(), settings.getAccessTokenTtlSeconds());
+            user.getId(),
+            project.getId(),
+            user.getEmail(),
+            Boolean.TRUE.equals(user.getEmailVerified()),
+            settings.getAccessTokenTtlSeconds());
 
     return new EndUserRefreshResponse(accessToken, newRawRefreshToken);
   }

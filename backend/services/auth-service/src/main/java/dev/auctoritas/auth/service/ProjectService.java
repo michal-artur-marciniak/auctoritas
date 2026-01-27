@@ -5,6 +5,7 @@ import dev.auctoritas.auth.api.ApiKeySecretResponse;
 import dev.auctoritas.auth.api.ApiKeySummaryResponse;
 import dev.auctoritas.auth.api.ProjectCreateRequest;
 import dev.auctoritas.auth.api.ProjectCreateResponse;
+import dev.auctoritas.auth.api.ProjectAuthSettingsRequest;
 import dev.auctoritas.auth.api.ProjectOAuthSettingsRequest;
 import dev.auctoritas.auth.api.ProjectPasswordSettingsRequest;
 import dev.auctoritas.auth.api.ProjectSessionSettingsRequest;
@@ -172,6 +173,18 @@ public class ProjectService {
   }
 
   @Transactional
+  public ProjectSettingsResponse updateAuthSettings(
+      UUID orgId,
+      UUID projectId,
+      OrgMemberPrincipal principal,
+      ProjectAuthSettingsRequest request) {
+    enforceOrgAccess(orgId, principal);
+    ProjectSettings settings = loadProject(orgId, projectId).getSettings();
+    settings.setRequireVerifiedEmailForLogin(request.requireVerifiedEmailForLogin());
+    return toSettingsResponse(projectSettingsRepository.save(settings));
+  }
+
+  @Transactional
   public ProjectSettingsResponse updateOAuthSettings(
       UUID orgId,
       UUID projectId,
@@ -240,6 +253,7 @@ public class ProjectService {
         settings.getAccessTokenTtlSeconds(),
         settings.getRefreshTokenTtlSeconds(),
         settings.getMaxSessions(),
+        settings.isRequireVerifiedEmailForLogin(),
         settings.isMfaEnabled(),
         settings.isMfaRequired(),
         settings.getOauthConfig());

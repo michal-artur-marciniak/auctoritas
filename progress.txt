@@ -3,6 +3,7 @@
 - Password policy for end-user flows is derived from ProjectSettings (min length, uppercase, numbers, special chars).
 - End-user login lockouts use ProjectSettings failedLoginMaxAttempts/failedLoginWindowSeconds and EndUser failedLogin fields.
 - End-user JWTs are authenticated via EndUserPrincipal from JwtAuthenticationFilter; use @AuthenticationPrincipal EndUserPrincipal for SDK auth endpoints.
+- End-user access JWTs include `email_verified` (JwtService.CLAIM_EMAIL_VERIFIED); keep register/login/refresh token issuance aligned.
 - Refresh token rotation should lock the refresh token row to prevent concurrent reuse.
 - End-user password reset tokens are stored hashed with 1-hour expiry and a used_at marker for single-use enforcement.
 - Password history enforcement should use ProjectSettings.passwordHistoryCount; treat <=0 as default 5 and compare via PasswordEncoder.matches.
@@ -12,6 +13,7 @@
 - In Spring Boot 4 tests, prefer overriding beans via `@TestConfiguration` + `@Primary` (e.g., to capture DomainEventPublisher publishes); `@MockBean` isn't available here.
 - Per-service Maven runs should include `-am` to build local libs (e.g. `mvn -pl services/auth-service -am test`) so `dev.auctoritas:common` resolves.
 - Email verification dev logging can be toggled via `auctoritas.auth.email-verification.log-challenge` (defaults true).
+- Project auth settings are updated via `PUT /api/v1/org/{orgId}/projects/{projectId}/settings/auth`.
 - Gateway SDK routes resolve API keys via /internal/api-keys/resolve and forward X-Project-Id.
 - Maven modules live under `backend/`; run per-service tests from there (e.g. `mvn -pl services/auth-service test`).
 - Auth-service repository tests rely on Hibernate DDL from entity mappings (keep Flyway migrations and JPA entities in sync).
@@ -60,4 +62,15 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
   - Patterns discovered: Use existing token tables + `createdAt` to implement low-friction rate limits without new schema.
   - Gotchas encountered: Bean overrides in tests are easiest via `@TestConfiguration` + `@Primary` (this project setup doesn't include `@MockBean`).
   - Useful context: Resend is intentionally non-enumerating; even rate-limited requests return the same generic success message and simply skip issuing a new token.
+---
+
+## 2026-01-27 12:25 - US-005
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Added ProjectSettings.requireVerifiedEmailForLogin (default false) and exposed it via `PUT /api/v1/org/{orgId}/projects/{projectId}/settings/auth`.
+- Enforced verified-email requirement in end-user login when enabled (returns `email_not_verified`), and added `email_verified` claim to end-user access JWTs.
+- Files changed: backend/services/auth-service/src/main/resources/db/migration/V17__project_settings_require_verified_email_for_login.sql, backend/services/auth-service/src/main/java/dev/auctoritas/auth/entity/project/ProjectSettings.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/ProjectAuthSettingsRequest.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/ProjectSettingsResponse.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/ProjectController.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/ProjectService.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserLoginService.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserRegistrationService.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserRefreshService.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/JwtService.java, backend/services/auth-service/src/test/java/dev/auctoritas/auth/service/EndUserLoginServiceTest.java, prd.json, progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Keep ProjectSettings changes, migrations, and ProjectSettingsResponse mapping in sync (tests rely on Hibernate DDL but migrations must still reflect schema).
+  - Gotchas encountered: End-user access tokens are minted in multiple flows (register/login/refresh) so JWT claim additions must be updated everywhere.
+  - Useful context: `email_verified` is exposed as JwtService.CLAIM_EMAIL_VERIFIED and can be used downstream without changing EndUserPrincipal.
 ---
