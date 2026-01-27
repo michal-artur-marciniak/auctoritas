@@ -528,6 +528,123 @@ public class ProjectService {
       }
     }
 
+    // apple: enabled/teamId/keyId/serviceId/redirectUris/privateKeyRef in config, privateKey encrypted in column
+    if (patch.containsKey("apple")) {
+      Object appleObj = patch.get("apple");
+      if (!(appleObj instanceof Map<?, ?> appleRaw)) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_apple_config_invalid");
+      }
+
+      Map<String, Object> existingApple = asObjectMap(merged.get("apple"));
+      Map<String, Object> apple = new HashMap<>(existingApple);
+
+      if (appleRaw.containsKey("enabled")) {
+        Boolean enabled = asBoolean(appleRaw.get("enabled"));
+        if (enabled == null) {
+          throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_apple_enabled_invalid");
+        }
+        apple.put("enabled", enabled);
+      }
+
+      if (appleRaw.containsKey("teamId")) {
+        String teamId = asTrimmedString(appleRaw.get("teamId"));
+        if (teamId == null) {
+          apple.remove("teamId");
+        } else {
+          apple.put("teamId", teamId);
+        }
+      }
+
+      if (appleRaw.containsKey("keyId")) {
+        String keyId = asTrimmedString(appleRaw.get("keyId"));
+        if (keyId == null) {
+          apple.remove("keyId");
+        } else {
+          apple.put("keyId", keyId);
+        }
+      }
+
+      if (appleRaw.containsKey("serviceId")) {
+        String serviceId = asTrimmedString(appleRaw.get("serviceId"));
+        if (serviceId == null) {
+          apple.remove("serviceId");
+        } else {
+          apple.put("serviceId", serviceId);
+        }
+      }
+
+      if (appleRaw.containsKey("privateKeyRef")) {
+        String ref = asTrimmedString(appleRaw.get("privateKeyRef"));
+        if (ref == null) {
+          apple.remove("privateKeyRef");
+        } else {
+          apple.put("privateKeyRef", ref);
+        }
+      }
+
+      if (appleRaw.containsKey("redirectUris")) {
+        List<String> allowlist = asStringList(merged.get("redirectUris"));
+        List<String> redirectUris = normalizeRedirectUris(appleRaw.get("redirectUris"));
+        for (String uri : redirectUris) {
+          if (!allowlist.contains(uri)) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST, "oauth_apple_redirect_uri_not_allowed");
+          }
+        }
+        if (redirectUris.isEmpty()) {
+          apple.remove("redirectUris");
+        } else {
+          apple.put("redirectUris", redirectUris);
+        }
+      }
+
+      // Never store plaintext secrets in oauth_config.
+      apple.remove("privateKey");
+      apple.remove("privateKeySet");
+
+      if (appleRaw.containsKey("privateKey")) {
+        String privateKey = asTrimmedStringAllowEmpty(appleRaw.get("privateKey"));
+        if (privateKey == null || privateKey.isEmpty()) {
+          settings.setOauthApplePrivateKeyEnc(null);
+        } else {
+          settings.setOauthApplePrivateKeyEnc(oauthClientSecretEncryptor.encrypt(privateKey));
+        }
+      }
+
+      boolean enabled = Boolean.TRUE.equals(apple.get("enabled"));
+      String teamId = apple.get("teamId") instanceof String s ? s : null;
+      String keyId = apple.get("keyId") instanceof String s ? s : null;
+      String serviceId = apple.get("serviceId") instanceof String s ? s : null;
+      String privateKeyRef = apple.get("privateKeyRef") instanceof String s ? s : null;
+      boolean privateKeySet =
+          settings.getOauthApplePrivateKeyEnc() != null
+              && !settings.getOauthApplePrivateKeyEnc().trim().isEmpty();
+      List<String> redirectUris = asStringList(apple.get("redirectUris"));
+
+      if (enabled && (teamId == null || teamId.trim().isEmpty())) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_apple_team_id_required");
+      }
+      if (enabled && (keyId == null || keyId.trim().isEmpty())) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_apple_key_id_required");
+      }
+      if (enabled && (serviceId == null || serviceId.trim().isEmpty())) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_apple_service_id_required");
+      }
+      if (enabled && !(privateKeySet || (privateKeyRef != null && !privateKeyRef.trim().isEmpty()))) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_apple_private_key_required");
+      }
+      if (enabled && redirectUris.isEmpty()) {
+        throw new ResponseStatusException(
+            HttpStatus.BAD_REQUEST, "oauth_apple_redirect_uris_required");
+      }
+
+      if (apple.isEmpty()) {
+        merged.remove("apple");
+      } else {
+        merged.put("apple", apple);
+      }
+    }
+
     // Pass through other config keys as-is.
     for (Map.Entry<String, Object> entry : patch.entrySet()) {
       String key = entry.getKey();
@@ -538,6 +655,7 @@ public class ProjectService {
           || key.equals("github")
           || key.equals("microsoft")
           || key.equals("facebook")
+          || key.equals("apple")
           || key.equals("redirectUris")) {
         continue;
       }
@@ -677,6 +795,22 @@ public class ProjectService {
         facebook.put("clientSecret", "********");
       }
       safe.put("facebook", facebook);
+    }
+
+    boolean hadApple = stored.containsKey("apple");
+    Map<String, Object> apple = asObjectMap(safe.get("apple"));
+    apple.remove("privateKey");
+    apple.remove("privateKeySet");
+
+    boolean appleKeySet =
+        settings.getOauthApplePrivateKeyEnc() != null
+            && !settings.getOauthApplePrivateKeyEnc().trim().isEmpty();
+    if (hadApple || appleKeySet) {
+      apple.put("privateKeySet", appleKeySet);
+      if (appleKeySet) {
+        apple.put("privateKey", "********");
+      }
+      safe.put("apple", apple);
     }
 
     return safe;

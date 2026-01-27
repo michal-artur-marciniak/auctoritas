@@ -86,4 +86,8 @@ public class ProjectSettings extends BaseEntity {
   /** Encrypted at rest; never exposed directly via API responses. */
   @Column(name = "oauth_facebook_client_secret_enc")
   private String oauthFacebookClientSecretEnc;
+
+  /** Encrypted at rest; never exposed directly via API responses. */
+  @Column(name = "oauth_apple_private_key_enc")
+  private String oauthApplePrivateKeyEnc;
 }

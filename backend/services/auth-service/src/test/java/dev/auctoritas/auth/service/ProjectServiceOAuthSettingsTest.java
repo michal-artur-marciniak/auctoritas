@@ -234,4 +234,70 @@ class ProjectServiceOAuthSettingsTest {
                     org.getId(), project.getId(), principal, new ProjectOAuthSettingsRequest(config)))
         .hasMessageContaining("oauth_facebook_redirect_uri_not_allowed");
   }
+
+  @Test
+  void updateOAuthSettingsStoresApplePrivateKeyEncryptedAndMasksInResponse() {
+    Map<String, Object> apple = new HashMap<>();
+    apple.put("enabled", true);
+    apple.put("teamId", "TEAM123");
+    apple.put("keyId", "KEY123");
+    apple.put("serviceId", "com.example.app");
+    apple.put("privateKey", "-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----");
+    apple.put("redirectUris", List.of("https://app.example.com/apple/callback"));
+
+    Map<String, Object> config = new HashMap<>();
+    config.put("redirectUris", List.of("https://app.example.com/apple/callback"));
+    config.put("apple", apple);
+
+    var response =
+        projectService.updateOAuthSettings(
+            org.getId(), project.getId(), principal, new ProjectOAuthSettingsRequest(config));
+
+    ProjectSettings persisted =
+        entityManager
+            .createQuery(
+                "select s from ProjectSettings s join fetch s.project p where p.id = :pid",
+                ProjectSettings.class)
+            .setParameter("pid", project.getId())
+            .getSingleResult();
+
+    assertThat(persisted.getOauthApplePrivateKeyEnc()).isNotBlank();
+    assertThat(persisted.getOauthApplePrivateKeyEnc())
+        .isNotEqualTo("-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----");
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> storedApple =
+        (Map<String, Object>) ((Map<String, Object>) persisted.getOauthConfig()).get("apple");
+    assertThat(storedApple).doesNotContainKey("privateKey");
+    assertThat(storedApple).doesNotContainKey("privateKeySet");
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> safeApple = (Map<String, Object>) response.oauthConfig().get("apple");
+    assertThat(safeApple.get("privateKeySet")).isEqualTo(true);
+    assertThat(safeApple.get("privateKey")).isEqualTo("********");
+    assertThat(safeApple.get("teamId")).isEqualTo("TEAM123");
+    assertThat(safeApple.get("keyId")).isEqualTo("KEY123");
+    assertThat(safeApple.get("serviceId")).isEqualTo("com.example.app");
+  }
+
+  @Test
+  void updateOAuthSettingsRejectsAppleRedirectUriNotInAllowlist() {
+    Map<String, Object> apple = new HashMap<>();
+    apple.put("enabled", true);
+    apple.put("teamId", "TEAM123");
+    apple.put("keyId", "KEY123");
+    apple.put("serviceId", "com.example.app");
+    apple.put("privateKey", "-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----");
+    apple.put("redirectUris", List.of("https://not-allowed.example.com/apple/callback"));
+
+    Map<String, Object> config = new HashMap<>();
+    config.put("redirectUris", List.of("https://app.example.com/apple/callback"));
+    config.put("apple", apple);
+
+    assertThatThrownBy(
+            () ->
+                projectService.updateOAuthSettings(
+                    org.getId(), project.getId(), principal, new ProjectOAuthSettingsRequest(config)))
+        .hasMessageContaining("oauth_apple_redirect_uri_not_allowed");
+  }
 }

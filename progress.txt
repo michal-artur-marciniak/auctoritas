@@ -30,6 +30,7 @@
 - Keep OAuth account linking provider-agnostic in `OAuthAccountLinkingService` (providers should only map userinfo, not enforce linking rules).
 - OAuth provider `clientSecret` values are stored encrypted in `ProjectSettings` columns (never in `oauth_config`); API responses return `clientSecretSet` + masked `clientSecret`.
 - When adding a new OAuth provider to project settings, update both `ProjectService.updateOAuthSettings(...)` (patch/validation/encryption) and `ProjectService.toSafeOauthConfig(...)` (masking), and add a Flyway migration for the encrypted secret column.
+- Provider secrets that are not named `clientSecret` (e.g., Apple `privateKey`) should still follow the same rule: never persist plaintext in `oauth_config`; store encrypted in a `ProjectSettings` column and expose only a masked value + `*Set` flag.
 
 ## 2026-01-27 21:50 CET - US-001
 Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
@@ -114,4 +115,15 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
 - Tests: added auth-service `OAuthFacebookCallbackServiceTest`; extended gateway `OAuthGatewayFiltersTest` for Facebook; fixed a gateway test compilation issue.
 - Verified by running `mvn -pl services/auth-service -am test` and `mvn -pl services/gateway-service -am test`.
 - Files changed: `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/oauth/FacebookOAuthProvider.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/FacebookOAuthClient.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/DefaultFacebookOAuthClient.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/OAuthFacebookAuthorizationService.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/OAuthFacebookCallbackService.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/InternalFacebookOAuthController.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/InternalFacebookAuthorizeRequest.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/InternalFacebookAuthorizeResponse.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/InternalFacebookCallbackRequest.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/InternalFacebookCallbackResponse.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/config/SecurityConfig.java`, `backend/services/auth-service/src/test/java/dev/auctoritas/auth/service/OAuthFacebookCallbackServiceTest.java`, `backend/services/gateway-service/src/main/java/dev/auctoritas/gateway/filter/FacebookOAuthAuthorizeGatewayFilterFactory.java`, `backend/services/gateway-service/src/main/java/dev/auctoritas/gateway/filter/FacebookOAuthCallbackGatewayFilterFactory.java`, `backend/services/gateway-service/src/main/java/dev/auctoritas/gateway/filter/ApiKeyGatewayFilter.java`, `backend/services/gateway-service/src/main/resources/application.yml`, `backend/services/gateway-service/src/test/java/dev/auctoritas/gateway/filter/OAuthGatewayFiltersTest.java`, `prd.json`, `progress.txt`.
+---
+
+## 2026-01-27 23:20 CET - US-009
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Added Apple Sign-In project settings support (enabled/teamId/keyId/serviceId/redirectUris) with `privateKey` stored encrypted at rest.
+- Ensured API responses never return the plaintext key (return `privateKeySet` + masked `privateKey`) and never persist plaintext keys in `oauth_config`.
+- Added allowlist validation so Apple `redirectUris` must be a subset of the project's OAuth `redirectUris` allowlist.
+- Files changed: `backend/services/auth-service/src/main/java/dev/auctoritas/auth/entity/project/ProjectSettings.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/ProjectService.java`, `backend/services/auth-service/src/main/resources/db/migration/V25__project_settings_apple_sign_in_secret.sql`, `backend/services/auth-service/src/test/java/dev/auctoritas/auth/service/ProjectServiceOAuthSettingsTest.java`, `prd.json`, `progress.txt`.
+- **Learnings for future iterations:**
+  - For provider secrets that don't map cleanly to `clientSecret` (Apple `privateKey`), keep the same ergonomics: `*Set` boolean + masked secret in `toSafeOauthConfig(...)`, and never store plaintext in `oauth_config`.
+  - When adding provider-specific `redirectUris`, validate against the top-level OAuth allowlist (`redirectUris`) to prevent misconfig/security drift.
 ---
