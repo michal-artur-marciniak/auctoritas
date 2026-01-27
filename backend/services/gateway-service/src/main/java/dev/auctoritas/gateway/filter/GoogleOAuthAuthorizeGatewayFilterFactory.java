@@ -93,19 +93,20 @@ public class GoogleOAuthAuthorizeGatewayFilterFactory
                               return writeErrorResponse(
                                   exchange, HttpStatus.BAD_GATEWAY, "oauth_google_authorize_failed");
                             }
-                            String googleAuthorizeUrl =
-                                UriComponentsBuilder.fromUriString(GOOGLE_AUTHORIZE_URL)
-                                    .queryParam("client_id", body.clientId())
-                                    .queryParam("redirect_uri", callbackUri)
-                                    .queryParam("response_type", "code")
-                                    .queryParam("scope", "openid email profile")
-                                    .queryParam("state", state)
-                                    .queryParam("code_challenge", codeChallenge)
-                                    .queryParam("code_challenge_method", "S256")
-                                    .build(true)
-                                    .toUriString();
-                            return redirect(exchange, googleAuthorizeUrl);
-                          });
+                             String googleAuthorizeUrl =
+                                 UriComponentsBuilder.fromUriString(GOOGLE_AUTHORIZE_URL)
+                                     .queryParam("client_id", body.clientId())
+                                     .queryParam("redirect_uri", callbackUri)
+                                     .queryParam("response_type", "code")
+                                     .queryParam("scope", "openid email profile")
+                                     .queryParam("state", state)
+                                     .queryParam("code_challenge", codeChallenge)
+                                     .queryParam("code_challenge_method", "S256")
+                                     .build()
+                                     .encode()
+                                     .toUriString();
+                             return redirect(exchange, googleAuthorizeUrl);
+                           });
                 }
 
                 HttpStatus resolved = status == null ? HttpStatus.BAD_GATEWAY : status;
