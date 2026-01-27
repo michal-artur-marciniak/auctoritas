@@ -3,9 +3,6 @@ name: Frontend CI
 on:
   pull_request:
     branches: [master]
-    paths:
-      - frontend/**
-      - .github/workflows/frontend-ci.yml
   push:
     branches: [master]
     paths:
@@ -27,13 +24,44 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect frontend changes
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE_SHA="${{ github.event.before }}"
+            HEAD_SHA="${{ github.sha }}"
+          fi
+
+          echo "base_sha=$BASE_SHA" >> "$GITHUB_OUTPUT"
+          echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+
+          if git diff --name-only "$BASE_SHA" "$HEAD_SHA" | grep -q '^frontend/'; then
+            echo "frontend_changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "frontend_changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip (no frontend changes)
+        if: steps.changes.outputs.frontend_changed != 'true'
+        run: echo "No frontend changes detected; skipping frontend lint/build."
 
       - name: Set up pnpm
+        if: steps.changes.outputs.frontend_changed == 'true'
         uses: pnpm/action-setup@v4
         with:
           version: "9"
 
       - name: Set up Node
+        if: steps.changes.outputs.frontend_changed == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -41,13 +69,16 @@ jobs:
           cache-dependency-path: frontend/pnpm-lock.yaml
 
       - name: Install dependencies
+        if: steps.changes.outputs.frontend_changed == 'true'
         working-directory: frontend
         run: pnpm install --frozen-lockfile
 
       - name: Lint
+        if: steps.changes.outputs.frontend_changed == 'true'
         working-directory: frontend
         run: pnpm lint
 
       - name: Build
+        if: steps.changes.outputs.frontend_changed == 'true'
         working-directory: frontend
         run: pnpm build
