@@ -8,6 +8,7 @@
 - Password history enforcement should use ProjectSettings.passwordHistoryCount; treat <=0 as default 5 and compare via PasswordEncoder.matches.
 - For end-user password changes that keep the current session, accept `X-Session-Id` (end-user access JWTs don't carry session ids); if selecting a "current" session/token from the DB, use `@Lock(PESSIMISTIC_WRITE)` to avoid races.
 - End-user email verification tokens are stored hashed with 24-hour expiry and a used_at marker; resends mark existing tokens used.
+- For tests that need plaintext verification token/code, call `EndUserEmailVerificationService.issueVerificationToken(...)`; persistence only stores hashes.
 - Per-service Maven runs should include `-am` to build local libs (e.g. `mvn -pl services/auth-service -am test`) so `dev.auctoritas:common` resolves.
 - Email verification dev logging can be toggled via `auctoritas.auth.email-verification.log-challenge` (defaults true).
 - Gateway SDK routes resolve API keys via /internal/api-keys/resolve and forward X-Project-Id.
@@ -36,4 +37,15 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
   - Patterns discovered: Prefer emitting domain events from the service layer (not controllers) and keep secrets out of the event payload; log dev-only secrets behind a property.
   - Gotchas encountered: `mvn -pl services/auth-service test` can fail if local modules aren't installed; use `-am` to build reactor deps.
   - Useful context: Registration now logs a "Stub verification email" entry with `verificationToken` + `verificationCode` when `auctoritas.auth.email-verification.log-challenge=true`.
+---
+
+## 2026-01-27 12:05 - US-003
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Verified the email verification flow: correct token+code marks the user as verified and invalidates the token.
+- Added coverage for error cases (reused token, expired token, mismatched code).
+- Files changed: backend/services/auth-service/src/test/java/dev/auctoritas/auth/service/EndUserEmailVerificationServiceTest.java, prd.json, progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Use `EndUserEmailVerificationService.issueVerificationToken(...)` in tests to get plaintext token+code while persisting only hashes.
+  - Gotchas encountered: Verification token lookups use `@Lock(PESSIMISTIC_WRITE)`; clear the EntityManager between steps when asserting persisted state.
+  - Useful context: Verification sets `EndUser.emailVerified=true` and marks `EndUserEmailVerificationToken.usedAt` for one-time enforcement.
 ---
