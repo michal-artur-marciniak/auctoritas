@@ -18,6 +18,7 @@
 - Gateway SDK routes resolve API keys via /internal/api-keys/resolve and forward X-Project-Id.
 - For gateway endpoints that need dynamic responses (e.g., OAuth redirects), implement a `*GatewayFilterFactory` and attach it to a dedicated route so route filters (like `RequestRateLimiter`) still apply.
 - New auth-service `/internal/**` endpoints used by gateway must be added to `SecurityConfig.PUBLIC_ENDPOINTS` (they return `{"error":...}` via `ApiExceptionHandler`).
+- Any API-key-only `/api/v1/**` endpoint (no end-user JWT yet) must be added to `SecurityConfig.PUBLIC_ENDPOINTS`, otherwise Spring Security will reject the request before ApiKeyService runs.
 - Maven modules live under `backend/`; run per-service tests from there (e.g. `mvn -pl services/auth-service test`).
 - Auth-service repository tests rely on Hibernate DDL from entity mappings (keep Flyway migrations and JPA entities in sync).
 - Auth-service Spring tests may load `src/test/resources/application-test.yml` even when `src/main/resources/application-test.yml` exists; add required properties for new beans there to avoid ApplicationContext failures.
@@ -59,4 +60,12 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
 - Files changed: `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/OAuthGoogleCallbackService.java`, `backend/services/auth-service/src/test/java/dev/auctoritas/auth/service/OAuthGoogleCallbackServiceTest.java`, `prd.json`, `progress.txt`.
 - **Learnings for future iterations:**
   - Prefer upgrading existing end-users to verified when a trusted OAuth provider confirms the email; avoid leaving users in a limbo unverified state.
+---
+
+## 2026-01-27 15:30 CET - US-005
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented `POST /api/v1/auth/oauth/exchange` to accept `{ code }`, validate the project via `X-API-Key`, mark the OAuth exchange code as used (one-time), and issue end-user access + refresh tokens.
+- Files changed: `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserAuthController.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/OAuthExchangeRequest.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/config/SecurityConfig.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/OAuthExchangeService.java`, `backend/services/auth-service/src/test/java/dev/auctoritas/auth/service/OAuthExchangeServiceTest.java`, `prd.json`, `progress.txt`.
+- **Learnings for future iterations:**
+  - For API-key-authenticated endpoints that don't have an end-user JWT yet (like OAuth code exchange), remember to whitelist the route in `SecurityConfig.PUBLIC_ENDPOINTS`.
 ---

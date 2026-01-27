@@ -7,6 +7,7 @@ import dev.auctoritas.auth.service.EndUserLogoutService;
 import dev.auctoritas.auth.service.EndUserPasswordResetService;
 import dev.auctoritas.auth.service.EndUserRefreshService;
 import dev.auctoritas.auth.service.EndUserRegistrationService;
+import dev.auctoritas.auth.service.OAuthExchangeService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -33,6 +34,7 @@ public class EndUserAuthController {
   private final EndUserRefreshService endUserRefreshService;
   private final EndUserPasswordResetService endUserPasswordResetService;
   private final EndUserEmailVerificationService endUserEmailVerificationService;
+  private final OAuthExchangeService oauthExchangeService;
   private final List<String> trustedProxies;
 
   public EndUserAuthController(
@@ -42,6 +44,7 @@ public class EndUserAuthController {
       EndUserRefreshService endUserRefreshService,
       EndUserPasswordResetService endUserPasswordResetService,
       EndUserEmailVerificationService endUserEmailVerificationService,
+      OAuthExchangeService oauthExchangeService,
       @Value("${auth.security.trusted-proxies:}") List<String> trustedProxies) {
     this.endUserRegistrationService = endUserRegistrationService;
     this.endUserLoginService = endUserLoginService;
@@ -49,6 +52,7 @@ public class EndUserAuthController {
     this.endUserRefreshService = endUserRefreshService;
     this.endUserPasswordResetService = endUserPasswordResetService;
     this.endUserEmailVerificationService = endUserEmailVerificationService;
+    this.oauthExchangeService = oauthExchangeService;
     this.trustedProxies =
         trustedProxies == null
             ? List.of()
@@ -95,6 +99,16 @@ public class EndUserAuthController {
     String ipAddress = resolveIpAddress(httpRequest);
     String userAgent = resolveUserAgent(httpRequest);
     return ResponseEntity.ok(endUserRefreshService.refresh(apiKey, request, ipAddress, userAgent));
+  }
+
+  @PostMapping("/oauth/exchange")
+  public ResponseEntity<EndUserLoginResponse> exchangeOAuthCode(
+      @RequestHeader(value = API_KEY_HEADER, required = false) String apiKey,
+      @Valid @RequestBody OAuthExchangeRequest request,
+      HttpServletRequest httpRequest) {
+    String ipAddress = resolveIpAddress(httpRequest);
+    String userAgent = resolveUserAgent(httpRequest);
+    return ResponseEntity.ok(oauthExchangeService.exchange(apiKey, request, ipAddress, userAgent));
   }
 
   @PostMapping("/password/forgot")
