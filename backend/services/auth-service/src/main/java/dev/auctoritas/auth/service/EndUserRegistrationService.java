@@ -103,10 +103,9 @@ public class EndUserRegistrationService {
         endUserEmailVerificationService.issueVerificationToken(savedUser);
 
     log.info(
-        "user_registered {} {} {}",
+        "user_registered {} {}",
         kv("projectId", project.getId()),
-        kv("userId", savedUser.getId()),
-        kv("email", savedUser.getEmail()));
+        kv("userId", savedUser.getId()));
 
     UserRegisteredEvent event =
         new UserRegisteredEvent(
