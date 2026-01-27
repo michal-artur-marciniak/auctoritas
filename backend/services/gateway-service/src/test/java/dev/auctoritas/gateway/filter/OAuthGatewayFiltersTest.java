@@ -39,6 +39,8 @@ class OAuthGatewayFiltersTest {
   private static final AtomicReference<String> lastCallbackBody = new AtomicReference<>();
   private static final AtomicReference<String> lastGithubAuthorizeBody = new AtomicReference<>();
   private static final AtomicReference<String> lastGithubCallbackBody = new AtomicReference<>();
+  private static final AtomicReference<String> lastMicrosoftAuthorizeBody = new AtomicReference<>();
+  private static final AtomicReference<String> lastMicrosoftCallbackBody = new AtomicReference<>();
 
   @BeforeAll
   static void startAuthServer() {
@@ -121,6 +123,34 @@ class OAuthGatewayFiltersTest {
                                             .sendString(
                                                 Mono.just(
                                                     "{\"redirectUrl\":\"https://app.example/after?auctoritas_code=def\"}"))
+                                            .then()))
+                        .post(
+                            "/internal/oauth/microsoft/authorize",
+                            (req, res) ->
+                                req.receive()
+                                    .aggregate()
+                                    .asString()
+                                    .doOnNext(lastMicrosoftAuthorizeBody::set)
+                                    .then(
+                                        res.status(200)
+                                            .header("Content-Type", "application/json")
+                                            .sendString(
+                                                Mono.just(
+                                                    "{\"clientId\":\"test-microsoft-client-id\",\"authorizationEndpoint\":\"https://login.microsoftonline.com/common/oauth2/v2.0/authorize\",\"scope\":\"openid profile email User.Read\"}"))
+                                            .then()))
+                        .post(
+                            "/internal/oauth/microsoft/callback",
+                            (req, res) ->
+                                req.receive()
+                                    .aggregate()
+                                    .asString()
+                                    .doOnNext(lastMicrosoftCallbackBody::set)
+                                    .then(
+                                        res.status(200)
+                                            .header("Content-Type", "application/json")
+                                            .sendString(
+                                                Mono.just(
+                                                    "{\"redirectUrl\":\"https://app.example/after?auctoritas_code=ghi\"}"))
                                             .then())))
             .bindNow();
 
@@ -314,6 +344,92 @@ class OAuthGatewayFiltersTest {
     assertEquals("oauth-state", jsonField(bodyJson, "state"));
     assertEquals(
         "http://example.test/api/v1/auth/oauth/github/callback",
+        jsonField(bodyJson, "callbackUri"));
+  }
+
+  @Test
+  void microsoft_authorize_withApiKey_redirectsToMicrosoft_andUsesPkce() throws Exception {
+    ApiKeyGatewayFilter apiKeyFilter = new ApiKeyGatewayFilter(WebClient.builder(), authServiceUrl);
+    MicrosoftOAuthAuthorizeGatewayFilterFactory authorizeFactory =
+        new MicrosoftOAuthAuthorizeGatewayFilterFactory(WebClient.builder(), authServiceUrl);
+    GatewayFilter authorizeFilter =
+        authorizeFactory.apply(new MicrosoftOAuthAuthorizeGatewayFilterFactory.Config());
+
+    MockServerWebExchange exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.get("http://example.test/api/v1/auth/oauth/microsoft/authorize")
+                .header("X-API-Key", API_KEY)
+                .queryParam("redirect_uri", "https://app.example/redirect")
+                .build());
+
+    GatewayFilterChain chain = ex -> authorizeFilter.filter(ex, e -> Mono.empty());
+
+    apiKeyFilter.filter(exchange, chain).block();
+
+    assertEquals(HttpStatus.FOUND, exchange.getResponse().getStatusCode());
+    String location = exchange.getResponse().getHeaders().getFirst(HttpHeaders.LOCATION);
+    assertNotNull(location);
+    assertTrue(location.startsWith("https://login.microsoftonline.com/common/oauth2/v2.0/authorize"));
+
+    UriComponents uri = UriComponentsBuilder.fromUriString(location).build(true);
+    assertEquals("test-microsoft-client-id", uri.getQueryParams().getFirst("client_id"));
+    assertEquals("code", uri.getQueryParams().getFirst("response_type"));
+    assertEquals(
+        "openid profile email User.Read",
+        URLDecoder.decode(uri.getQueryParams().getFirst("scope"), StandardCharsets.UTF_8));
+    assertEquals("S256", uri.getQueryParams().getFirst("code_challenge_method"));
+    assertEquals(
+        "http://example.test/api/v1/auth/oauth/microsoft/callback",
+        uri.getQueryParams().getFirst("redirect_uri"));
+
+    String state = uri.getQueryParams().getFirst("state");
+    String codeChallenge = uri.getQueryParams().getFirst("code_challenge");
+    assertNotNull(state);
+    assertTrue(!state.isBlank());
+    assertNotNull(codeChallenge);
+    assertTrue(!codeChallenge.isBlank());
+
+    String bodyJson = lastMicrosoftAuthorizeBody.get();
+    assertNotNull(bodyJson);
+    assertEquals(PROJECT_ID.toString(), jsonField(bodyJson, "projectId"));
+    assertEquals("https://app.example/redirect", jsonField(bodyJson, "redirectUri"));
+    assertEquals(state, jsonField(bodyJson, "state"));
+
+    String codeVerifier = jsonField(bodyJson, "codeVerifier");
+    assertTrue(!codeVerifier.isBlank());
+    assertEquals(codeChallenge, computeCodeChallenge(codeVerifier));
+  }
+
+  @Test
+  void microsoft_callback_withoutApiKey_isAllowed_andRedirects() throws Exception {
+    ApiKeyGatewayFilter apiKeyFilter = new ApiKeyGatewayFilter(WebClient.builder(), authServiceUrl);
+    MicrosoftOAuthCallbackGatewayFilterFactory callbackFactory =
+        new MicrosoftOAuthCallbackGatewayFilterFactory(WebClient.builder(), authServiceUrl);
+    GatewayFilter callbackFilter =
+        callbackFactory.apply(new MicrosoftOAuthCallbackGatewayFilterFactory.Config());
+
+    MockServerWebExchange exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.get("http://example.test/api/v1/auth/oauth/microsoft/callback")
+                .queryParam("code", "microsoft-code")
+                .queryParam("state", "oauth-state")
+                .build());
+
+    GatewayFilterChain chain = ex -> callbackFilter.filter(ex, e -> Mono.empty());
+
+    apiKeyFilter.filter(exchange, chain).block();
+
+    assertEquals(HttpStatus.FOUND, exchange.getResponse().getStatusCode());
+    assertEquals(
+        "https://app.example/after?auctoritas_code=ghi",
+        exchange.getResponse().getHeaders().getFirst(HttpHeaders.LOCATION));
+
+    String bodyJson = lastMicrosoftCallbackBody.get();
+    assertNotNull(bodyJson);
+    assertEquals("microsoft-code", jsonField(bodyJson, "code"));
+    assertEquals("oauth-state", jsonField(bodyJson, "state"));
+    assertEquals(
+        "http://example.test/api/v1/auth/oauth/microsoft/callback",
         jsonField(bodyJson, "callbackUri"));
   }
 

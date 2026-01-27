@@ -41,6 +41,8 @@ public class SecurityConfig {
     "/internal/oauth/google/callback",
     "/internal/oauth/github/authorize",
     "/internal/oauth/github/callback",
+    "/internal/oauth/microsoft/authorize",
+    "/internal/oauth/microsoft/callback",
     "/actuator/health",
     "/.well-known/jwks.json",
     "/.well-known/openid-configuration"
