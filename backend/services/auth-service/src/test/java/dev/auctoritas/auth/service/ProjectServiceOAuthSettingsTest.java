@@ -176,4 +176,62 @@ class ProjectServiceOAuthSettingsTest {
                     org.getId(), project.getId(), principal, new ProjectOAuthSettingsRequest(config)))
         .hasMessageContaining("oauth_microsoft_redirect_uri_not_allowed");
   }
+
+  @Test
+  void updateOAuthSettingsStoresFacebookSecretEncryptedAndMasksInResponse() {
+    Map<String, Object> facebook = new HashMap<>();
+    facebook.put("enabled", true);
+    facebook.put("clientId", "fb-client-id");
+    facebook.put("clientSecret", "fb-client-secret");
+    facebook.put("redirectUris", List.of("https://app.example.com/fb/callback"));
+
+    Map<String, Object> config = new HashMap<>();
+    config.put("redirectUris", List.of("https://app.example.com/fb/callback"));
+    config.put("facebook", facebook);
+
+    var response =
+        projectService.updateOAuthSettings(
+            org.getId(), project.getId(), principal, new ProjectOAuthSettingsRequest(config));
+
+    ProjectSettings persisted =
+        entityManager
+            .createQuery(
+                "select s from ProjectSettings s join fetch s.project p where p.id = :pid",
+                ProjectSettings.class)
+            .setParameter("pid", project.getId())
+            .getSingleResult();
+
+    assertThat(persisted.getOauthFacebookClientSecretEnc()).isNotBlank();
+    assertThat(persisted.getOauthFacebookClientSecretEnc()).isNotEqualTo("fb-client-secret");
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> storedFacebook =
+        (Map<String, Object>) ((Map<String, Object>) persisted.getOauthConfig()).get("facebook");
+    assertThat(storedFacebook).doesNotContainKey("clientSecret");
+    assertThat(storedFacebook).doesNotContainKey("clientSecretSet");
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> safeFacebook = (Map<String, Object>) response.oauthConfig().get("facebook");
+    assertThat(safeFacebook.get("clientSecretSet")).isEqualTo(true);
+    assertThat(safeFacebook.get("clientSecret")).isEqualTo("********");
+  }
+
+  @Test
+  void updateOAuthSettingsRejectsFacebookRedirectUriNotInAllowlist() {
+    Map<String, Object> facebook = new HashMap<>();
+    facebook.put("enabled", true);
+    facebook.put("clientId", "fb-client-id");
+    facebook.put("clientSecret", "fb-client-secret");
+    facebook.put("redirectUris", List.of("https://not-allowed.example.com/fb/callback"));
+
+    Map<String, Object> config = new HashMap<>();
+    config.put("redirectUris", List.of("https://app.example.com/fb/callback"));
+    config.put("facebook", facebook);
+
+    assertThatThrownBy(
+            () ->
+                projectService.updateOAuthSettings(
+                    org.getId(), project.getId(), principal, new ProjectOAuthSettingsRequest(config)))
+        .hasMessageContaining("oauth_facebook_redirect_uri_not_allowed");
+  }
 }

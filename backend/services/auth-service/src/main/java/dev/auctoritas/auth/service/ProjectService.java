@@ -445,6 +445,89 @@ public class ProjectService {
       }
     }
 
+    // facebook: enabled/clientId/redirectUris in config, clientSecret encrypted in column
+    if (patch.containsKey("facebook")) {
+      Object facebookObj = patch.get("facebook");
+      if (!(facebookObj instanceof Map<?, ?> facebookRaw)) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_facebook_config_invalid");
+      }
+
+      Map<String, Object> existingFacebook = asObjectMap(merged.get("facebook"));
+      Map<String, Object> facebook = new HashMap<>(existingFacebook);
+
+      if (facebookRaw.containsKey("enabled")) {
+        Boolean enabled = asBoolean(facebookRaw.get("enabled"));
+        if (enabled == null) {
+          throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_facebook_enabled_invalid");
+        }
+        facebook.put("enabled", enabled);
+      }
+
+      if (facebookRaw.containsKey("clientId")) {
+        String clientId = asTrimmedString(facebookRaw.get("clientId"));
+        if (clientId == null) {
+          facebook.remove("clientId");
+        } else {
+          facebook.put("clientId", clientId);
+        }
+      }
+
+      if (facebookRaw.containsKey("redirectUris")) {
+        List<String> allowlist = asStringList(merged.get("redirectUris"));
+        List<String> redirectUris = normalizeRedirectUris(facebookRaw.get("redirectUris"));
+        for (String uri : redirectUris) {
+          if (!allowlist.contains(uri)) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST, "oauth_facebook_redirect_uri_not_allowed");
+          }
+        }
+        if (redirectUris.isEmpty()) {
+          facebook.remove("redirectUris");
+        } else {
+          facebook.put("redirectUris", redirectUris);
+        }
+      }
+
+      // Never store plaintext secrets in oauth_config.
+      facebook.remove("clientSecret");
+      facebook.remove("clientSecretSet");
+
+      if (facebookRaw.containsKey("clientSecret")) {
+        String secret = asTrimmedStringAllowEmpty(facebookRaw.get("clientSecret"));
+        if (secret == null || secret.isEmpty()) {
+          settings.setOauthFacebookClientSecretEnc(null);
+        } else {
+          settings.setOauthFacebookClientSecretEnc(oauthClientSecretEncryptor.encrypt(secret));
+        }
+      }
+
+      boolean enabled = Boolean.TRUE.equals(facebook.get("enabled"));
+      String clientId = facebook.get("clientId") instanceof String s ? s : null;
+      boolean secretSet =
+          settings.getOauthFacebookClientSecretEnc() != null
+              && !settings.getOauthFacebookClientSecretEnc().trim().isEmpty();
+      List<String> redirectUris = asStringList(facebook.get("redirectUris"));
+
+      if (enabled && (clientId == null || clientId.trim().isEmpty())) {
+        throw new ResponseStatusException(
+            HttpStatus.BAD_REQUEST, "oauth_facebook_client_id_required");
+      }
+      if (enabled && !secretSet) {
+        throw new ResponseStatusException(
+            HttpStatus.BAD_REQUEST, "oauth_facebook_client_secret_required");
+      }
+      if (enabled && redirectUris.isEmpty()) {
+        throw new ResponseStatusException(
+            HttpStatus.BAD_REQUEST, "oauth_facebook_redirect_uris_required");
+      }
+
+      if (facebook.isEmpty()) {
+        merged.remove("facebook");
+      } else {
+        merged.put("facebook", facebook);
+      }
+    }
+
     // Pass through other config keys as-is.
     for (Map.Entry<String, Object> entry : patch.entrySet()) {
       String key = entry.getKey();
@@ -454,6 +537,7 @@ public class ProjectService {
       if (key.equals("google")
           || key.equals("github")
           || key.equals("microsoft")
+          || key.equals("facebook")
           || key.equals("redirectUris")) {
         continue;
       }
@@ -577,6 +661,22 @@ public class ProjectService {
         microsoft.put("clientSecret", "********");
       }
       safe.put("microsoft", microsoft);
+    }
+
+    boolean hadFacebook = stored.containsKey("facebook");
+    Map<String, Object> facebook = asObjectMap(safe.get("facebook"));
+    facebook.remove("clientSecret");
+    facebook.remove("clientSecretSet");
+
+    boolean facebookSecretSet =
+        settings.getOauthFacebookClientSecretEnc() != null
+            && !settings.getOauthFacebookClientSecretEnc().trim().isEmpty();
+    if (hadFacebook || facebookSecretSet) {
+      facebook.put("clientSecretSet", facebookSecretSet);
+      if (facebookSecretSet) {
+        facebook.put("clientSecret", "********");
+      }
+      safe.put("facebook", facebook);
     }
 
     return safe;
