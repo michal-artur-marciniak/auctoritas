@@ -9,6 +9,7 @@
 - For end-user password changes that keep the current session, accept `X-Session-Id` (end-user access JWTs don't carry session ids); if selecting a "current" session/token from the DB, use `@Lock(PESSIMISTIC_WRITE)` to avoid races.
 - End-user email verification tokens are stored hashed with 24-hour expiry and a used_at marker; resends mark existing tokens used.
 - For tests that need plaintext verification token/code, call `EndUserEmailVerificationService.issueVerificationToken(...)`; persistence only stores hashes.
+- In Spring Boot 4 tests, prefer overriding beans via `@TestConfiguration` + `@Primary` (e.g., to capture DomainEventPublisher publishes); `@MockBean` isn't available here.
 - Per-service Maven runs should include `-am` to build local libs (e.g. `mvn -pl services/auth-service -am test`) so `dev.auctoritas:common` resolves.
 - Email verification dev logging can be toggled via `auctoritas.auth.email-verification.log-challenge` (defaults true).
 - Gateway SDK routes resolve API keys via /internal/api-keys/resolve and forward X-Project-Id.
@@ -48,4 +49,15 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
   - Patterns discovered: Use `EndUserEmailVerificationService.issueVerificationToken(...)` in tests to get plaintext token+code while persisting only hashes.
   - Gotchas encountered: Verification token lookups use `@Lock(PESSIMISTIC_WRITE)`; clear the EntityManager between steps when asserting persisted state.
   - Useful context: Verification sets `EndUser.emailVerified=true` and marks `EndUserEmailVerificationToken.usedAt` for one-time enforcement.
+---
+
+## 2026-01-27 12:13 - US-004
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented resend verification behavior: generic success response, invalidates prior verification tokens, issues a fresh token+code, emits a domain event, and logs a dev-only stub email payload.
+- Added per-user+project resend abuse controls (max 3/hour) based on recent verification token issuance.
+- Files changed: backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserEmailVerificationService.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/EndUserEmailVerificationTokenRepository.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/messaging/EmailVerificationResentEvent.java, backend/services/auth-service/src/test/java/dev/auctoritas/auth/service/EndUserEmailVerificationServiceTest.java, prd.json, progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Use existing token tables + `createdAt` to implement low-friction rate limits without new schema.
+  - Gotchas encountered: Bean overrides in tests are easiest via `@TestConfiguration` + `@Primary` (this project setup doesn't include `@MockBean`).
+  - Useful context: Resend is intentionally non-enumerating; even rate-limited requests return the same generic success message and simply skip issuing a new token.
 ---

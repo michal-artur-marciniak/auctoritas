@@ -7,37 +7,54 @@ import dev.auctoritas.auth.entity.enduser.EndUser;
 import dev.auctoritas.auth.entity.enduser.EndUserEmailVerificationToken;
 import dev.auctoritas.auth.entity.project.ApiKey;
 import dev.auctoritas.auth.entity.project.Project;
+import dev.auctoritas.auth.messaging.DomainEventPublisher;
+import dev.auctoritas.auth.messaging.EmailVerificationResentEvent;
 import dev.auctoritas.auth.repository.EndUserEmailVerificationTokenRepository;
 import dev.auctoritas.auth.repository.EndUserRepository;
 import jakarta.persistence.LockTimeoutException;
 import jakarta.persistence.PessimisticLockException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import static net.logstash.logback.argument.StructuredArguments.kv;
+
 @Service
 public class EndUserEmailVerificationService {
+  private static final Logger log = LoggerFactory.getLogger(EndUserEmailVerificationService.class);
   private static final String GENERIC_MESSAGE =
       "If an account exists, verification instructions have been sent";
+  private static final int RESEND_MAX_PER_HOUR = 3;
+  private static final Duration RESEND_WINDOW = Duration.ofHours(1);
 
   private final ApiKeyService apiKeyService;
   private final EndUserRepository endUserRepository;
   private final EndUserEmailVerificationTokenRepository verificationTokenRepository;
   private final TokenService tokenService;
+  private final DomainEventPublisher domainEventPublisher;
+  private final boolean logVerificationChallenge;
 
   public EndUserEmailVerificationService(
       ApiKeyService apiKeyService,
       EndUserRepository endUserRepository,
       EndUserEmailVerificationTokenRepository verificationTokenRepository,
-      TokenService tokenService) {
+      TokenService tokenService,
+      DomainEventPublisher domainEventPublisher,
+      @Value("${auctoritas.auth.email-verification.log-challenge:true}") boolean logVerificationChallenge) {
     this.apiKeyService = apiKeyService;
     this.endUserRepository = endUserRepository;
     this.verificationTokenRepository = verificationTokenRepository;
     this.tokenService = tokenService;
+    this.domainEventPublisher = domainEventPublisher;
+    this.logVerificationChallenge = logVerificationChallenge;
   }
 
   @Transactional
@@ -93,15 +110,72 @@ public class EndUserEmailVerificationService {
     Project project = resolvedKey.getProject();
 
     String email = normalizeEmail(requireValue(request.email(), "email_required"));
+    String emailHash = shortenHash(tokenService.hashToken(email));
 
     endUserRepository
-        .findByEmailAndProjectId(email, project.getId())
-        .ifPresent(
+        .findByEmailAndProjectIdForUpdate(email, project.getId())
+        .ifPresentOrElse(
             user -> {
-              if (!Boolean.TRUE.equals(user.getEmailVerified())) {
-                issueVerificationToken(user);
+              if (Boolean.TRUE.equals(user.getEmailVerified())) {
+                log.info(
+                    "email_verification_resend_requested {} {} {}",
+                    kv("projectId", project.getId()),
+                    kv("userId", user.getId()),
+                    kv("outcome", "already_verified"));
+                return;
               }
-            });
+
+              Instant now = Instant.now();
+              Instant since = now.minus(RESEND_WINDOW);
+              long issuedCount =
+                  verificationTokenRepository.countIssuedSince(
+                      user.getId(), project.getId(), since);
+              if (issuedCount >= RESEND_MAX_PER_HOUR) {
+                log.info(
+                    "email_verification_resend_requested {} {} {} {}",
+                    kv("projectId", project.getId()),
+                    kv("userId", user.getId()),
+                    kv("outcome", "rate_limited"),
+                    kv("recentIssued", issuedCount));
+                return;
+              }
+
+              EmailVerificationPayload payload = issueVerificationToken(user);
+
+              EmailVerificationResentEvent event =
+                  new EmailVerificationResentEvent(
+                      project.getId(),
+                      user.getId(),
+                      user.getEmail(),
+                      payload.tokenId(),
+                      payload.expiresAt());
+              try {
+                domainEventPublisher.publish(EmailVerificationResentEvent.EVENT_TYPE, event);
+              } catch (RuntimeException ex) {
+                log.warn(
+                    "email_verification_resend_event_publish_failed {} {}",
+                    kv("projectId", project.getId()),
+                    kv("userId", user.getId()),
+                    ex);
+              }
+
+              if (logVerificationChallenge) {
+                log.info(
+                    "Stub verification email {} {} {} {} {} {}",
+                    kv("projectId", project.getId()),
+                    kv("userId", user.getId()),
+                    kv("email", user.getEmail()),
+                    kv("verificationToken", payload.token()),
+                    kv("verificationCode", payload.code()),
+                    kv("expiresAt", payload.expiresAt()));
+              }
+            },
+            () ->
+                log.info(
+                    "email_verification_resend_requested {} {} {}",
+                    kv("projectId", project.getId()),
+                    kv("emailHash", emailHash),
+                    kv("outcome", "email_not_found")));
 
     return new EndUserEmailVerificationResponse(GENERIC_MESSAGE);
   }
@@ -128,6 +202,17 @@ public class EndUserEmailVerificationService {
 
   private String normalizeEmail(String email) {
     return email.trim().toLowerCase(Locale.ROOT);
+  }
+
+  private String shortenHash(String value) {
+    if (value == null) {
+      return null;
+    }
+    String trimmed = value.trim();
+    if (trimmed.isEmpty()) {
+      return null;
+    }
+    return trimmed.length() <= 12 ? trimmed : trimmed.substring(0, 12);
   }
 
   private String requireValue(String value, String errorCode) {
