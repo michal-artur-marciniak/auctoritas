@@ -23,6 +23,7 @@ public class ApiKeyGatewayFilter implements GlobalFilter, Ordered {
   private static final String SDK_AUTH_PREFIX = "/api/v1/auth/";
   private static final String SDK_USERS_PREFIX = "/api/v1/users/";
   private static final String GOOGLE_OAUTH_CALLBACK_PATH = "/api/v1/auth/oauth/google/callback";
+  private static final String GITHUB_OAUTH_CALLBACK_PATH = "/api/v1/auth/oauth/github/callback";
 
   private final WebClient webClient;
 
@@ -35,7 +36,7 @@ public class ApiKeyGatewayFilter implements GlobalFilter, Ordered {
   @Override
   public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
     String path = exchange.getRequest().getPath().value();
-    if (GOOGLE_OAUTH_CALLBACK_PATH.equals(path)) {
+    if (GOOGLE_OAUTH_CALLBACK_PATH.equals(path) || GITHUB_OAUTH_CALLBACK_PATH.equals(path)) {
       return chain.filter(exchange);
     }
     if (!isSdkPath(path)) {

@@ -39,6 +39,8 @@ public class SecurityConfig {
     "/internal/api-keys/resolve",
     "/internal/oauth/google/authorize",
     "/internal/oauth/google/callback",
+    "/internal/oauth/github/authorize",
+    "/internal/oauth/github/callback",
     "/actuator/health",
     "/.well-known/jwks.json",
     "/.well-known/openid-configuration"

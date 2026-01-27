@@ -37,6 +37,8 @@ class OAuthGatewayFiltersTest {
 
   private static final AtomicReference<String> lastAuthorizeBody = new AtomicReference<>();
   private static final AtomicReference<String> lastCallbackBody = new AtomicReference<>();
+  private static final AtomicReference<String> lastGithubAuthorizeBody = new AtomicReference<>();
+  private static final AtomicReference<String> lastGithubCallbackBody = new AtomicReference<>();
 
   @BeforeAll
   static void startAuthServer() {
@@ -85,12 +87,40 @@ class OAuthGatewayFiltersTest {
                                     .aggregate()
                                     .asString()
                                     .doOnNext(lastCallbackBody::set)
+                                     .then(
+                                         res.status(200)
+                                             .header("Content-Type", "application/json")
+                                             .sendString(
+                                                 Mono.just(
+                                                     "{\"redirectUrl\":\"https://app.example/after?auctoritas_code=abc\"}"))
+                                             .then()))
+                         .post(
+                             "/internal/oauth/github/authorize",
+                             (req, res) ->
+                                 req.receive()
+                                     .aggregate()
+                                    .asString()
+                                    .doOnNext(lastGithubAuthorizeBody::set)
                                     .then(
                                         res.status(200)
                                             .header("Content-Type", "application/json")
                                             .sendString(
                                                 Mono.just(
-                                                    "{\"redirectUrl\":\"https://app.example/after?auctoritas_code=abc\"}"))
+                                                    "{\"clientId\":\"test-github-client-id\"}"))
+                                            .then()))
+                        .post(
+                            "/internal/oauth/github/callback",
+                            (req, res) ->
+                                req.receive()
+                                    .aggregate()
+                                    .asString()
+                                    .doOnNext(lastGithubCallbackBody::set)
+                                    .then(
+                                        res.status(200)
+                                            .header("Content-Type", "application/json")
+                                            .sendString(
+                                                Mono.just(
+                                                    "{\"redirectUrl\":\"https://app.example/after?auctoritas_code=def\"}"))
                                             .then())))
             .bindNow();
 
@@ -202,6 +232,89 @@ class OAuthGatewayFiltersTest {
     assertEquals("google-code", jsonField(bodyJson, "code"));
     assertEquals("oauth-state", jsonField(bodyJson, "state"));
     assertEquals("http://example.test/api/v1/auth/oauth/google/callback", jsonField(bodyJson, "callbackUri"));
+  }
+
+  @Test
+  void github_authorize_withApiKey_redirectsToGitHub_andUsesPkce() throws Exception {
+    ApiKeyGatewayFilter apiKeyFilter = new ApiKeyGatewayFilter(WebClient.builder(), authServiceUrl);
+    GitHubOAuthAuthorizeGatewayFilterFactory authorizeFactory =
+        new GitHubOAuthAuthorizeGatewayFilterFactory(WebClient.builder(), authServiceUrl);
+    GatewayFilter authorizeFilter = authorizeFactory.apply(new GitHubOAuthAuthorizeGatewayFilterFactory.Config());
+
+    MockServerWebExchange exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.get("http://example.test/api/v1/auth/oauth/github/authorize")
+                .header("X-API-Key", API_KEY)
+                .queryParam("redirect_uri", "https://app.example/redirect")
+                .build());
+
+    GatewayFilterChain chain = ex -> authorizeFilter.filter(ex, e -> Mono.empty());
+
+    apiKeyFilter.filter(exchange, chain).block();
+
+    assertEquals(HttpStatus.FOUND, exchange.getResponse().getStatusCode());
+    String location = exchange.getResponse().getHeaders().getFirst(HttpHeaders.LOCATION);
+    assertNotNull(location);
+    assertTrue(location.startsWith("https://github.com/login/oauth/authorize"));
+
+    UriComponents uri = UriComponentsBuilder.fromUriString(location).build(true);
+    assertEquals("test-github-client-id", uri.getQueryParams().getFirst("client_id"));
+    assertEquals(
+        "read:user user:email",
+        URLDecoder.decode(uri.getQueryParams().getFirst("scope"), StandardCharsets.UTF_8));
+    assertEquals("S256", uri.getQueryParams().getFirst("code_challenge_method"));
+    assertEquals(
+        "http://example.test/api/v1/auth/oauth/github/callback",
+        uri.getQueryParams().getFirst("redirect_uri"));
+
+    String state = uri.getQueryParams().getFirst("state");
+    String codeChallenge = uri.getQueryParams().getFirst("code_challenge");
+    assertNotNull(state);
+    assertTrue(!state.isBlank());
+    assertNotNull(codeChallenge);
+    assertTrue(!codeChallenge.isBlank());
+
+    String bodyJson = lastGithubAuthorizeBody.get();
+    assertNotNull(bodyJson);
+    assertEquals(PROJECT_ID.toString(), jsonField(bodyJson, "projectId"));
+    assertEquals("https://app.example/redirect", jsonField(bodyJson, "redirectUri"));
+    assertEquals(state, jsonField(bodyJson, "state"));
+
+    String codeVerifier = jsonField(bodyJson, "codeVerifier");
+    assertTrue(!codeVerifier.isBlank());
+    assertEquals(codeChallenge, computeCodeChallenge(codeVerifier));
+  }
+
+  @Test
+  void github_callback_withoutApiKey_isAllowed_andRedirects() throws Exception {
+    ApiKeyGatewayFilter apiKeyFilter = new ApiKeyGatewayFilter(WebClient.builder(), authServiceUrl);
+    GitHubOAuthCallbackGatewayFilterFactory callbackFactory =
+        new GitHubOAuthCallbackGatewayFilterFactory(WebClient.builder(), authServiceUrl);
+    GatewayFilter callbackFilter = callbackFactory.apply(new GitHubOAuthCallbackGatewayFilterFactory.Config());
+
+    MockServerWebExchange exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.get("http://example.test/api/v1/auth/oauth/github/callback")
+                .queryParam("code", "github-code")
+                .queryParam("state", "oauth-state")
+                .build());
+
+    GatewayFilterChain chain = ex -> callbackFilter.filter(ex, e -> Mono.empty());
+
+    apiKeyFilter.filter(exchange, chain).block();
+
+    assertEquals(HttpStatus.FOUND, exchange.getResponse().getStatusCode());
+    assertEquals(
+        "https://app.example/after?auctoritas_code=def",
+        exchange.getResponse().getHeaders().getFirst(HttpHeaders.LOCATION));
+
+    String bodyJson = lastGithubCallbackBody.get();
+    assertNotNull(bodyJson);
+    assertEquals("github-code", jsonField(bodyJson, "code"));
+    assertEquals("oauth-state", jsonField(bodyJson, "state"));
+    assertEquals(
+        "http://example.test/api/v1/auth/oauth/github/callback",
+        jsonField(bodyJson, "callbackUri"));
   }
 
   private static String computeCodeChallenge(String codeVerifier) throws Exception {
