@@ -36,6 +36,7 @@ public class SecurityConfig {
     "/api/v1/auth/register/verify-email",
     "/api/v1/auth/register/resend-verification",
     "/internal/api-keys/resolve",
+    "/internal/oauth/google/authorize",
     "/actuator/health",
     "/.well-known/jwks.json",
     "/.well-known/openid-configuration"
