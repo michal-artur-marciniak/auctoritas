@@ -36,10 +36,19 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.util.UriComponentsBuilder;
+import dev.auctoritas.auth.service.oauth.GoogleOAuthProvider;
+import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
 
 @DataJpaTest
 @ActiveProfiles("test")
-@Import({JpaConfig.class, TokenService.class, OAuthGoogleCallbackService.class, OAuthGoogleCallbackServiceTest.TestConfig.class})
+@Import({
+  JpaConfig.class,
+  TokenService.class,
+  OAuthProviderRegistry.class,
+  GoogleOAuthProvider.class,
+  OAuthGoogleCallbackService.class,
+  OAuthGoogleCallbackServiceTest.TestConfig.class
+})
 class OAuthGoogleCallbackServiceTest {
 
   @org.springframework.beans.factory.annotation.Autowired private EntityManager entityManager;

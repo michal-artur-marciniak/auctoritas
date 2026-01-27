@@ -10,14 +10,16 @@ import dev.auctoritas.auth.repository.EndUserRepository;
 import dev.auctoritas.auth.repository.OAuthAuthorizationRequestRepository;
 import dev.auctoritas.auth.repository.OAuthConnectionRepository;
 import dev.auctoritas.auth.repository.OAuthExchangeCodeRepository;
+import dev.auctoritas.auth.service.oauth.OAuthProvider;
+import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
+import dev.auctoritas.auth.service.oauth.OAuthTokenExchangeRequest;
+import dev.auctoritas.auth.service.oauth.OAuthUserInfo;
 import java.time.Instant;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.security.crypto.encrypt.TextEncryptor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,8 +36,7 @@ public class OAuthGoogleCallbackService {
   private final OAuthExchangeCodeRepository oauthExchangeCodeRepository;
   private final PasswordEncoder passwordEncoder;
   private final TokenService tokenService;
-  private final TextEncryptor oauthClientSecretEncryptor;
-  private final GoogleOAuthClient googleOAuthClient;
+  private final OAuthProviderRegistry oauthProviderRegistry;
 
   public OAuthGoogleCallbackService(
       OAuthAuthorizationRequestRepository oauthAuthorizationRequestRepository,
@@ -44,16 +45,14 @@ public class OAuthGoogleCallbackService {
       OAuthExchangeCodeRepository oauthExchangeCodeRepository,
       PasswordEncoder passwordEncoder,
       TokenService tokenService,
-      TextEncryptor oauthClientSecretEncryptor,
-      GoogleOAuthClient googleOAuthClient) {
+      OAuthProviderRegistry oauthProviderRegistry) {
     this.oauthAuthorizationRequestRepository = oauthAuthorizationRequestRepository;
     this.endUserRepository = endUserRepository;
     this.oauthConnectionRepository = oauthConnectionRepository;
     this.oauthExchangeCodeRepository = oauthExchangeCodeRepository;
     this.passwordEncoder = passwordEncoder;
     this.tokenService = tokenService;
-    this.oauthClientSecretEncryptor = oauthClientSecretEncryptor;
-    this.googleOAuthClient = googleOAuthClient;
+    this.oauthProviderRegistry = oauthProviderRegistry;
   }
 
   @Transactional
@@ -87,28 +86,22 @@ public class OAuthGoogleCallbackService {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "project_settings_missing");
     }
 
-    GoogleConfig googleConfig = readGoogleConfig(settings);
+    OAuthProvider provider = oauthProviderRegistry.require(PROVIDER);
+    OAuthUserInfo userInfo =
+        provider.exchangeAuthorizationCode(
+            settings,
+            new OAuthTokenExchangeRequest(
+                resolvedCode, resolvedCallbackUri, authRequest.getCodeVerifier()));
 
-    GoogleOAuthClient.GoogleTokenResponse tokenResponse =
-        googleOAuthClient.exchangeAuthorizationCode(
-            new GoogleOAuthClient.GoogleTokenExchangeRequest(
-                resolvedCode,
-                googleConfig.clientId,
-                googleConfig.clientSecret,
-                resolvedCallbackUri,
-                authRequest.getCodeVerifier()));
-
-    GoogleOAuthClient.GoogleUserInfo userInfo =
-        googleOAuthClient.fetchUserInfo(tokenResponse.accessToken());
-
-    String providerUserId = requireValue(userInfo.sub(), "oauth_google_userinfo_failed");
+    String providerUserId = requireValue(userInfo.providerUserId(), "oauth_google_userinfo_failed");
     String email = normalizeEmail(requireValue(userInfo.email(), "oauth_google_userinfo_failed"));
+    String name = userInfo.name();
 
     if (Boolean.FALSE.equals(userInfo.emailVerified())) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_google_email_not_verified");
     }
 
-    EndUser user = resolveOrCreateUser(project, email, userInfo.name(), providerUserId);
+    EndUser user = resolveOrCreateUser(project, email, name, providerUserId);
 
     // Consume the state only after we've successfully linked/created the user.
     oauthAuthorizationRequestRepository.delete(authRequest);
@@ -200,32 +193,6 @@ public class OAuthGoogleCallbackService {
     }
   }
 
-  private GoogleConfig readGoogleConfig(ProjectSettings settings) {
-    Map<String, Object> oauthConfig = settings.getOauthConfig() == null ? Map.of() : settings.getOauthConfig();
-    Object googleObj = oauthConfig.get("google");
-    if (!(googleObj instanceof Map<?, ?> googleRaw)) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_google_not_configured");
-    }
-
-    boolean enabled = Boolean.TRUE.equals(googleRaw.get("enabled"));
-    Object clientIdObj = googleRaw.get("clientId");
-    String clientId = clientIdObj == null ? null : clientIdObj.toString().trim();
-    if (clientId != null && clientId.isEmpty()) {
-      clientId = null;
-    }
-
-    String enc = settings.getOauthGoogleClientSecretEnc();
-    String decrypted = enc == null || enc.trim().isEmpty() ? null : oauthClientSecretEncryptor.decrypt(enc);
-    if (decrypted != null && decrypted.trim().isEmpty()) {
-      decrypted = null;
-    }
-
-    if (!enabled || clientId == null || decrypted == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_google_not_configured");
-    }
-
-    return new GoogleConfig(clientId, decrypted);
-  }
 
   private static String normalizeEmail(String email) {
     return email.trim().toLowerCase(Locale.ROOT);
@@ -250,5 +217,4 @@ public class OAuthGoogleCallbackService {
     return trimmed.isEmpty() ? null : trimmed;
   }
 
-  private record GoogleConfig(String clientId, String clientSecret) {}
 }

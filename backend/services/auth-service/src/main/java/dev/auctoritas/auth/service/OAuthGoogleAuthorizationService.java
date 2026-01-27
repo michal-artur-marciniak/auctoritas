@@ -5,6 +5,9 @@ import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
 import dev.auctoritas.auth.repository.OAuthAuthorizationRequestRepository;
 import dev.auctoritas.auth.repository.ProjectRepository;
+import dev.auctoritas.auth.service.oauth.OAuthAuthorizeDetails;
+import dev.auctoritas.auth.service.oauth.OAuthProvider;
+import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Duration;
@@ -25,14 +28,17 @@ public class OAuthGoogleAuthorizationService {
   private final ProjectRepository projectRepository;
   private final OAuthAuthorizationRequestRepository oauthAuthorizationRequestRepository;
   private final TokenService tokenService;
+  private final OAuthProviderRegistry oauthProviderRegistry;
 
   public OAuthGoogleAuthorizationService(
       ProjectRepository projectRepository,
       OAuthAuthorizationRequestRepository oauthAuthorizationRequestRepository,
-      TokenService tokenService) {
+      TokenService tokenService,
+      OAuthProviderRegistry oauthProviderRegistry) {
     this.projectRepository = projectRepository;
     this.oauthAuthorizationRequestRepository = oauthAuthorizationRequestRepository;
     this.tokenService = tokenService;
+    this.oauthProviderRegistry = oauthProviderRegistry;
   }
 
   @Transactional
@@ -57,10 +63,8 @@ public class OAuthGoogleAuthorizationService {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_redirect_uri_not_allowed");
     }
 
-    GoogleConfig google = readGoogleConfig(oauthConfig);
-    if (!google.enabled || google.clientId == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_google_not_configured");
-    }
+    OAuthProvider provider = oauthProviderRegistry.require(PROVIDER);
+    OAuthAuthorizeDetails details = provider.getAuthorizeDetails(settings);
 
     if (state == null || state.isBlank()) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_state_missing");
@@ -78,7 +82,7 @@ public class OAuthGoogleAuthorizationService {
     request.setExpiresAt(Instant.now().plus(AUTH_REQUEST_TTL));
     oauthAuthorizationRequestRepository.save(request);
 
-    return google.clientId;
+    return details.clientId();
   }
 
   private static boolean isRedirectUriAllowed(Map<String, Object> oauthConfig, String redirectUri) {
@@ -94,22 +98,6 @@ public class OAuthGoogleAuthorizationService {
     return false;
   }
 
-  @SuppressWarnings("unchecked")
-  private static GoogleConfig readGoogleConfig(Map<String, Object> oauthConfig) {
-    Object googleObj = oauthConfig.get("google");
-    if (!(googleObj instanceof Map<?, ?> googleRaw)) {
-      return new GoogleConfig(false, null);
-    }
-    Object enabledObj = ((Map<String, Object>) googleRaw).get("enabled");
-    boolean enabled = enabledObj instanceof Boolean b && b;
-
-    Object clientIdObj = ((Map<String, Object>) googleRaw).get("clientId");
-    String clientId = clientIdObj == null ? null : clientIdObj.toString().trim();
-    if (clientId != null && clientId.isEmpty()) {
-      clientId = null;
-    }
-    return new GoogleConfig(enabled, clientId);
-  }
 
   private static String validateRedirectUri(String raw) {
     if (raw == null) {
@@ -137,5 +125,4 @@ public class OAuthGoogleAuthorizationService {
     }
   }
 
-  private record GoogleConfig(boolean enabled, String clientId) {}
 }
