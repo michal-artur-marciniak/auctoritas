@@ -8,6 +8,8 @@ import dev.auctoritas.auth.entity.enduser.EndUserSession;
 import dev.auctoritas.auth.entity.project.ApiKey;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
+import dev.auctoritas.auth.messaging.DomainEventPublisher;
+import dev.auctoritas.auth.messaging.UserRegisteredEvent;
 import dev.auctoritas.auth.repository.EndUserRefreshTokenRepository;
 import dev.auctoritas.auth.repository.EndUserRepository;
 import dev.auctoritas.auth.repository.EndUserSessionRepository;
@@ -17,14 +19,20 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import static net.logstash.logback.argument.StructuredArguments.kv;
+
 @Service
 public class EndUserRegistrationService {
+  private static final Logger log = LoggerFactory.getLogger(EndUserRegistrationService.class);
   private static final int DEFAULT_MAX_PASSWORD_LENGTH = 128;
   private static final int DEFAULT_MIN_UNIQUE = 4;
 
@@ -36,6 +44,8 @@ public class EndUserRegistrationService {
   private final TokenService tokenService;
   private final JwtService jwtService;
   private final EndUserEmailVerificationService endUserEmailVerificationService;
+  private final DomainEventPublisher domainEventPublisher;
+  private final boolean logVerificationChallenge;
 
   public EndUserRegistrationService(
       ApiKeyService apiKeyService,
@@ -45,7 +55,9 @@ public class EndUserRegistrationService {
       PasswordEncoder passwordEncoder,
       TokenService tokenService,
       JwtService jwtService,
-      EndUserEmailVerificationService endUserEmailVerificationService) {
+      EndUserEmailVerificationService endUserEmailVerificationService,
+      DomainEventPublisher domainEventPublisher,
+      @Value("${auctoritas.auth.email-verification.log-challenge:true}") boolean logVerificationChallenge) {
     this.apiKeyService = apiKeyService;
     this.endUserRepository = endUserRepository;
     this.endUserSessionRepository = endUserSessionRepository;
@@ -54,6 +66,8 @@ public class EndUserRegistrationService {
     this.tokenService = tokenService;
     this.jwtService = jwtService;
     this.endUserEmailVerificationService = endUserEmailVerificationService;
+    this.domainEventPublisher = domainEventPublisher;
+    this.logVerificationChallenge = logVerificationChallenge;
   }
 
   @Transactional
@@ -85,7 +99,46 @@ public class EndUserRegistrationService {
     user.setName(trimToNull(request.name()));
 
     EndUser savedUser = endUserRepository.save(user);
-    endUserEmailVerificationService.issueVerificationToken(savedUser);
+    EndUserEmailVerificationService.EmailVerificationPayload verificationPayload =
+        endUserEmailVerificationService.issueVerificationToken(savedUser);
+
+    log.info(
+        "user_registered {} {} {}",
+        kv("projectId", project.getId()),
+        kv("userId", savedUser.getId()),
+        kv("email", savedUser.getEmail()));
+
+    UserRegisteredEvent event =
+        new UserRegisteredEvent(
+            project.getId(),
+            savedUser.getId(),
+            savedUser.getEmail(),
+            savedUser.getName(),
+            Boolean.TRUE.equals(savedUser.getEmailVerified()),
+            verificationPayload.tokenId(),
+            verificationPayload.expiresAt(),
+            trimToNull(ipAddress),
+            trimToNull(userAgent));
+    try {
+      domainEventPublisher.publish(UserRegisteredEvent.EVENT_TYPE, event);
+    } catch (RuntimeException ex) {
+      log.warn(
+          "user_registered_event_publish_failed {} {}",
+          kv("projectId", project.getId()),
+          kv("userId", savedUser.getId()),
+          ex);
+    }
+
+    if (logVerificationChallenge) {
+      log.info(
+          "Stub verification email {} {} {} {} {} {}",
+          kv("projectId", project.getId()),
+          kv("userId", savedUser.getId()),
+          kv("email", savedUser.getEmail()),
+          kv("verificationToken", verificationPayload.token()),
+          kv("verificationCode", verificationPayload.code()),
+          kv("expiresAt", verificationPayload.expiresAt()));
+    }
 
     Instant refreshExpiresAt = tokenService.getRefreshTokenExpiry();
     String rawRefreshToken = tokenService.generateRefreshToken();

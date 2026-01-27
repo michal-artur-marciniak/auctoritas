@@ -8,6 +8,8 @@
 - Password history enforcement should use ProjectSettings.passwordHistoryCount; treat <=0 as default 5 and compare via PasswordEncoder.matches.
 - For end-user password changes that keep the current session, accept `X-Session-Id` (end-user access JWTs don't carry session ids); if selecting a "current" session/token from the DB, use `@Lock(PESSIMISTIC_WRITE)` to avoid races.
 - End-user email verification tokens are stored hashed with 24-hour expiry and a used_at marker; resends mark existing tokens used.
+- Per-service Maven runs should include `-am` to build local libs (e.g. `mvn -pl services/auth-service -am test`) so `dev.auctoritas:common` resolves.
+- Email verification dev logging can be toggled via `auctoritas.auth.email-verification.log-challenge` (defaults true).
 - Gateway SDK routes resolve API keys via /internal/api-keys/resolve and forward X-Project-Id.
 - Maven modules live under `backend/`; run per-service tests from there (e.g. `mvn -pl services/auth-service test`).
 - Auth-service repository tests rely on Hibernate DDL from entity mappings (keep Flyway migrations and JPA entities in sync).
@@ -23,4 +25,15 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
   - Patterns discovered: If a token must be project-scoped, persist `project_id` explicitly (don't rely on joining through user) and validate it against the API key's project.
   - Gotchas encountered: Auth-service tests run with Flyway disabled and rely on Hibernate DDL; keep entity mappings consistent with new migrations.
   - Useful context: Email verification uses TokenService SHA-256 (Base64url) hashes; raw token/code never touch the DB and codes expire after 24h.
+---
+
+## 2026-01-27 11:50 - US-002
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- On end-user registration, issued an email verification token+code (hashed persistence) and emitted the `user.registered` domain event.
+- Added dev stub logging for verification email payload (includes plaintext code+token).
+- Files changed: backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserRegistrationService.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/messaging/UserRegisteredEvent.java, backend/services/auth-service/src/test/java/dev/auctoritas/auth/service/EndUserRegistrationServiceTest.java, prd.json, progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: Prefer emitting domain events from the service layer (not controllers) and keep secrets out of the event payload; log dev-only secrets behind a property.
+  - Gotchas encountered: `mvn -pl services/auth-service test` can fail if local modules aren't installed; use `-am` to build reactor deps.
+  - Useful context: Registration now logs a "Stub verification email" entry with `verificationToken` + `verificationCode` when `auctoritas.auth.email-verification.log-challenge=true`.
 ---
