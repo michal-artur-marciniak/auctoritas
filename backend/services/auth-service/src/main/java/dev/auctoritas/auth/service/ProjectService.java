@@ -352,13 +352,109 @@ public class ProjectService {
       }
     }
 
+    // microsoft: enabled/clientId/tenant/redirectUris in config, clientSecret encrypted in column
+    if (patch.containsKey("microsoft")) {
+      Object microsoftObj = patch.get("microsoft");
+      if (!(microsoftObj instanceof Map<?, ?> microsoftRaw)) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_microsoft_config_invalid");
+      }
+
+      Map<String, Object> existingMicrosoft = asObjectMap(merged.get("microsoft"));
+      Map<String, Object> microsoft = new HashMap<>(existingMicrosoft);
+
+      if (microsoftRaw.containsKey("enabled")) {
+        Boolean enabled = asBoolean(microsoftRaw.get("enabled"));
+        if (enabled == null) {
+          throw new ResponseStatusException(
+              HttpStatus.BAD_REQUEST, "oauth_microsoft_enabled_invalid");
+        }
+        microsoft.put("enabled", enabled);
+      }
+
+      if (microsoftRaw.containsKey("clientId")) {
+        String clientId = asTrimmedString(microsoftRaw.get("clientId"));
+        if (clientId == null) {
+          microsoft.remove("clientId");
+        } else {
+          microsoft.put("clientId", clientId);
+        }
+      }
+
+      if (microsoftRaw.containsKey("tenant")) {
+        String tenant = asTrimmedString(microsoftRaw.get("tenant"));
+        if (tenant == null) {
+          microsoft.remove("tenant");
+        } else {
+          microsoft.put("tenant", tenant);
+        }
+      }
+
+      if (microsoftRaw.containsKey("redirectUris")) {
+        List<String> allowlist = asStringList(merged.get("redirectUris"));
+        List<String> redirectUris = normalizeRedirectUris(microsoftRaw.get("redirectUris"));
+        for (String uri : redirectUris) {
+          if (!allowlist.contains(uri)) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST, "oauth_microsoft_redirect_uri_not_allowed");
+          }
+        }
+        if (redirectUris.isEmpty()) {
+          microsoft.remove("redirectUris");
+        } else {
+          microsoft.put("redirectUris", redirectUris);
+        }
+      }
+
+      // Never store plaintext secrets in oauth_config.
+      microsoft.remove("clientSecret");
+      microsoft.remove("clientSecretSet");
+
+      if (microsoftRaw.containsKey("clientSecret")) {
+        String secret = asTrimmedStringAllowEmpty(microsoftRaw.get("clientSecret"));
+        if (secret == null || secret.isEmpty()) {
+          settings.setOauthMicrosoftClientSecretEnc(null);
+        } else {
+          settings.setOauthMicrosoftClientSecretEnc(oauthClientSecretEncryptor.encrypt(secret));
+        }
+      }
+
+      boolean enabled = Boolean.TRUE.equals(microsoft.get("enabled"));
+      String clientId = microsoft.get("clientId") instanceof String s ? s : null;
+      boolean secretSet =
+          settings.getOauthMicrosoftClientSecretEnc() != null
+              && !settings.getOauthMicrosoftClientSecretEnc().trim().isEmpty();
+      List<String> redirectUris = asStringList(microsoft.get("redirectUris"));
+
+      if (enabled && (clientId == null || clientId.trim().isEmpty())) {
+        throw new ResponseStatusException(
+            HttpStatus.BAD_REQUEST, "oauth_microsoft_client_id_required");
+      }
+      if (enabled && !secretSet) {
+        throw new ResponseStatusException(
+            HttpStatus.BAD_REQUEST, "oauth_microsoft_client_secret_required");
+      }
+      if (enabled && redirectUris.isEmpty()) {
+        throw new ResponseStatusException(
+            HttpStatus.BAD_REQUEST, "oauth_microsoft_redirect_uris_required");
+      }
+
+      if (microsoft.isEmpty()) {
+        merged.remove("microsoft");
+      } else {
+        merged.put("microsoft", microsoft);
+      }
+    }
+
     // Pass through other config keys as-is.
     for (Map.Entry<String, Object> entry : patch.entrySet()) {
       String key = entry.getKey();
       if (key == null) {
         continue;
       }
-      if (key.equals("google") || key.equals("github") || key.equals("redirectUris")) {
+      if (key.equals("google")
+          || key.equals("github")
+          || key.equals("microsoft")
+          || key.equals("redirectUris")) {
         continue;
       }
       merged.put(key, entry.getValue());
@@ -465,6 +561,22 @@ public class ProjectService {
         github.put("clientSecret", "********");
       }
       safe.put("github", github);
+    }
+
+    boolean hadMicrosoft = stored.containsKey("microsoft");
+    Map<String, Object> microsoft = asObjectMap(safe.get("microsoft"));
+    microsoft.remove("clientSecret");
+    microsoft.remove("clientSecretSet");
+
+    boolean microsoftSecretSet =
+        settings.getOauthMicrosoftClientSecretEnc() != null
+            && !settings.getOauthMicrosoftClientSecretEnc().trim().isEmpty();
+    if (hadMicrosoft || microsoftSecretSet) {
+      microsoft.put("clientSecretSet", microsoftSecretSet);
+      if (microsoftSecretSet) {
+        microsoft.put("clientSecret", "********");
+      }
+      safe.put("microsoft", microsoft);
     }
 
     return safe;

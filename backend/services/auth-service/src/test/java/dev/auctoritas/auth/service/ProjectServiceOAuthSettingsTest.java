@@ -115,4 +115,65 @@ class ProjectServiceOAuthSettingsTest {
                     org.getId(), project.getId(), principal, new ProjectOAuthSettingsRequest(config)))
         .hasMessageContaining("oauth_github_redirect_uri_not_allowed");
   }
+
+  @Test
+  void updateOAuthSettingsStoresMicrosoftSecretEncryptedAndMasksInResponse() {
+    Map<String, Object> microsoft = new HashMap<>();
+    microsoft.put("enabled", true);
+    microsoft.put("clientId", "ms-client-id");
+    microsoft.put("tenant", "common");
+    microsoft.put("clientSecret", "ms-client-secret");
+    microsoft.put("redirectUris", List.of("https://app.example.com/ms/callback"));
+
+    Map<String, Object> config = new HashMap<>();
+    config.put("redirectUris", List.of("https://app.example.com/ms/callback"));
+    config.put("microsoft", microsoft);
+
+    var response =
+        projectService.updateOAuthSettings(
+            org.getId(), project.getId(), principal, new ProjectOAuthSettingsRequest(config));
+
+    ProjectSettings persisted =
+        entityManager
+            .createQuery(
+                "select s from ProjectSettings s join fetch s.project p where p.id = :pid",
+                ProjectSettings.class)
+            .setParameter("pid", project.getId())
+            .getSingleResult();
+
+    assertThat(persisted.getOauthMicrosoftClientSecretEnc()).isNotBlank();
+    assertThat(persisted.getOauthMicrosoftClientSecretEnc()).isNotEqualTo("ms-client-secret");
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> storedMicrosoft =
+        (Map<String, Object>) ((Map<String, Object>) persisted.getOauthConfig()).get("microsoft");
+    assertThat(storedMicrosoft).doesNotContainKey("clientSecret");
+    assertThat(storedMicrosoft).doesNotContainKey("clientSecretSet");
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> safeMicrosoft =
+        (Map<String, Object>) response.oauthConfig().get("microsoft");
+    assertThat(safeMicrosoft.get("clientSecretSet")).isEqualTo(true);
+    assertThat(safeMicrosoft.get("clientSecret")).isEqualTo("********");
+    assertThat(safeMicrosoft.get("tenant")).isEqualTo("common");
+  }
+
+  @Test
+  void updateOAuthSettingsRejectsMicrosoftRedirectUriNotInAllowlist() {
+    Map<String, Object> microsoft = new HashMap<>();
+    microsoft.put("enabled", true);
+    microsoft.put("clientId", "ms-client-id");
+    microsoft.put("clientSecret", "ms-client-secret");
+    microsoft.put("redirectUris", List.of("https://not-allowed.example.com/ms/callback"));
+
+    Map<String, Object> config = new HashMap<>();
+    config.put("redirectUris", List.of("https://app.example.com/ms/callback"));
+    config.put("microsoft", microsoft);
+
+    assertThatThrownBy(
+            () ->
+                projectService.updateOAuthSettings(
+                    org.getId(), project.getId(), principal, new ProjectOAuthSettingsRequest(config)))
+        .hasMessageContaining("oauth_microsoft_redirect_uri_not_allowed");
+  }
 }

@@ -29,6 +29,7 @@
 - When linking OAuth identities, set `EndUser.emailVerified=true` only when the provider asserts the email is verified; do not link existing users by unverified email.
 - Keep OAuth account linking provider-agnostic in `OAuthAccountLinkingService` (providers should only map userinfo, not enforce linking rules).
 - OAuth provider `clientSecret` values are stored encrypted in `ProjectSettings` columns (never in `oauth_config`); API responses return `clientSecretSet` + masked `clientSecret`.
+- When adding a new OAuth provider to project settings, update both `ProjectService.updateOAuthSettings(...)` (patch/validation/encryption) and `ProjectService.toSafeOauthConfig(...)` (masking), and add a Flyway migration for the encrypted secret column.
 
 ## 2026-01-27 21:50 CET - US-001
 Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
@@ -70,4 +71,16 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
 - Gateway-service: added `GitHubOAuthAuthorizeGatewayFilterFactory` + `GitHubOAuthCallbackGatewayFilterFactory`, routes for `/api/v1/auth/oauth/github/authorize|callback`, and skipped API key enforcement on the public callback path.
 - Tests: added auth-service `OAuthGitHubCallbackServiceTest`; updated gateway `OAuthGatewayFiltersTest` for GitHub; fixed a test syntax error; ran `mvn -pl services/auth-service -am test` and `mvn -pl services/gateway-service -am test`.
 - Files changed: `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/oauth/GitHubOAuthProvider.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/GitHubOAuthClient.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/DefaultGitHubOAuthClient.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/OAuthGitHubAuthorizationService.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/OAuthGitHubCallbackService.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/InternalGitHubOAuthController.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/InternalGitHubAuthorizeRequest.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/InternalGitHubAuthorizeResponse.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/InternalGitHubCallbackRequest.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/InternalGitHubCallbackResponse.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/config/SecurityConfig.java`, `backend/services/auth-service/src/test/java/dev/auctoritas/auth/service/OAuthGitHubCallbackServiceTest.java`, `backend/services/gateway-service/src/main/java/dev/auctoritas/gateway/filter/GitHubOAuthAuthorizeGatewayFilterFactory.java`, `backend/services/gateway-service/src/main/java/dev/auctoritas/gateway/filter/GitHubOAuthCallbackGatewayFilterFactory.java`, `backend/services/gateway-service/src/main/java/dev/auctoritas/gateway/filter/ApiKeyGatewayFilter.java`, `backend/services/gateway-service/src/main/resources/application.yml`, `backend/services/gateway-service/src/test/java/dev/auctoritas/gateway/filter/OAuthGatewayFiltersTest.java`, `prd.json`, `progress.txt`.
+---
+
+## 2026-01-27 22:32 CET - US-005
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Added Microsoft OAuth project settings support (enabled/clientId/tenant/redirectUris) with `clientSecret` stored encrypted at rest.
+- Ensured API responses never return the plaintext secret (return `clientSecretSet` + masked `clientSecret`) and never persist plaintext secrets in `oauth_config`.
+- Added allowlist validation so Microsoft `redirectUris` must be a subset of the project's OAuth `redirectUris` allowlist.
+- Tests: extended `ProjectServiceOAuthSettingsTest` for Microsoft secret masking + allowlist enforcement; ran `mvn -pl services/auth-service -am test`.
+- Files changed: `backend/services/auth-service/src/main/java/dev/auctoritas/auth/entity/project/ProjectSettings.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/ProjectService.java`, `backend/services/auth-service/src/main/resources/db/migration/V23__project_settings_microsoft_oauth_secret.sql`, `backend/services/auth-service/src/test/java/dev/auctoritas/auth/service/ProjectServiceOAuthSettingsTest.java`, `prd.json`, `progress.txt`.
+- **Learnings for future iterations:**
+  - Follow the existing provider settings pattern: secrets in encrypted `ProjectSettings` columns; provider config in `oauth_config`; masking is centralized in `ProjectService.toSafeOauthConfig(...)`.
+  - Provider `redirectUris` should be validated against the top-level OAuth allowlist to prevent misconfig/security drift.
 ---
