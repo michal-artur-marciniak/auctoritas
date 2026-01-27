@@ -39,8 +39,8 @@ public class OAuthAuthorizationRequestEntityListener {
       return;
     }
 
-    // Avoid double-encrypting on updates; Encryptors.delux produces hex ciphertext.
-    if (isLikelyEncrypted(trimmed)) {
+    // Avoid double-encrypting on updates.
+    if (isEncryptedValue(trimmed, encryptor)) {
       if (!trimmed.equals(raw)) {
         entity.setCodeVerifier(trimmed);
       }
@@ -50,24 +50,12 @@ public class OAuthAuthorizationRequestEntityListener {
     entity.setCodeVerifier(encryptor.encrypt(trimmed));
   }
 
-  private static boolean isLikelyEncrypted(String value) {
-    if (value == null) {
+  private static boolean isEncryptedValue(String value, TextEncryptor encryptor) {
+    try {
+      encryptor.decrypt(value);
+      return true;
+    } catch (Exception ex) {
       return false;
     }
-    int len = value.length();
-    if (len < 32 || (len % 2) != 0) {
-      return false;
-    }
-    for (int i = 0; i < len; i++) {
-      char c = value.charAt(i);
-      boolean hex =
-          (c >= '0' && c <= '9')
-              || (c >= 'a' && c <= 'f')
-              || (c >= 'A' && c <= 'F');
-      if (!hex) {
-        return false;
-      }
-    }
-    return true;
   }
 }

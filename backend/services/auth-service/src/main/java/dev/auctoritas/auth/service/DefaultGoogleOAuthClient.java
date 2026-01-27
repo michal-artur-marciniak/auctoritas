@@ -39,7 +39,7 @@ public class DefaultGoogleOAuthClient implements GoogleOAuthClient {
     form.add("client_id", value(request.clientId()));
     form.add("client_secret", value(request.clientSecret()));
     form.add("redirect_uri", value(request.redirectUri()));
-    form.add("code_verifier", decryptCodeVerifierIfNeeded(value(request.codeVerifier())));
+    form.add("code_verifier", decryptCodeVerifier(value(request.codeVerifier())));
 
     try {
       GoogleTokenResponse response =
@@ -84,36 +84,13 @@ public class DefaultGoogleOAuthClient implements GoogleOAuthClient {
     }
   }
 
-  private String decryptCodeVerifierIfNeeded(String codeVerifier) {
-    if (!isLikelyEncrypted(codeVerifier)) {
-      return codeVerifier;
-    }
+  private String decryptCodeVerifier(String codeVerifier) {
     try {
       return oauthClientSecretEncryptor.decrypt(codeVerifier);
     } catch (Exception ex) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_google_exchange_failed", ex);
+      // Backward compatibility if an older row stored plaintext.
+      return codeVerifier;
     }
-  }
-
-  private static boolean isLikelyEncrypted(String value) {
-    if (value == null) {
-      return false;
-    }
-    int len = value.length();
-    if (len < 32 || (len % 2) != 0) {
-      return false;
-    }
-    for (int i = 0; i < len; i++) {
-      char c = value.charAt(i);
-      boolean hex =
-          (c >= '0' && c <= '9')
-              || (c >= 'a' && c <= 'f')
-              || (c >= 'A' && c <= 'F');
-      if (!hex) {
-        return false;
-      }
-    }
-    return true;
   }
 
   private static String value(String s) {
