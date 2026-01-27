@@ -37,5 +37,10 @@ auctoritas:
       enabled: false
 
   auth:
+    oauth:
+      encryption:
+        key: test-oauth-encryption-key
+        salt: 0123456789abcdef
+
     password-reset:
       log-token: false

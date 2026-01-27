@@ -1,0 +1,219 @@
+package dev.auctoritas.gateway.filter;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.Base64;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.springframework.cloud.gateway.filter.GatewayFilter;
+import org.springframework.cloud.gateway.filter.GatewayFilterChain;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
+import org.springframework.mock.web.server.MockServerWebExchange;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.util.UriComponents;
+import org.springframework.web.util.UriComponentsBuilder;
+import reactor.core.publisher.Mono;
+import reactor.netty.DisposableServer;
+import reactor.netty.http.server.HttpServer;
+
+class OAuthGatewayFiltersTest {
+  private static final UUID PROJECT_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
+  private static final String API_KEY = "test-api-key";
+
+  private static DisposableServer authServer;
+  private static String authServiceUrl;
+
+  private static final AtomicReference<String> lastAuthorizeBody = new AtomicReference<>();
+  private static final AtomicReference<String> lastCallbackBody = new AtomicReference<>();
+
+  @BeforeAll
+  static void startAuthServer() {
+    authServer =
+        HttpServer.create()
+            .host("127.0.0.1")
+            .port(0)
+            .route(
+                routes ->
+                    routes
+                        .post(
+                            "/internal/api-keys/resolve",
+                            (req, res) -> {
+                              String apiKey = req.requestHeaders().get("X-API-Key");
+                              if (!API_KEY.equals(apiKey)) {
+                                return res
+                                    .status(401)
+                                    .header("Content-Type", "application/json")
+                                    .sendString(Mono.just("{\"error\":\"api_key_invalid\"}"));
+                              }
+                              return res
+                                  .status(200)
+                                  .header("Content-Type", "application/json")
+                                  .sendString(
+                                      Mono.just(
+                                          "{\"projectId\":\"" + PROJECT_ID + "\"}"));
+                            })
+                        .post(
+                            "/internal/oauth/google/authorize",
+                            (req, res) ->
+                                req.receive()
+                                    .aggregate()
+                                    .asString()
+                                    .doOnNext(lastAuthorizeBody::set)
+                                    .then(
+                                        res.status(200)
+                                            .header("Content-Type", "application/json")
+                                            .sendString(
+                                                Mono.just(
+                                                    "{\"clientId\":\"test-google-client-id\"}"))
+                                            .then()))
+                        .post(
+                            "/internal/oauth/google/callback",
+                            (req, res) ->
+                                req.receive()
+                                    .aggregate()
+                                    .asString()
+                                    .doOnNext(lastCallbackBody::set)
+                                    .then(
+                                        res.status(200)
+                                            .header("Content-Type", "application/json")
+                                            .sendString(
+                                                Mono.just(
+                                                    "{\"redirectUrl\":\"https://app.example/after?auctoritas_code=abc\"}"))
+                                            .then())))
+            .bindNow();
+
+    authServiceUrl = "http://127.0.0.1:" + authServer.port();
+  }
+
+  @AfterAll
+  static void stopAuthServer() {
+    if (authServer != null) {
+      authServer.disposeNow();
+    }
+  }
+
+  @Test
+  void authorize_missingApiKey_returns401() {
+    ApiKeyGatewayFilter apiKeyFilter = new ApiKeyGatewayFilter(WebClient.builder(), authServiceUrl);
+
+    MockServerWebExchange exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.get(
+                    "http://example.test/api/v1/auth/oauth/google/authorize?redirect_uri=https://app.example/redirect")
+                .build());
+
+    GatewayFilterChain chain = ex -> Mono.error(new AssertionError("chain should not be called"));
+
+    apiKeyFilter.filter(exchange, chain).block();
+
+    assertEquals(HttpStatus.UNAUTHORIZED, exchange.getResponse().getStatusCode());
+  }
+
+  @Test
+  void authorize_withApiKey_redirectsToGoogle_andUsesPkce() throws Exception {
+    ApiKeyGatewayFilter apiKeyFilter = new ApiKeyGatewayFilter(WebClient.builder(), authServiceUrl);
+    GoogleOAuthAuthorizeGatewayFilterFactory authorizeFactory =
+        new GoogleOAuthAuthorizeGatewayFilterFactory(WebClient.builder(), authServiceUrl);
+    GatewayFilter authorizeFilter =
+        authorizeFactory.apply(new GoogleOAuthAuthorizeGatewayFilterFactory.Config());
+
+    MockServerWebExchange exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.get("http://example.test/api/v1/auth/oauth/google/authorize")
+                .header("X-API-Key", API_KEY)
+                .queryParam("redirect_uri", "https://app.example/redirect")
+                .build());
+
+    GatewayFilterChain chain = ex -> authorizeFilter.filter(ex, e -> Mono.empty());
+
+    apiKeyFilter.filter(exchange, chain).block();
+
+    assertEquals(HttpStatus.FOUND, exchange.getResponse().getStatusCode());
+    String location = exchange.getResponse().getHeaders().getFirst(HttpHeaders.LOCATION);
+    assertNotNull(location);
+    assertTrue(location.startsWith("https://accounts.google.com/o/oauth2/v2/auth"));
+
+    UriComponents uri = UriComponentsBuilder.fromUriString(location).build(true);
+    assertEquals("test-google-client-id", uri.getQueryParams().getFirst("client_id"));
+    assertEquals("code", uri.getQueryParams().getFirst("response_type"));
+    assertEquals(
+        "openid email profile",
+        URLDecoder.decode(uri.getQueryParams().getFirst("scope"), StandardCharsets.UTF_8));
+    assertEquals("S256", uri.getQueryParams().getFirst("code_challenge_method"));
+    assertEquals(
+        "http://example.test/api/v1/auth/oauth/google/callback",
+        uri.getQueryParams().getFirst("redirect_uri"));
+
+    String state = uri.getQueryParams().getFirst("state");
+    String codeChallenge = uri.getQueryParams().getFirst("code_challenge");
+    assertNotNull(state);
+    assertTrue(!state.isBlank());
+    assertNotNull(codeChallenge);
+    assertTrue(!codeChallenge.isBlank());
+
+    String bodyJson = lastAuthorizeBody.get();
+    assertNotNull(bodyJson);
+    assertEquals(PROJECT_ID.toString(), jsonField(bodyJson, "projectId"));
+    assertEquals("https://app.example/redirect", jsonField(bodyJson, "redirectUri"));
+    assertEquals(state, jsonField(bodyJson, "state"));
+
+    String codeVerifier = jsonField(bodyJson, "codeVerifier");
+    assertTrue(!codeVerifier.isBlank());
+    assertEquals(codeChallenge, computeCodeChallenge(codeVerifier));
+  }
+
+  @Test
+  void callback_withoutApiKey_isAllowed_andRedirects() throws Exception {
+    ApiKeyGatewayFilter apiKeyFilter = new ApiKeyGatewayFilter(WebClient.builder(), authServiceUrl);
+    GoogleOAuthCallbackGatewayFilterFactory callbackFactory =
+        new GoogleOAuthCallbackGatewayFilterFactory(WebClient.builder(), authServiceUrl);
+    GatewayFilter callbackFilter = callbackFactory.apply(new GoogleOAuthCallbackGatewayFilterFactory.Config());
+
+    MockServerWebExchange exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.get("http://example.test/api/v1/auth/oauth/google/callback")
+                .queryParam("code", "google-code")
+                .queryParam("state", "oauth-state")
+                .build());
+
+    GatewayFilterChain chain = ex -> callbackFilter.filter(ex, e -> Mono.empty());
+
+    apiKeyFilter.filter(exchange, chain).block();
+
+    assertEquals(HttpStatus.FOUND, exchange.getResponse().getStatusCode());
+    assertEquals(
+        "https://app.example/after?auctoritas_code=abc",
+        exchange.getResponse().getHeaders().getFirst(HttpHeaders.LOCATION));
+
+    String bodyJson = lastCallbackBody.get();
+    assertNotNull(bodyJson);
+    assertEquals("google-code", jsonField(bodyJson, "code"));
+    assertEquals("oauth-state", jsonField(bodyJson, "state"));
+    assertEquals("http://example.test/api/v1/auth/oauth/google/callback", jsonField(bodyJson, "callbackUri"));
+  }
+
+  private static String computeCodeChallenge(String codeVerifier) throws Exception {
+    MessageDigest digest = MessageDigest.getInstance("SHA-256");
+    byte[] hash = digest.digest(codeVerifier.getBytes(StandardCharsets.US_ASCII));
+    return Base64.getUrlEncoder().withoutPadding().encodeToString(hash);
+  }
+
+  private static String jsonField(String json, String field) {
+    Pattern p = Pattern.compile("\"" + Pattern.quote(field) + "\"\\s*:\\s*\"([^\"]*)\"");
+    Matcher m = p.matcher(json);
+    assertTrue(m.find(), "Missing JSON field: " + field + " in: " + json);
+    return m.group(1);
+  }
+}

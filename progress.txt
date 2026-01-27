@@ -11,66 +11,61 @@
 - End-user email verification tokens are stored hashed with 24-hour expiry and a used_at marker; resends mark existing tokens used.
 - For tests that need plaintext verification token/code, call `EndUserEmailVerificationService.issueVerificationToken(...)`; persistence only stores hashes.
 - In Spring Boot 4 tests, prefer overriding beans via `@TestConfiguration` + `@Primary` (e.g., to capture DomainEventPublisher publishes); `@MockBean` isn't available here.
+- For JPA repository constraint tests, persist duplicates then assert `entityManager.flush()` throws `jakarta.persistence.PersistenceException`.
 - Per-service Maven runs should include `-am` to build local libs (e.g. `mvn -pl services/auth-service -am test`) so `dev.auctoritas:common` resolves.
 - Email verification dev logging can be toggled via `auctoritas.auth.email-verification.log-challenge` (defaults true).
 - Project auth settings are updated via `PUT /api/v1/org/{orgId}/projects/{projectId}/settings/auth`.
 - Gateway SDK routes resolve API keys via /internal/api-keys/resolve and forward X-Project-Id.
+- For gateway endpoints that need dynamic responses (e.g., OAuth redirects), implement a `*GatewayFilterFactory` and attach it to a dedicated route so route filters (like `RequestRateLimiter`) still apply.
+- New auth-service `/internal/**` endpoints used by gateway must be added to `SecurityConfig.PUBLIC_ENDPOINTS` (they return `{"error":...}` via `ApiExceptionHandler`).
+- Any API-key-only `/api/v1/**` endpoint (no end-user JWT yet) must be added to `SecurityConfig.PUBLIC_ENDPOINTS`, otherwise Spring Security will reject the request before ApiKeyService runs.
 - Maven modules live under `backend/`; run per-service tests from there (e.g. `mvn -pl services/auth-service test`).
 - Auth-service repository tests rely on Hibernate DDL from entity mappings (keep Flyway migrations and JPA entities in sync).
+- Auth-service Spring tests may load `src/test/resources/application-test.yml` even when `src/main/resources/application-test.yml` exists; add required properties for new beans there to avoid ApplicationContext failures.
 - Domain events from auth-service use DomainEventPublisher; RabbitMQ publishes JSON to the default exchange with routing key = event type (disable in tests via `auctoritas.messaging.rabbit.enabled=false` and `spring.rabbitmq.dynamic=false`).
 - For structured service logs, prefer `StructuredArguments.kv(...)` so LogstashEncoder emits searchable JSON fields; correlation id is carried via MDC key `correlationId`.
 - In JPA tests, if you `entityManager.clear()`, re-fetch entities (find/getReference) before persisting new rows with @ManyToOne relations.
+- When linking OAuth identities, treat a successful provider login as email verification: set `EndUser.emailVerified=true` (and optionally populate missing `name`).
 
-## 2026-01-27 11:35 - US-001
+## 2026-01-27 14:18 CET - US-001
 Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
-- Added project-scoped email verification token persistence via the new `email_verification_tokens` table and aligned JPA mappings.
-- Files changed: backend/services/auth-service/src/main/resources/db/migration/V15__email_verification_tokens.sql, backend/services/auth-service/src/main/java/dev/auctoritas/auth/entity/enduser/EndUserEmailVerificationToken.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserEmailVerificationService.java, prd.json, progress.txt
+- Added persisted OAuth connections for end users (JPA entity + repository) and Flyway migration for `oauth_connections`.
+- Files changed: `backend/services/auth-service/src/main/java/dev/auctoritas/auth/entity/oauth/OAuthConnection.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/OAuthConnectionRepository.java`, `backend/services/auth-service/src/main/resources/db/migration/V18__oauth_connections.sql`, `backend/services/auth-service/src/test/java/dev/auctoritas/auth/repository/OAuthConnectionRepositoryTest.java`, `prd.json`, `progress.txt`.
 - **Learnings for future iterations:**
-  - Patterns discovered: If a token must be project-scoped, persist `project_id` explicitly (don't rely on joining through user) and validate it against the API key's project.
-  - Gotchas encountered: Auth-service tests run with Flyway disabled and rely on Hibernate DDL; keep entity mappings consistent with new migrations.
-  - Useful context: Email verification uses TokenService SHA-256 (Base64url) hashes; raw token/code never touch the DB and codes expire after 24h.
+  - New auth-service persistence should update both Flyway and JPA entity mappings; tests use Hibernate DDL, prod/dev use Flyway + `ddl-auto: validate`.
+  - For unique constraint enforcement in JPA tests, `entityManager.flush()` is the point where the constraint violation surfaces.
 ---
 
-## 2026-01-27 11:50 - US-002
+## 2026-01-27 15:02 CET - US-002
 Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
-- On end-user registration, issued an email verification token+code (hashed persistence) and emitted the `user.registered` domain event.
-- Added dev stub logging for verification email payload (includes plaintext code+token).
-- Files changed: backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserRegistrationService.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/messaging/UserRegisteredEvent.java, backend/services/auth-service/src/test/java/dev/auctoritas/auth/service/EndUserRegistrationServiceTest.java, prd.json, progress.txt
+- Implemented per-project Google OAuth config with redirect URI allowlist; clientSecret stored encrypted-at-rest and never returned in full.
+- Files changed: `backend/services/auth-service/src/main/java/dev/auctoritas/auth/entity/project/ProjectSettings.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/ProjectService.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/config/OAuthCryptoConfig.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/config/OAuthEncryptionProperties.java`, `backend/services/auth-service/src/main/resources/db/migration/V19__project_settings_google_oauth_secret.sql`, `backend/services/auth-service/src/main/resources/application-dev.yml`, `backend/services/auth-service/src/main/resources/application-prod.yml`, `backend/services/auth-service/src/main/resources/application-test.yml`, `backend/services/auth-service/src/test/resources/application-test.yml`, `backend/services/auth-service/src/test/java/dev/auctoritas/auth/config/OAuthCryptoConfigTest.java`, `prd.json`, `progress.txt`.
 - **Learnings for future iterations:**
-  - Patterns discovered: Prefer emitting domain events from the service layer (not controllers) and keep secrets out of the event payload; log dev-only secrets behind a property.
-  - Gotchas encountered: `mvn -pl services/auth-service test` can fail if local modules aren't installed; use `-am` to build reactor deps.
-  - Useful context: Registration now logs a "Stub verification email" entry with `verificationToken` + `verificationCode` when `auctoritas.auth.email-verification.log-challenge=true`.
+  - Store OAuth client secrets outside JSON config and always sanitize API responses; expose `clientSecretSet` + masked placeholder only.
+  - When adding new required Spring beans (e.g. encryptors), wire test profile properties in `src/test/resources/application-test.yml` to keep ApplicationContext loading.
+
+## 2026-01-27 15:20 CET - US-003
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented `GET /api/v1/auth/oauth/google/authorize?redirect_uri=...` to generate state + PKCE and 302-redirect to Google's authorize URL.
+- Persisted the OAuth authorization request server-side (state hash + PKCE verifier + app redirect URI, TTL 10m) via auth-service internal endpoint.
+- Files changed: `backend/services/gateway-service/src/main/java/dev/auctoritas/gateway/filter/GoogleOAuthAuthorizeGatewayFilterFactory.java`, `backend/services/gateway-service/src/main/resources/application.yml`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/InternalGoogleOAuthController.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/InternalGoogleAuthorizeRequest.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/InternalGoogleAuthorizeResponse.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/OAuthGoogleAuthorizationService.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/entity/oauth/OAuthAuthorizationRequest.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/OAuthAuthorizationRequestRepository.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/config/SecurityConfig.java`, `backend/services/auth-service/src/main/resources/db/migration/V20__oauth_authorization_requests.sql`, `prd.json`, `progress.txt`.
+- **Learnings for future iterations:**
+  - OAuth start is best implemented as a gateway route filter (not a controller) so rate limiting and global gateway filters still apply.
+  - Any new auth-service `/internal/**` endpoint used by gateway must be whitelisted in `SecurityConfig.PUBLIC_ENDPOINTS` or calls will fail with 401.
 ---
 
-## 2026-01-27 12:05 - US-003
+## 2026-01-27 15:23 CET - US-004
 Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
-- Verified the email verification flow: correct token+code marks the user as verified and invalidates the token.
-- Added coverage for error cases (reused token, expired token, mismatched code).
-- Files changed: backend/services/auth-service/src/test/java/dev/auctoritas/auth/service/EndUserEmailVerificationServiceTest.java, prd.json, progress.txt
+- Hardened Google OAuth callback handling: reject unverified Google emails and mark existing users as `emailVerified=true` on successful Google sign-in.
+- Files changed: `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/OAuthGoogleCallbackService.java`, `backend/services/auth-service/src/test/java/dev/auctoritas/auth/service/OAuthGoogleCallbackServiceTest.java`, `prd.json`, `progress.txt`.
 - **Learnings for future iterations:**
-  - Patterns discovered: Use `EndUserEmailVerificationService.issueVerificationToken(...)` in tests to get plaintext token+code while persisting only hashes.
-  - Gotchas encountered: Verification token lookups use `@Lock(PESSIMISTIC_WRITE)`; clear the EntityManager between steps when asserting persisted state.
-  - Useful context: Verification sets `EndUser.emailVerified=true` and marks `EndUserEmailVerificationToken.usedAt` for one-time enforcement.
+  - Prefer upgrading existing end-users to verified when a trusted OAuth provider confirms the email; avoid leaving users in a limbo unverified state.
 ---
 
-## 2026-01-27 12:13 - US-004
+## 2026-01-27 15:30 CET - US-005
 Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
-- Implemented resend verification behavior: generic success response, invalidates prior verification tokens, issues a fresh token+code, emits a domain event, and logs a dev-only stub email payload.
-- Added per-user+project resend abuse controls (max 3/hour) based on recent verification token issuance.
-- Files changed: backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserEmailVerificationService.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/EndUserEmailVerificationTokenRepository.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/messaging/EmailVerificationResentEvent.java, backend/services/auth-service/src/test/java/dev/auctoritas/auth/service/EndUserEmailVerificationServiceTest.java, prd.json, progress.txt
+- Implemented `POST /api/v1/auth/oauth/exchange` to accept `{ code }`, validate the project via `X-API-Key`, mark the OAuth exchange code as used (one-time), and issue end-user access + refresh tokens.
+- Files changed: `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserAuthController.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/OAuthExchangeRequest.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/config/SecurityConfig.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/OAuthExchangeService.java`, `backend/services/auth-service/src/test/java/dev/auctoritas/auth/service/OAuthExchangeServiceTest.java`, `prd.json`, `progress.txt`.
 - **Learnings for future iterations:**
-  - Patterns discovered: Use existing token tables + `createdAt` to implement low-friction rate limits without new schema.
-  - Gotchas encountered: Bean overrides in tests are easiest via `@TestConfiguration` + `@Primary` (this project setup doesn't include `@MockBean`).
-  - Useful context: Resend is intentionally non-enumerating; even rate-limited requests return the same generic success message and simply skip issuing a new token.
----
-
-## 2026-01-27 12:25 - US-005
-Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
-- Added ProjectSettings.requireVerifiedEmailForLogin (default false) and exposed it via `PUT /api/v1/org/{orgId}/projects/{projectId}/settings/auth`.
-- Enforced verified-email requirement in end-user login when enabled (returns `email_not_verified`), and added `email_verified` claim to end-user access JWTs.
-- Files changed: backend/services/auth-service/src/main/resources/db/migration/V17__project_settings_require_verified_email_for_login.sql, backend/services/auth-service/src/main/java/dev/auctoritas/auth/entity/project/ProjectSettings.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/ProjectAuthSettingsRequest.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/ProjectSettingsResponse.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/ProjectController.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/ProjectService.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserLoginService.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserRegistrationService.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserRefreshService.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/JwtService.java, backend/services/auth-service/src/test/java/dev/auctoritas/auth/service/EndUserLoginServiceTest.java, prd.json, progress.txt
-- **Learnings for future iterations:**
-  - Patterns discovered: Keep ProjectSettings changes, migrations, and ProjectSettingsResponse mapping in sync (tests rely on Hibernate DDL but migrations must still reflect schema).
-  - Gotchas encountered: End-user access tokens are minted in multiple flows (register/login/refresh) so JWT claim additions must be updated everywhere.
-  - Useful context: `email_verified` is exposed as JwtService.CLAIM_EMAIL_VERIFIED and can be used downstream without changing EndUserPrincipal.
+  - For API-key-authenticated endpoints that don't have an end-user JWT yet (like OAuth code exchange), remember to whitelist the route in `SecurityConfig.PUBLIC_ENDPOINTS`.
 ---

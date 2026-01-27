@@ -1,16 +1,15 @@
 {
   "project": "Auctoritas",
-  "branchName": "feature/v0-3-2-email-verification",
-  "description": "v0.3.2 Email Verification (End Users) - API-only verification and resend with project-scoped settings and stubbed email events.",
+  "branchName": "feature/v0-4-0-oauth-google",
+  "description": "v0.4.0 OAuth Integration (Google) - Redirect-based OAuth with PKCE/state and one-time exchange codes (no tokens in URL).",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Add secure persistence for email verification challenges",
-      "description": "As a developer, I need secure persistence for verification challenges so that verification is tamper-resistant.",
+      "title": "Persist OAuth connections",
+      "description": "As a developer, I need OAuth connections persisted so that future logins can identify users.",
       "acceptanceCriteria": [
-        "Add migration creating email_verification_tokens with: id, project_id, user_id, token_hash, code_hash, expires_at, used_at, created_at",
-        "Raw verification code and raw token are never stored; only hashes are stored",
-        "Verification code is 6 digits and expires after 24 hours",
+        "Add migration creating oauth_connections with: id, project_id, user_id, provider, provider_user_id, email, created_at, updated_at",
+        "Enforce uniqueness: one connection per provider+provider_user_id per project",
         "Migration runs cleanly on startup",
         "mvn -pl backend/services/auth-service test passes",
         "Typecheck passes"
@@ -21,13 +20,12 @@
     },
     {
       "id": "US-002",
-      "title": "Generate verification token+code on registration",
-      "description": "As a developer, I want new users to receive an email verification challenge so that emails can be verified.",
+      "title": "Configure Google OAuth per project",
+      "description": "As a project admin, I want to configure Google OAuth credentials so that users can sign in with Google.",
       "acceptanceCriteria": [
-        "On successful POST /api/v1/auth/register, the system creates an email verification record for that user+project",
-        "A verification code (6 digits) and opaque token are generated; only hashes are persisted",
-        "User is created with emailVerified=false",
-        "A domain event user.registered is emitted and a stub verification email payload is logged (includes code + token for dev)",
+        "Project settings support Google OAuth fields: enabled, clientId, clientSecret",
+        "clientSecret is stored encrypted at rest and never returned in full via API",
+        "Project settings include an allowlist of redirectUris for OAuth",
         "mvn -pl backend/services/auth-service test passes",
         "Typecheck passes"
       ],
@@ -37,14 +35,14 @@
     },
     {
       "id": "US-003",
-      "title": "Verify email using token+code",
-      "description": "As an end user, I want to verify my email so that my account is trusted.",
+      "title": "Start Google OAuth authorization",
+      "description": "As an end user, I want to start Google sign-in so that I can authenticate without a password.",
       "acceptanceCriteria": [
-        "POST /api/v1/auth/register/verify-email requires X-API-Key and accepts { token, code }",
-        "Verification succeeds only if token+code match the same verification record and it is not expired/used",
-        "On success, user is marked emailVerified=true and verification record is invalidated (one-time)",
-        "Subsequent verify attempts with the same token fail",
-        "mvn -pl backend/services/auth-service test passes",
+        "GET /api/v1/auth/oauth/google/authorize?redirect_uri=... requires X-API-Key",
+        "redirect_uri is validated against the project's redirectUris allowlist",
+        "System generates state and PKCE verifier/challenge and persists them server-side with short TTL",
+        "Response is an HTTP 302 redirect to Google's authorize URL with required parameters",
+        "mvn -pl backend/services/gateway-service test passes",
         "Typecheck passes"
       ],
       "priority": 3,
@@ -53,14 +51,14 @@
     },
     {
       "id": "US-004",
-      "title": "Resend verification with abuse controls",
-      "description": "As an end user, I want to request another verification email so that I can complete verification if I lost the first one.",
+      "title": "Handle Google OAuth callback and redirect to app with exchange code",
+      "description": "As the platform, I want to handle the provider callback so that the user returns to the app with an exchange code.",
       "acceptanceCriteria": [
-        "POST /api/v1/auth/register/resend-verification requires X-API-Key and accepts { email }",
-        "Response is generic success regardless of whether the email exists (no enumeration)",
-        "If user exists and is unverified, prior verification records are invalidated and a new token+code is created",
-        "Auth service enforces resend rate limit per user+project (e.g., max 3 per hour) in addition to gateway rate limits",
-        "A stub verification email payload is logged and a domain event is emitted",
+        "GET /api/v1/auth/oauth/google/callback?code=...&state=... validates state and retrieves PKCE verifier",
+        "System exchanges provider code for provider tokens using stored PKCE verifier",
+        "If a user with matching email exists in the project, link OAuth connection to that user; otherwise create a new user",
+        "New users created via Google are marked emailVerified=true",
+        "Callback redirects to validated redirect_uri with auctoritas_code=<one-time-code> (TTL <= 2 minutes)",
         "mvn -pl backend/services/auth-service test passes",
         "Typecheck passes"
       ],
@@ -70,12 +68,13 @@
     },
     {
       "id": "US-005",
-      "title": "Require verified email before login (optional project setting)",
-      "description": "As a project admin, I want to optionally require verified emails so that unverified accounts cannot log in.",
+      "title": "Exchange code for Auctoritas tokens",
+      "description": "As an app client, I want to exchange the redirect code for Auctoritas tokens so that I can establish a session.",
       "acceptanceCriteria": [
-        "Add project setting requireVerifiedEmailForLogin (boolean), default false",
-        "When requireVerifiedEmailForLogin=true, POST /api/v1/auth/login rejects logins for unverified users with an explicit error code",
-        "When requireVerifiedEmailForLogin=false, login is allowed and JWT includes an emailVerified claim",
+        "POST /api/v1/auth/oauth/exchange requires X-API-Key and accepts { code }",
+        "Exchange code is one-time use and expires quickly (<= 2 minutes)",
+        "On success, response matches existing login format: { user, accessToken, refreshToken }",
+        "Exchange code cannot be replayed",
         "mvn -pl backend/services/auth-service test passes",
         "Typecheck passes"
       ],

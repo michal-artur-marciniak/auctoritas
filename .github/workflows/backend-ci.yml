@@ -3,9 +3,6 @@ name: Backend CI
 on:
   pull_request:
     branches: [master]
-    paths:
-      - backend/**
-      - .github/workflows/backend-ci.yml
   push:
     branches: [master]
     paths:
@@ -21,14 +18,49 @@ permissions:
 
 jobs:
   test:
+    name: Backend CI / test
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect backend changes
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE_SHA="${{ github.event.before }}"
+            HEAD_SHA="${{ github.sha }}"
+          fi
+
+          ZERO_SHA="0000000000000000000000000000000000000000"
+          if [ "$BASE_SHA" = "$ZERO_SHA" ]; then
+            CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r "$HEAD_SHA" || true)
+          else
+            CHANGED_FILES=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" || true)
+          fi
+
+          if printf '%s\n' "$CHANGED_FILES" | grep -Eq '^(backend/|\.github/workflows/backend-ci\.yml$)'; then
+            echo "backend_changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "backend_changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip (no backend changes)
+        if: steps.changes.outputs.backend_changed != 'true'
+        run: echo "No backend changes detected; skipping backend build/test."
 
       - name: Set up JDK 21
+        if: steps.changes.outputs.backend_changed == 'true'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -36,6 +68,7 @@ jobs:
           cache: maven
 
       - name: Build and test (Maven)
+        if: steps.changes.outputs.backend_changed == 'true'
         working-directory: backend
         run: ./mvnw -B -ntp verify
 

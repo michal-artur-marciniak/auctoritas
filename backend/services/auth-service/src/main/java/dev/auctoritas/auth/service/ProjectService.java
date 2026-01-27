@@ -22,11 +22,15 @@ import dev.auctoritas.auth.repository.ProjectSettingsRepository;
 import dev.auctoritas.auth.security.OrgMemberPrincipal;
 import dev.auctoritas.common.enums.OrgMemberRole;
 import dev.auctoritas.common.enums.ProjectStatus;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.encrypt.TextEncryptor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -37,16 +41,19 @@ public class ProjectService {
   private final ProjectRepository projectRepository;
   private final ProjectSettingsRepository projectSettingsRepository;
   private final ApiKeyService apiKeyService;
+  private final TextEncryptor oauthClientSecretEncryptor;
 
   public ProjectService(
       OrganizationRepository organizationRepository,
       ProjectRepository projectRepository,
       ProjectSettingsRepository projectSettingsRepository,
-      ApiKeyService apiKeyService) {
+      ApiKeyService apiKeyService,
+      TextEncryptor oauthClientSecretEncryptor) {
     this.organizationRepository = organizationRepository;
     this.projectRepository = projectRepository;
     this.projectSettingsRepository = projectSettingsRepository;
     this.apiKeyService = apiKeyService;
+    this.oauthClientSecretEncryptor = oauthClientSecretEncryptor;
   }
 
   @Transactional
@@ -192,7 +199,90 @@ public class ProjectService {
       ProjectOAuthSettingsRequest request) {
     enforceOrgAccess(orgId, principal);
     ProjectSettings settings = loadProject(orgId, projectId).getSettings();
-    settings.setOauthConfig(new HashMap<>(request.config()));
+
+    Map<String, Object> merged =
+        new HashMap<>(settings.getOauthConfig() == null ? Map.of() : settings.getOauthConfig());
+    Map<String, Object> patch = new HashMap<>(request.config());
+
+    // redirectUris: top-level allowlist used by OAuth flows
+    if (patch.containsKey("redirectUris")) {
+      merged.put("redirectUris", normalizeRedirectUris(patch.get("redirectUris")));
+    }
+
+    // google: enabled/clientId in config, clientSecret encrypted in column
+    if (patch.containsKey("google")) {
+      Object googleObj = patch.get("google");
+      if (!(googleObj instanceof Map<?, ?> googleRaw)) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_google_config_invalid");
+      }
+
+      Map<String, Object> existingGoogle = asObjectMap(merged.get("google"));
+      Map<String, Object> google = new HashMap<>(existingGoogle);
+
+      if (googleRaw.containsKey("enabled")) {
+        Boolean enabled = asBoolean(googleRaw.get("enabled"));
+        if (enabled == null) {
+          throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_google_enabled_invalid");
+        }
+        google.put("enabled", enabled);
+      }
+
+      if (googleRaw.containsKey("clientId")) {
+        String clientId = asTrimmedString(googleRaw.get("clientId"));
+        if (clientId == null) {
+          google.remove("clientId");
+        } else {
+          google.put("clientId", clientId);
+        }
+      }
+
+      // Never store plaintext secrets in oauth_config.
+      google.remove("clientSecret");
+      google.remove("clientSecretSet");
+
+      if (googleRaw.containsKey("clientSecret")) {
+        String secret = asTrimmedStringAllowEmpty(googleRaw.get("clientSecret"));
+        if (secret == null || secret.isEmpty()) {
+          settings.setOauthGoogleClientSecretEnc(null);
+        } else {
+          settings.setOauthGoogleClientSecretEnc(oauthClientSecretEncryptor.encrypt(secret));
+        }
+      }
+
+      boolean enabled = Boolean.TRUE.equals(google.get("enabled"));
+      String clientId = google.get("clientId") instanceof String s ? s : null;
+      boolean secretSet =
+          settings.getOauthGoogleClientSecretEnc() != null
+              && !settings.getOauthGoogleClientSecretEnc().trim().isEmpty();
+
+      if (enabled && (clientId == null || clientId.trim().isEmpty())) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_google_client_id_required");
+      }
+      if (enabled && !secretSet) {
+        throw new ResponseStatusException(
+            HttpStatus.BAD_REQUEST, "oauth_google_client_secret_required");
+      }
+
+      if (google.isEmpty()) {
+        merged.remove("google");
+      } else {
+        merged.put("google", google);
+      }
+    }
+
+    // Pass through other config keys as-is.
+    for (Map.Entry<String, Object> entry : patch.entrySet()) {
+      String key = entry.getKey();
+      if (key == null) {
+        continue;
+      }
+      if (key.equals("google") || key.equals("redirectUris")) {
+        continue;
+      }
+      merged.put(key, entry.getValue());
+    }
+
+    settings.setOauthConfig(merged);
     return toSettingsResponse(projectSettingsRepository.save(settings));
   }
 
@@ -256,7 +346,94 @@ public class ProjectService {
         settings.isRequireVerifiedEmailForLogin(),
         settings.isMfaEnabled(),
         settings.isMfaRequired(),
-        settings.getOauthConfig());
+        toSafeOauthConfig(settings));
+  }
+
+  private Map<String, Object> toSafeOauthConfig(ProjectSettings settings) {
+    Map<String, Object> stored = settings.getOauthConfig() == null ? Map.of() : settings.getOauthConfig();
+    Map<String, Object> safe = new HashMap<>(stored);
+
+    boolean hadGoogle = stored.containsKey("google");
+    Map<String, Object> google = asObjectMap(safe.get("google"));
+    google.remove("clientSecret");
+    google.remove("clientSecretSet");
+
+    boolean secretSet =
+        settings.getOauthGoogleClientSecretEnc() != null
+            && !settings.getOauthGoogleClientSecretEnc().trim().isEmpty();
+    if (hadGoogle || secretSet) {
+      google.put("clientSecretSet", secretSet);
+      if (secretSet) {
+        google.put("clientSecret", "********");
+      }
+      safe.put("google", google);
+    }
+
+    return safe;
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<String, Object> asObjectMap(Object value) {
+    if (value instanceof Map<?, ?> map) {
+      return new HashMap<>((Map<String, Object>) map);
+    }
+    return new HashMap<>();
+  }
+
+  private static Boolean asBoolean(Object value) {
+    if (value instanceof Boolean b) {
+      return b;
+    }
+    return null;
+  }
+
+  private static String asTrimmedString(Object value) {
+    if (value == null) {
+      return null;
+    }
+    String s = value.toString().trim();
+    return s.isEmpty() ? null : s;
+  }
+
+  private static String asTrimmedStringAllowEmpty(Object value) {
+    if (value == null) {
+      return null;
+    }
+    return value.toString().trim();
+  }
+
+  private static List<String> normalizeRedirectUris(Object value) {
+    if (value == null) {
+      return List.of();
+    }
+    if (!(value instanceof List<?> list)) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_redirect_uris_invalid");
+    }
+    return list.stream()
+        .map(ProjectService::asTrimmedString)
+        .filter(s -> s != null)
+        .map(ProjectService::validateRedirectUri)
+        .distinct()
+        .toList();
+  }
+
+  private static String validateRedirectUri(String raw) {
+    try {
+      URI uri = new URI(raw);
+      String scheme = uri.getScheme();
+      if (scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_redirect_uri_invalid");
+      }
+      if (uri.getHost() == null) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_redirect_uri_invalid");
+      }
+      if (uri.getFragment() != null) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_redirect_uri_invalid");
+      }
+      return uri.toString();
+    } catch (URISyntaxException e) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_redirect_uri_invalid", e);
+    }
   }
 
   private ApiKeySummaryResponse toApiKeySummary(ApiKey apiKey) {

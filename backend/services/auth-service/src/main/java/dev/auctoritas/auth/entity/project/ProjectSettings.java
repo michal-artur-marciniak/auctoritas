@@ -70,4 +70,8 @@ public class ProjectSettings extends BaseEntity {
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(name = "oauth_config", columnDefinition = "json", nullable = false)
   private Map<String, Object> oauthConfig = new HashMap<>();
+
+  /** Encrypted at rest; never exposed directly via API responses. */
+  @Column(name = "oauth_google_client_secret_enc")
+  private String oauthGoogleClientSecretEnc;
 }

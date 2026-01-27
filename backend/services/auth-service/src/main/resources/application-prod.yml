@@ -27,5 +27,10 @@ logging:
 
 auctoritas:
   auth:
+    oauth:
+      encryption:
+        key: ${OAUTH_ENCRYPTION_KEY}
+        salt: ${OAUTH_ENCRYPTION_SALT}
+
     password-reset:
       log-token: false
