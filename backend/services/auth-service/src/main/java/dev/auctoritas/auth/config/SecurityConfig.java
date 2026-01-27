@@ -43,6 +43,8 @@ public class SecurityConfig {
     "/internal/oauth/github/callback",
     "/internal/oauth/microsoft/authorize",
     "/internal/oauth/microsoft/callback",
+    "/internal/oauth/facebook/authorize",
+    "/internal/oauth/facebook/callback",
     "/actuator/health",
     "/.well-known/jwks.json",
     "/.well-known/openid-configuration"

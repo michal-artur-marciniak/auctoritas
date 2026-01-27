@@ -25,6 +25,7 @@ public class ApiKeyGatewayFilter implements GlobalFilter, Ordered {
   private static final String GOOGLE_OAUTH_CALLBACK_PATH = "/api/v1/auth/oauth/google/callback";
   private static final String GITHUB_OAUTH_CALLBACK_PATH = "/api/v1/auth/oauth/github/callback";
   private static final String MICROSOFT_OAUTH_CALLBACK_PATH = "/api/v1/auth/oauth/microsoft/callback";
+  private static final String FACEBOOK_OAUTH_CALLBACK_PATH = "/api/v1/auth/oauth/facebook/callback";
 
   private final WebClient webClient;
 
@@ -39,7 +40,8 @@ public class ApiKeyGatewayFilter implements GlobalFilter, Ordered {
     String path = exchange.getRequest().getPath().value();
     if (GOOGLE_OAUTH_CALLBACK_PATH.equals(path)
         || GITHUB_OAUTH_CALLBACK_PATH.equals(path)
-        || MICROSOFT_OAUTH_CALLBACK_PATH.equals(path)) {
+        || MICROSOFT_OAUTH_CALLBACK_PATH.equals(path)
+        || FACEBOOK_OAUTH_CALLBACK_PATH.equals(path)) {
       return chain.filter(exchange);
     }
     if (!isSdkPath(path)) {

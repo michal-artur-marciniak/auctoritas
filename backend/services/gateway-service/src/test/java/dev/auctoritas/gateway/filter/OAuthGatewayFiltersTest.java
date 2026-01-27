@@ -41,6 +41,8 @@ class OAuthGatewayFiltersTest {
   private static final AtomicReference<String> lastGithubCallbackBody = new AtomicReference<>();
   private static final AtomicReference<String> lastMicrosoftAuthorizeBody = new AtomicReference<>();
   private static final AtomicReference<String> lastMicrosoftCallbackBody = new AtomicReference<>();
+  private static final AtomicReference<String> lastFacebookAuthorizeBody = new AtomicReference<>();
+  private static final AtomicReference<String> lastFacebookCallbackBody = new AtomicReference<>();
 
   @BeforeAll
   static void startAuthServer() {
@@ -138,19 +140,47 @@ class OAuthGatewayFiltersTest {
                                                 Mono.just(
                                                     "{\"clientId\":\"test-microsoft-client-id\",\"authorizationEndpoint\":\"https://login.microsoftonline.com/common/oauth2/v2.0/authorize\",\"scope\":\"openid profile email User.Read\"}"))
                                             .then()))
-                        .post(
-                            "/internal/oauth/microsoft/callback",
-                            (req, res) ->
-                                req.receive()
+                         .post(
+                             "/internal/oauth/microsoft/callback",
+                             (req, res) ->
+                                 req.receive()
+                                     .aggregate()
+                                     .asString()
+                                     .doOnNext(lastMicrosoftCallbackBody::set)
+                                     .then(
+                                         res.status(200)
+                                             .header("Content-Type", "application/json")
+                                             .sendString(
+                                                  Mono.just(
+                                                      "{\"redirectUrl\":\"https://app.example/after?auctoritas_code=ghi\"}"))
+                                              .then()))
+                         .post(
+                             "/internal/oauth/facebook/authorize",
+                             (req, res) ->
+                                 req.receive()
                                     .aggregate()
                                     .asString()
-                                    .doOnNext(lastMicrosoftCallbackBody::set)
+                                    .doOnNext(lastFacebookAuthorizeBody::set)
                                     .then(
                                         res.status(200)
                                             .header("Content-Type", "application/json")
                                             .sendString(
                                                 Mono.just(
-                                                    "{\"redirectUrl\":\"https://app.example/after?auctoritas_code=ghi\"}"))
+                                                    "{\"clientId\":\"test-facebook-client-id\"}"))
+                                            .then()))
+                        .post(
+                            "/internal/oauth/facebook/callback",
+                            (req, res) ->
+                                req.receive()
+                                    .aggregate()
+                                    .asString()
+                                    .doOnNext(lastFacebookCallbackBody::set)
+                                    .then(
+                                        res.status(200)
+                                            .header("Content-Type", "application/json")
+                                            .sendString(
+                                                Mono.just(
+                                                    "{\"redirectUrl\":\"https://app.example/after?auctoritas_code=jkl\"}"))
                                             .then())))
             .bindNow();
 
@@ -431,6 +461,91 @@ class OAuthGatewayFiltersTest {
     assertEquals(
         "http://example.test/api/v1/auth/oauth/microsoft/callback",
         jsonField(bodyJson, "callbackUri"));
+  }
+
+  @Test
+  void facebook_authorize_withApiKey_redirectsToFacebook_andUsesPkce() throws Exception {
+    ApiKeyGatewayFilter apiKeyFilter = new ApiKeyGatewayFilter(WebClient.builder(), authServiceUrl);
+    FacebookOAuthAuthorizeGatewayFilterFactory authorizeFactory =
+        new FacebookOAuthAuthorizeGatewayFilterFactory(WebClient.builder(), authServiceUrl);
+    GatewayFilter authorizeFilter =
+        authorizeFactory.apply(new FacebookOAuthAuthorizeGatewayFilterFactory.Config());
+
+    MockServerWebExchange exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.get("http://example.test/api/v1/auth/oauth/facebook/authorize")
+                .header("X-API-Key", API_KEY)
+                .queryParam("redirect_uri", "https://app.example/redirect")
+                .build());
+
+    GatewayFilterChain chain = ex -> authorizeFilter.filter(ex, e -> Mono.empty());
+
+    apiKeyFilter.filter(exchange, chain).block();
+
+    assertEquals(HttpStatus.FOUND, exchange.getResponse().getStatusCode());
+    String location = exchange.getResponse().getHeaders().getFirst(HttpHeaders.LOCATION);
+    assertNotNull(location);
+    assertTrue(location.startsWith("https://www.facebook.com/v18.0/dialog/oauth"));
+
+    UriComponents uri = UriComponentsBuilder.fromUriString(location).build(true);
+    assertEquals("test-facebook-client-id", uri.getQueryParams().getFirst("client_id"));
+    assertEquals("code", uri.getQueryParams().getFirst("response_type"));
+    assertEquals(
+        "email public_profile",
+        URLDecoder.decode(uri.getQueryParams().getFirst("scope"), StandardCharsets.UTF_8));
+    assertEquals("S256", uri.getQueryParams().getFirst("code_challenge_method"));
+    assertEquals(
+        "http://example.test/api/v1/auth/oauth/facebook/callback",
+        uri.getQueryParams().getFirst("redirect_uri"));
+
+    String state = uri.getQueryParams().getFirst("state");
+    String codeChallenge = uri.getQueryParams().getFirst("code_challenge");
+    assertNotNull(state);
+    assertTrue(!state.isBlank());
+    assertNotNull(codeChallenge);
+    assertTrue(!codeChallenge.isBlank());
+
+    String bodyJson = lastFacebookAuthorizeBody.get();
+    assertNotNull(bodyJson);
+    assertEquals(PROJECT_ID.toString(), jsonField(bodyJson, "projectId"));
+    assertEquals("https://app.example/redirect", jsonField(bodyJson, "redirectUri"));
+    assertEquals(state, jsonField(bodyJson, "state"));
+
+    String codeVerifier = jsonField(bodyJson, "codeVerifier");
+    assertTrue(!codeVerifier.isBlank());
+    assertEquals(codeChallenge, computeCodeChallenge(codeVerifier));
+  }
+
+  @Test
+  void facebook_callback_withoutApiKey_isAllowed_andRedirects() throws Exception {
+    ApiKeyGatewayFilter apiKeyFilter = new ApiKeyGatewayFilter(WebClient.builder(), authServiceUrl);
+    FacebookOAuthCallbackGatewayFilterFactory callbackFactory =
+        new FacebookOAuthCallbackGatewayFilterFactory(WebClient.builder(), authServiceUrl);
+    GatewayFilter callbackFilter =
+        callbackFactory.apply(new FacebookOAuthCallbackGatewayFilterFactory.Config());
+
+    MockServerWebExchange exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.get("http://example.test/api/v1/auth/oauth/facebook/callback")
+                .queryParam("code", "facebook-code")
+                .queryParam("state", "oauth-state")
+                .build());
+
+    GatewayFilterChain chain = ex -> callbackFilter.filter(ex, e -> Mono.empty());
+
+    apiKeyFilter.filter(exchange, chain).block();
+
+    assertEquals(HttpStatus.FOUND, exchange.getResponse().getStatusCode());
+    assertEquals(
+        "https://app.example/after?auctoritas_code=jkl",
+        exchange.getResponse().getHeaders().getFirst(HttpHeaders.LOCATION));
+
+    String bodyJson = lastFacebookCallbackBody.get();
+    assertNotNull(bodyJson);
+    assertEquals("facebook-code", jsonField(bodyJson, "code"));
+    assertEquals("oauth-state", jsonField(bodyJson, "state"));
+    assertEquals(
+        "http://example.test/api/v1/auth/oauth/facebook/callback", jsonField(bodyJson, "callbackUri"));
   }
 
   private static String computeCodeChallenge(String codeVerifier) throws Exception {
