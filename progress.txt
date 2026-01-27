@@ -3,11 +3,17 @@
 - Password policy for end-user flows is derived from ProjectSettings (min length, uppercase, numbers, special chars).
 - End-user login lockouts use ProjectSettings failedLoginMaxAttempts/failedLoginWindowSeconds and EndUser failedLogin fields.
 - End-user JWTs are authenticated via EndUserPrincipal from JwtAuthenticationFilter; use @AuthenticationPrincipal EndUserPrincipal for SDK auth endpoints.
+- End-user access JWTs include `email_verified` (JwtService.CLAIM_EMAIL_VERIFIED); keep register/login/refresh token issuance aligned.
 - Refresh token rotation should lock the refresh token row to prevent concurrent reuse.
 - End-user password reset tokens are stored hashed with 1-hour expiry and a used_at marker for single-use enforcement.
 - Password history enforcement should use ProjectSettings.passwordHistoryCount; treat <=0 as default 5 and compare via PasswordEncoder.matches.
 - For end-user password changes that keep the current session, accept `X-Session-Id` (end-user access JWTs don't carry session ids); if selecting a "current" session/token from the DB, use `@Lock(PESSIMISTIC_WRITE)` to avoid races.
 - End-user email verification tokens are stored hashed with 24-hour expiry and a used_at marker; resends mark existing tokens used.
+- For tests that need plaintext verification token/code, call `EndUserEmailVerificationService.issueVerificationToken(...)`; persistence only stores hashes.
+- In Spring Boot 4 tests, prefer overriding beans via `@TestConfiguration` + `@Primary` (e.g., to capture DomainEventPublisher publishes); `@MockBean` isn't available here.
+- Per-service Maven runs should include `-am` to build local libs (e.g. `mvn -pl services/auth-service -am test`) so `dev.auctoritas:common` resolves.
+- Email verification dev logging can be toggled via `auctoritas.auth.email-verification.log-challenge` (defaults true).
+- Project auth settings are updated via `PUT /api/v1/org/{orgId}/projects/{projectId}/settings/auth`.
 - Gateway SDK routes resolve API keys via /internal/api-keys/resolve and forward X-Project-Id.
 - Maven modules live under `backend/`; run per-service tests from there (e.g. `mvn -pl services/auth-service test`).
 - Auth-service repository tests rely on Hibernate DDL from entity mappings (keep Flyway migrations and JPA entities in sync).
@@ -15,122 +21,56 @@
 - For structured service logs, prefer `StructuredArguments.kv(...)` so LogstashEncoder emits searchable JSON fields; correlation id is carried via MDC key `correlationId`.
 - In JPA tests, if you `entityManager.clear()`, re-fetch entities (find/getReference) before persisting new rows with @ManyToOne relations.
 
-## 2026-01-26 19:32 - US-001
+## 2026-01-27 11:35 - US-001
 Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
-- Implemented end-user registration endpoint with API key validation, password policy enforcement, token issuance, and session creation.
-- Files changed: backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserAuthController.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserRegistrationRequest.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserRegistrationResponse.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/config/SecurityConfig.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/entity/enduser/EndUser.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/entity/enduser/EndUserRefreshToken.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/entity/enduser/EndUserSession.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/EndUserRefreshTokenRepository.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/EndUserRepository.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/EndUserSessionRepository.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserRegistrationService.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/JwtService.java, backend/services/auth-service/src/main/resources/db/migration/V8__end_users.sql, prd.json, progress.txt
-- **Learnings for future iterations:** Public unauthenticated endpoints must be added to SecurityConfig.PUBLIC_ENDPOINTS; end-user session/device info should be captured from User-Agent and X-Forwarded-For headers; TokenService.getRefreshTokenExpiry is the shared source of refresh token TTL.
+- Added project-scoped email verification token persistence via the new `email_verification_tokens` table and aligned JPA mappings.
+- Files changed: backend/services/auth-service/src/main/resources/db/migration/V15__email_verification_tokens.sql, backend/services/auth-service/src/main/java/dev/auctoritas/auth/entity/enduser/EndUserEmailVerificationToken.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserEmailVerificationService.java, prd.json, progress.txt
+- **Learnings for future iterations:**
+  - Patterns discovered: If a token must be project-scoped, persist `project_id` explicitly (don't rely on joining through user) and validate it against the API key's project.
+  - Gotchas encountered: Auth-service tests run with Flyway disabled and rely on Hibernate DDL; keep entity mappings consistent with new migrations.
+  - Useful context: Email verification uses TokenService SHA-256 (Base64url) hashes; raw token/code never touch the DB and codes expire after 24h.
 ---
 
-## 2026-01-26 19:37 - US-002
+## 2026-01-27 11:50 - US-002
 Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
-- Implemented end-user login endpoint with API key validation, failure tracking, lockout enforcement, and session/token issuance.
-- Files changed: backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserAuthController.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserLoginRequest.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserLoginResponse.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/config/SecurityConfig.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/entity/enduser/EndUser.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/entity/project/ProjectSettings.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserLoginService.java, backend/services/auth-service/src/main/resources/db/migration/V9__end_user_login_security.sql, prd.json, progress.txt
+- On end-user registration, issued an email verification token+code (hashed persistence) and emitted the `user.registered` domain event.
+- Added dev stub logging for verification email payload (includes plaintext code+token).
+- Files changed: backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserRegistrationService.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/messaging/UserRegisteredEvent.java, backend/services/auth-service/src/test/java/dev/auctoritas/auth/service/EndUserRegistrationServiceTest.java, prd.json, progress.txt
 - **Learnings for future iterations:**
-  - Patterns discovered: End-user logins update the existing session from EndUserSessionRepository.findByUserId when available.
-  - Gotchas encountered: Add new auth endpoints to SecurityConfig.PUBLIC_ENDPOINTS or they will require JWT.
-  - Useful context: Login lockout defaults are stored on ProjectSettings and enforced via EndUser failed_login fields.
+  - Patterns discovered: Prefer emitting domain events from the service layer (not controllers) and keep secrets out of the event payload; log dev-only secrets behind a property.
+  - Gotchas encountered: `mvn -pl services/auth-service test` can fail if local modules aren't installed; use `-am` to build reactor deps.
+  - Useful context: Registration now logs a "Stub verification email" entry with `verificationToken` + `verificationCode` when `auctoritas.auth.email-verification.log-challenge=true`.
 ---
 
-## 2026-01-26 19:45 - US-003
+## 2026-01-27 12:05 - US-003
 Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
-- Implemented end-user logout endpoint with end-user JWT authentication, API key validation, and session/refresh token invalidation.
-- Files changed: backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserAuthController.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserLogoutResponse.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/EndUserRefreshTokenRepository.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/EndUserSessionRepository.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/security/EndUserPrincipal.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/security/JwtAuthenticationFilter.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserLogoutService.java, prd.json, progress.txt
+- Verified the email verification flow: correct token+code marks the user as verified and invalidates the token.
+- Added coverage for error cases (reused token, expired token, mismatched code).
+- Files changed: backend/services/auth-service/src/test/java/dev/auctoritas/auth/service/EndUserEmailVerificationServiceTest.java, prd.json, progress.txt
 - **Learnings for future iterations:**
-  - Patterns discovered: End-user JWTs now surface an EndUserPrincipal for SDK auth endpoints like logout.
-  - Gotchas encountered: Logout requires both X-API-Key and a valid end-user JWT; missing either yields 401.
-  - Useful context: Logout revokes refresh tokens via EndUserRefreshTokenRepository.revokeActiveByUserId and deletes sessions via EndUserSessionRepository.deleteByUserId.
+  - Patterns discovered: Use `EndUserEmailVerificationService.issueVerificationToken(...)` in tests to get plaintext token+code while persisting only hashes.
+  - Gotchas encountered: Verification token lookups use `@Lock(PESSIMISTIC_WRITE)`; clear the EntityManager between steps when asserting persisted state.
+  - Useful context: Verification sets `EndUser.emailVerified=true` and marks `EndUserEmailVerificationToken.usedAt` for one-time enforcement.
 ---
 
-## 2026-01-26 19:52 - US-004
+## 2026-01-27 12:13 - US-004
 Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
-- Implemented end-user refresh endpoint with API key validation, refresh token rotation, and session refresh.
-- Files changed: backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserAuthController.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserRefreshRequest.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserRefreshResponse.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/config/SecurityConfig.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/EndUserRefreshTokenRepository.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserRefreshService.java, prd.json, progress.txt
+- Implemented resend verification behavior: generic success response, invalidates prior verification tokens, issues a fresh token+code, emits a domain event, and logs a dev-only stub email payload.
+- Added per-user+project resend abuse controls (max 3/hour) based on recent verification token issuance.
+- Files changed: backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserEmailVerificationService.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/EndUserEmailVerificationTokenRepository.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/messaging/EmailVerificationResentEvent.java, backend/services/auth-service/src/test/java/dev/auctoritas/auth/service/EndUserEmailVerificationServiceTest.java, prd.json, progress.txt
 - **Learnings for future iterations:**
-  - Patterns discovered: Refresh flows should rotate tokens by revoking the old refresh token and linking it to the replacement.
-  - Gotchas encountered: End-user refresh endpoints must be added to SecurityConfig.PUBLIC_ENDPOINTS to avoid JWT gating.
-  - Useful context: Refresh updates EndUserSession expiry alongside issuing new tokens.
+  - Patterns discovered: Use existing token tables + `createdAt` to implement low-friction rate limits without new schema.
+  - Gotchas encountered: Bean overrides in tests are easiest via `@TestConfiguration` + `@Primary` (this project setup doesn't include `@MockBean`).
+  - Useful context: Resend is intentionally non-enumerating; even rate-limited requests return the same generic success message and simply skip issuing a new token.
 ---
 
-## 2026-01-26 19:56 - US-005
+## 2026-01-27 12:25 - US-005
 Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
-- Implemented end-user password reset endpoints with hashed reset tokens, 1-hour expiry, and password policy enforcement.
-- Files changed: backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserAuthController.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserPasswordForgotRequest.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserPasswordResetRequest.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserPasswordResetResponse.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/config/SecurityConfig.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/entity/enduser/EndUserPasswordResetToken.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/EndUserPasswordResetTokenRepository.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserPasswordResetService.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/TokenService.java, backend/services/auth-service/src/main/resources/db/migration/V10__end_user_password_reset_tokens.sql, prd.json, progress.txt
+- Added ProjectSettings.requireVerifiedEmailForLogin (default false) and exposed it via `PUT /api/v1/org/{orgId}/projects/{projectId}/settings/auth`.
+- Enforced verified-email requirement in end-user login when enabled (returns `email_not_verified`), and added `email_verified` claim to end-user access JWTs.
+- Files changed: backend/services/auth-service/src/main/resources/db/migration/V17__project_settings_require_verified_email_for_login.sql, backend/services/auth-service/src/main/java/dev/auctoritas/auth/entity/project/ProjectSettings.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/ProjectAuthSettingsRequest.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/ProjectSettingsResponse.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/ProjectController.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/ProjectService.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserLoginService.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserRegistrationService.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserRefreshService.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/JwtService.java, backend/services/auth-service/src/test/java/dev/auctoritas/auth/service/EndUserLoginServiceTest.java, prd.json, progress.txt
 - **Learnings for future iterations:**
-  - Patterns discovered: Password reset tokens are hashed with TokenService and stored with used_at for single-use enforcement.
-  - Gotchas encountered: Password reset endpoints must be in SecurityConfig.PUBLIC_ENDPOINTS to avoid JWT gating.
-  - Useful context: Reset should clear failed login counters so users can log in immediately after changing passwords.
----
-
-## 2026-01-26 20:02 - US-006
-Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
-- Implemented end-user email verification endpoints with token/code validation, resend flow, and verification token persistence.
-- Files changed: backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserAuthController.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserEmailVerificationRequest.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserEmailVerificationResponse.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserResendVerificationRequest.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/config/SecurityConfig.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/entity/enduser/EndUserEmailVerificationToken.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/EndUserEmailVerificationTokenRepository.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserEmailVerificationService.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserRegistrationService.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/TokenService.java, backend/services/auth-service/src/main/resources/db/migration/V11__end_user_email_verification_tokens.sql, prd.json, progress.txt
-- **Learnings for future iterations:**
-  - Patterns discovered: Email verification tokens are issued on registration and resends mark prior tokens used.
-  - Gotchas encountered: Verification endpoints must be added to SecurityConfig.PUBLIC_ENDPOINTS to avoid JWT gating.
-  - Useful context: Verification tokens store hashed token/code with 24-hour expiry in end_user_email_verification_tokens.
----
-
-## 2026-01-26 20:10 - US-007
-Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
-- Implemented gateway API key enforcement for SDK routes, resolving project context and forwarding it to auth-service.
-- Files changed: backend/services/gateway-service/src/main/java/dev/auctoritas/gateway/filter/ApiKeyGatewayFilter.java, backend/services/gateway-service/src/main/java/dev/auctoritas/gateway/filter/ApiKeyResolutionResponse.java, backend/services/gateway-service/src/main/java/dev/auctoritas/gateway/config/RateLimiterConfig.java, backend/services/gateway-service/src/main/resources/application.yml, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/ApiKeyResolutionController.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/ApiKeyResolveResponse.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/config/SecurityConfig.java, prd.json, progress.txt
-- **Learnings for future iterations:**
-  - Patterns discovered: Gateway SDK routes use a separate RequestRateLimiter with apiKeyResolver to enforce per-key limits.
-  - Gotchas encountered: The gateway API-key filter must run before route handling to ensure 401s on missing keys.
-  - Useful context: Project context is forwarded via X-Project-Id after resolving X-API-Key.
----
-
-## 2026-01-26 23:39 - US-001
-Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
-- Implemented persistence tables for password reset tokens and password history.
-- Updated password reset token entity to use `password_reset_tokens` with project + request metadata (ip/user-agent).
-- Files changed: backend/services/auth-service/src/main/resources/db/migration/V13__password_reset_tokens.sql, backend/services/auth-service/src/main/resources/db/migration/V14__password_history.sql, backend/services/auth-service/src/main/java/dev/auctoritas/auth/entity/enduser/EndUserPasswordResetToken.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserPasswordResetService.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserAuthController.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/entity/enduser/EndUserPasswordHistory.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/EndUserPasswordHistoryRepository.java, prd.json, progress.txt
-- **Learnings for future iterations:**
-  - Patterns discovered: Auth-service tests use Hibernate schema generation; add/adjust JPA entities when adding Flyway tables.
-  - Gotchas encountered: The Maven reactor root is `backend/` (module path is `services/auth-service`).
-  - Useful context: `password_reset_tokens` backfills and replaces legacy `end_user_password_reset_tokens`.
----
-
-## 2026-01-26 23:49 - US-002
-Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
-- Updated password reset request to always return generic success (no reset token leakage), invalidate prior tokens per user+project, and emit `user.password_reset_requested`.
-- Added RabbitMQ DomainEventPublisher wiring, plus dev-only stub email log for reset tokens.
-- Files changed: backend/services/auth-service/pom.xml, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserPasswordResetService.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/EndUserPasswordResetTokenRepository.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/messaging/DomainEventPublisher.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/messaging/NoopDomainEventPublisher.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/messaging/PasswordResetRequestedEvent.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/messaging/RabbitMqDomainEventPublisher.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/messaging/MessagingConfig.java, backend/services/auth-service/src/main/resources/application.yml, backend/services/auth-service/src/main/resources/application-dev.yml, backend/services/auth-service/src/main/resources/application-test.yml, backend/services/auth-service/src/test/java/dev/auctoritas/auth/service/EndUserPasswordResetServiceTest.java, docker-compose.yml, prd.json, progress.txt
-- **Learnings for future iterations:**
-  - Patterns discovered: Auth-service emits RabbitMQ domain events via DomainEventPublisher; publish failures should not block generic-success endpoints.
-  - Gotchas encountered: When asserting bulk update queries in transactional tests, flush inserted rows before running the update.
-  - Useful context: docker-compose wires auth-service to RabbitMQ via `RABBITMQ_HOST=rabbitmq`.
----
-
-## 2026-01-26 23:57 - US-003
-Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
-- Implemented password reset completion safeguards: validate token belongs to API key project, enforce password history, record previous password hash, mark token used, and revoke sessions/refresh tokens.
-- Files changed: backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserPasswordResetService.java, backend/services/auth-service/src/test/java/dev/auctoritas/auth/service/EndUserPasswordResetServiceTest.java, prd.json, progress.txt
-- **Learnings for future iterations:**
-  - Patterns discovered: Store the previous password hash in password_history on change/reset; enforce reuse by comparing candidate password against current + last (N-1) history hashes.
-  - Gotchas encountered: In transactional tests, persisting entities after entityManager.clear() requires reloading the referenced entities first.
-  - Useful context: End-user password resets should clear login lockouts and revoke all refresh tokens + sessions (logout everywhere).
----
-
-## 2026-01-27 00:06 - US-004
-Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
-- Implemented authenticated end-user password change endpoint with current password verification, password policy + history enforcement, and best-effort keep-current session revocation.
-- Files changed: backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserAccountController.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserPasswordChangeRequest.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserPasswordChangeResponse.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserPasswordChangeService.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/EndUserRepository.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/EndUserRefreshTokenRepository.java, backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/EndUserSessionRepository.java, backend/services/auth-service/src/test/java/dev/auctoritas/auth/service/EndUserPasswordChangeServiceTest.java, prd.json, progress.txt
-- **Learnings for future iterations:**
-  - Patterns discovered: Keeping the current session requires picking the most recently created session/refresh token since end-user access tokens don't carry session identifiers.
-  - Gotchas encountered: Don't attach a new entity with only an id for @ManyToOne relations in JPA; use the managed entity (or getReference) to avoid transient entity persistence.
-  - Useful context: Password changes should record the previous password hash in password_history before updating the user's password.
----
-
-## 2026-01-27 00:16 - US-005
-Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
-- Added a stricter gateway rate limit route for `POST /api/v1/auth/password/forgot` (per API key/IP) ahead of the generic SDK route.
-- Added structured reset-flow logs in auth-service (project id, anonymized user id/email hash, outcome/reason) and surfaced correlation id in dev logs.
-- Files changed: backend/services/gateway-service/src/main/resources/application.yml, backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/EndUserPasswordResetService.java, backend/services/auth-service/src/main/resources/logback-spring.xml, prd.json, progress.txt
-- **Learnings for future iterations:**
-  - Patterns discovered: Use `StructuredArguments.kv(...)` for LogstashEncoder so important fields are indexed/searchable.
-  - Gotchas encountered: Spring Cloud Gateway route order matters; put more specific paths (e.g. forgot password) before wildcard `/api/v1/auth/**` routes.
-  - Useful context: CorrelationIdFilter uses MDC key `correlationId`; include `%X{correlationId}` in non-JSON dev patterns so it shows up locally.
+  - Patterns discovered: Keep ProjectSettings changes, migrations, and ProjectSettingsResponse mapping in sync (tests rely on Hibernate DDL but migrations must still reflect schema).
+  - Gotchas encountered: End-user access tokens are minted in multiple flows (register/login/refresh) so JWT claim additions must be updated everywhere.
+  - Useful context: `email_verified` is exposed as JwtService.CLAIM_EMAIL_VERIFIED and can be used downstream without changing EndUserPrincipal.
 ---

@@ -59,6 +59,9 @@ public class ProjectSettings extends BaseEntity {
   private int failedLoginWindowSeconds = 900;
 
   @Column(nullable = false)
+  private boolean requireVerifiedEmailForLogin = false;
+
+  @Column(nullable = false)
   private boolean mfaEnabled = false;
 
   @Column(nullable = false)

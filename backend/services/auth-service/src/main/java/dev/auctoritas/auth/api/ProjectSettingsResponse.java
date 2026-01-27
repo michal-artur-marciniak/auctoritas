@@ -12,6 +12,7 @@ public record ProjectSettingsResponse(
     int accessTokenTtlSeconds,
     int refreshTokenTtlSeconds,
     int maxSessions,
+    boolean requireVerifiedEmailForLogin,
     boolean mfaEnabled,
     boolean mfaRequired,
     Map<String, Object> oauthConfig) {}

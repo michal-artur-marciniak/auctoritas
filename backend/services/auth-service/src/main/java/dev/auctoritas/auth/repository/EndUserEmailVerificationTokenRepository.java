@@ -18,6 +18,12 @@ public interface EndUserEmailVerificationTokenRepository
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   Optional<EndUserEmailVerificationToken> findByTokenHash(String tokenHash);
 
+  @Query(
+      "select count(token) from EndUserEmailVerificationToken token "
+          + "where token.user.id = :userId and token.project.id = :projectId and token.createdAt >= :since")
+  long countIssuedSince(
+      @Param("userId") UUID userId, @Param("projectId") UUID projectId, @Param("since") Instant since);
+
   @Modifying
   @Query(
       "update EndUserEmailVerificationToken token set token.usedAt = :usedAt "

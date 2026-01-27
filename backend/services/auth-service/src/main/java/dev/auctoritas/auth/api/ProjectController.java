@@ -96,6 +96,16 @@ public class ProjectController {
   }
 
   @PreAuthorize("isAuthenticated()")
+  @PutMapping("/{projectId}/settings/auth")
+  public ResponseEntity<ProjectSettingsResponse> updateAuthSettings(
+      @PathVariable UUID orgId,
+      @PathVariable UUID projectId,
+      @Valid @RequestBody ProjectAuthSettingsRequest request,
+      @AuthenticationPrincipal OrgMemberPrincipal principal) {
+    return ResponseEntity.ok(projectService.updateAuthSettings(orgId, projectId, principal, request));
+  }
+
+  @PreAuthorize("isAuthenticated()")
   @PutMapping("/{projectId}/settings/oauth")
   public ResponseEntity<ProjectSettingsResponse> updateOAuthSettings(
       @PathVariable UUID orgId,
