@@ -1,5 +1,6 @@
 package dev.auctoritas.auth.entity.enduser;
 
+import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.common.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -13,11 +14,15 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "end_user_email_verification_tokens")
+@Table(name = "email_verification_tokens")
 @Getter
 @Setter
 @NoArgsConstructor
 public class EndUserEmailVerificationToken extends BaseEntity {
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "project_id", nullable = false)
+  private Project project;
+
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "user_id", nullable = false)
   private EndUser user;

@@ -60,7 +60,7 @@ public class EndUserEmailVerificationService {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid_verification_token");
     }
 
-    if (!token.getUser().getProject().getId().equals(project.getId())) {
+    if (!token.getProject().getId().equals(project.getId())) {
       throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api_key_invalid");
     }
 
@@ -114,6 +114,7 @@ public class EndUserEmailVerificationService {
     String rawCode = tokenService.generateEmailVerificationCode();
     Instant expiresAt = tokenService.getEmailVerificationTokenExpiry();
     EndUserEmailVerificationToken token = new EndUserEmailVerificationToken();
+    token.setProject(user.getProject());
     token.setUser(user);
     token.setTokenHash(tokenService.hashToken(rawToken));
     token.setCodeHash(tokenService.hashToken(rawCode));
