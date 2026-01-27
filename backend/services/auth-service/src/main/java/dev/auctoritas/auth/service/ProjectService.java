@@ -270,13 +270,95 @@ public class ProjectService {
       }
     }
 
+    // github: enabled/clientId/redirectUris in config, clientSecret encrypted in column
+    if (patch.containsKey("github")) {
+      Object githubObj = patch.get("github");
+      if (!(githubObj instanceof Map<?, ?> githubRaw)) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_github_config_invalid");
+      }
+
+      Map<String, Object> existingGithub = asObjectMap(merged.get("github"));
+      Map<String, Object> github = new HashMap<>(existingGithub);
+
+      if (githubRaw.containsKey("enabled")) {
+        Boolean enabled = asBoolean(githubRaw.get("enabled"));
+        if (enabled == null) {
+          throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_github_enabled_invalid");
+        }
+        github.put("enabled", enabled);
+      }
+
+      if (githubRaw.containsKey("clientId")) {
+        String clientId = asTrimmedString(githubRaw.get("clientId"));
+        if (clientId == null) {
+          github.remove("clientId");
+        } else {
+          github.put("clientId", clientId);
+        }
+      }
+
+      if (githubRaw.containsKey("redirectUris")) {
+        List<String> allowlist = asStringList(merged.get("redirectUris"));
+        List<String> redirectUris = normalizeRedirectUris(githubRaw.get("redirectUris"));
+        for (String uri : redirectUris) {
+          if (!allowlist.contains(uri)) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST, "oauth_github_redirect_uri_not_allowed");
+          }
+        }
+        if (redirectUris.isEmpty()) {
+          github.remove("redirectUris");
+        } else {
+          github.put("redirectUris", redirectUris);
+        }
+      }
+
+      // Never store plaintext secrets in oauth_config.
+      github.remove("clientSecret");
+      github.remove("clientSecretSet");
+
+      if (githubRaw.containsKey("clientSecret")) {
+        String secret = asTrimmedStringAllowEmpty(githubRaw.get("clientSecret"));
+        if (secret == null || secret.isEmpty()) {
+          settings.setOauthGithubClientSecretEnc(null);
+        } else {
+          settings.setOauthGithubClientSecretEnc(oauthClientSecretEncryptor.encrypt(secret));
+        }
+      }
+
+      boolean enabled = Boolean.TRUE.equals(github.get("enabled"));
+      String clientId = github.get("clientId") instanceof String s ? s : null;
+      boolean secretSet =
+          settings.getOauthGithubClientSecretEnc() != null
+              && !settings.getOauthGithubClientSecretEnc().trim().isEmpty();
+      List<String> redirectUris = asStringList(github.get("redirectUris"));
+
+      if (enabled && (clientId == null || clientId.trim().isEmpty())) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_github_client_id_required");
+      }
+      if (enabled && !secretSet) {
+        throw new ResponseStatusException(
+            HttpStatus.BAD_REQUEST, "oauth_github_client_secret_required");
+      }
+      if (enabled && redirectUris.isEmpty()) {
+        throw new ResponseStatusException(
+            HttpStatus.BAD_REQUEST, "oauth_github_redirect_uris_required");
+      }
+
+      if (github.isEmpty()) {
+        merged.remove("github");
+      } else {
+        merged.put("github", github);
+      }
+    }
+
     // Pass through other config keys as-is.
     for (Map.Entry<String, Object> entry : patch.entrySet()) {
       String key = entry.getKey();
       if (key == null) {
         continue;
       }
-      if (key.equals("google") || key.equals("redirectUris")) {
+      if (key.equals("google") || key.equals("github") || key.equals("redirectUris")) {
         continue;
       }
       merged.put(key, entry.getValue());
@@ -369,6 +451,22 @@ public class ProjectService {
       safe.put("google", google);
     }
 
+    boolean hadGithub = stored.containsKey("github");
+    Map<String, Object> github = asObjectMap(safe.get("github"));
+    github.remove("clientSecret");
+    github.remove("clientSecretSet");
+
+    boolean githubSecretSet =
+        settings.getOauthGithubClientSecretEnc() != null
+            && !settings.getOauthGithubClientSecretEnc().trim().isEmpty();
+    if (hadGithub || githubSecretSet) {
+      github.put("clientSecretSet", githubSecretSet);
+      if (githubSecretSet) {
+        github.put("clientSecret", "********");
+      }
+      safe.put("github", github);
+    }
+
     return safe;
   }
 
@@ -415,6 +513,13 @@ public class ProjectService {
         .map(ProjectService::validateRedirectUri)
         .distinct()
         .toList();
+  }
+
+  private static List<String> asStringList(Object value) {
+    if (!(value instanceof List<?> list)) {
+      return List.of();
+    }
+    return list.stream().filter(v -> v instanceof String).map(v -> v.toString()).toList();
   }
 
   private static String validateRedirectUri(String raw) {
