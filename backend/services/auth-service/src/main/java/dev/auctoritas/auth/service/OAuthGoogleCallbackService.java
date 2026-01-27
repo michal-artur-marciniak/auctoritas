@@ -103,6 +103,10 @@ public class OAuthGoogleCallbackService {
     String providerUserId = requireValue(userInfo.sub(), "oauth_google_userinfo_failed");
     String email = normalizeEmail(requireValue(userInfo.email(), "oauth_google_userinfo_failed"));
 
+    if (Boolean.FALSE.equals(userInfo.emailVerified())) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_google_email_not_verified");
+    }
+
     EndUser user = resolveOrCreateUser(project, email, userInfo.name(), providerUserId);
 
     // Consume the state only after we've successfully linked/created the user.
@@ -139,15 +143,32 @@ public class OAuthGoogleCallbackService {
       return conn.getUser();
     }
 
+    String normalizedName = trimToNull(name);
+
     EndUser user =
         endUserRepository
             .findByEmailAndProjectIdForUpdate(email, projectId)
+            .map(
+                existing -> {
+                  boolean changed = false;
+
+                  if (!Boolean.TRUE.equals(existing.getEmailVerified())) {
+                    existing.setEmailVerified(true);
+                    changed = true;
+                  }
+                  if (existing.getName() == null && normalizedName != null) {
+                    existing.setName(normalizedName);
+                    changed = true;
+                  }
+
+                  return changed ? endUserRepository.save(existing) : existing;
+                })
             .orElseGet(
                 () -> {
                   EndUser created = new EndUser();
                   created.setProject(project);
                   created.setEmail(email);
-                  created.setName(trimToNull(name));
+                  created.setName(normalizedName);
                   created.setEmailVerified(true);
                   // EndUser requires a password hash; OAuth users don't use it.
                   created.setPasswordHash(passwordEncoder.encode(tokenService.generateRefreshToken()));

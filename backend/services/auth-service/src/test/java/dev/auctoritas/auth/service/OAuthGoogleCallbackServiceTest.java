@@ -1,9 +1,11 @@
 package dev.auctoritas.auth.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.auctoritas.auth.config.JpaConfig;
 import dev.auctoritas.auth.entity.oauth.OAuthAuthorizationRequest;
+import dev.auctoritas.auth.entity.enduser.EndUser;
 import dev.auctoritas.auth.entity.organization.Organization;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
@@ -21,6 +23,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -142,6 +146,80 @@ class OAuthGoogleCallbackServiceTest {
             code -> {
               assertThat(code.getUsedAt()).isNull();
               assertThat(code.getExpiresAt()).isAfter(Instant.now());
+            });
+  }
+
+  @Test
+  @DisplayName("Should mark existing end-user as emailVerified when signing in with Google")
+  void shouldMarkExistingUserVerified() {
+    EndUser existing = new EndUser();
+    existing.setProject(project);
+    existing.setEmail("user@example.com");
+    existing.setName(null);
+    existing.setEmailVerified(false);
+    existing.setPasswordHash("hash");
+    entityManager.persist(existing);
+    entityManager.flush();
+
+    String state = "state-existing-user";
+    OAuthAuthorizationRequest authRequest = new OAuthAuthorizationRequest();
+    authRequest.setProject(project);
+    authRequest.setProvider("google");
+    authRequest.setStateHash(tokenService.hashToken(state));
+    authRequest.setCodeVerifier("pkce-verifier");
+    authRequest.setAppRedirectUri("https://example.com/app/callback");
+    authRequest.setExpiresAt(Instant.now().plusSeconds(600));
+    entityManager.persist(authRequest);
+    entityManager.flush();
+
+    stubGoogleOAuthClient.userInfoRef.set(
+        new GoogleOAuthClient.GoogleUserInfo("google-sub-existing", "user@example.com", true, "Existing Name"));
+
+    callbackService.handleCallback(
+        "provider-code",
+        state,
+        "https://gateway.example.com/api/v1/auth/oauth/google/callback");
+
+    assertThat(endUserRepository.findByEmailAndProjectId("user@example.com", project.getId()))
+        .isPresent()
+        .get()
+        .satisfies(
+            user -> {
+              assertThat(user.getEmailVerified()).isTrue();
+              assertThat(user.getName()).isEqualTo("Existing Name");
+            });
+  }
+
+  @Test
+  @DisplayName("Should reject Google sign-in when Google reports email not verified")
+  void shouldRejectUnverifiedGoogleEmail() {
+    String state = "state-unverified";
+    OAuthAuthorizationRequest authRequest = new OAuthAuthorizationRequest();
+    authRequest.setProject(project);
+    authRequest.setProvider("google");
+    authRequest.setStateHash(tokenService.hashToken(state));
+    authRequest.setCodeVerifier("pkce-verifier");
+    authRequest.setAppRedirectUri("https://example.com/app/callback");
+    authRequest.setExpiresAt(Instant.now().plusSeconds(600));
+    entityManager.persist(authRequest);
+    entityManager.flush();
+
+    stubGoogleOAuthClient.userInfoRef.set(
+        new GoogleOAuthClient.GoogleUserInfo(
+            "google-sub-2", "user2@example.com", false, "Unverified User"));
+
+    assertThatThrownBy(
+            () ->
+                callbackService.handleCallback(
+                    "provider-code",
+                    state,
+                    "https://gateway.example.com/api/v1/auth/oauth/google/callback"))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex -> {
+              ResponseStatusException err = (ResponseStatusException) ex;
+              assertThat(err.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+              assertThat(err.getReason()).isEqualTo("oauth_google_email_not_verified");
             });
   }
 

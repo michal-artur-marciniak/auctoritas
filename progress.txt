@@ -24,6 +24,7 @@
 - Domain events from auth-service use DomainEventPublisher; RabbitMQ publishes JSON to the default exchange with routing key = event type (disable in tests via `auctoritas.messaging.rabbit.enabled=false` and `spring.rabbitmq.dynamic=false`).
 - For structured service logs, prefer `StructuredArguments.kv(...)` so LogstashEncoder emits searchable JSON fields; correlation id is carried via MDC key `correlationId`.
 - In JPA tests, if you `entityManager.clear()`, re-fetch entities (find/getReference) before persisting new rows with @ManyToOne relations.
+- When linking OAuth identities, treat a successful provider login as email verification: set `EndUser.emailVerified=true` (and optionally populate missing `name`).
 
 ## 2026-01-27 14:18 CET - US-001
 Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
@@ -50,4 +51,12 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
 - **Learnings for future iterations:**
   - OAuth start is best implemented as a gateway route filter (not a controller) so rate limiting and global gateway filters still apply.
   - Any new auth-service `/internal/**` endpoint used by gateway must be whitelisted in `SecurityConfig.PUBLIC_ENDPOINTS` or calls will fail with 401.
+---
+
+## 2026-01-27 15:23 CET - US-004
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Hardened Google OAuth callback handling: reject unverified Google emails and mark existing users as `emailVerified=true` on successful Google sign-in.
+- Files changed: `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/OAuthGoogleCallbackService.java`, `backend/services/auth-service/src/test/java/dev/auctoritas/auth/service/OAuthGoogleCallbackServiceTest.java`, `prd.json`, `progress.txt`.
+- **Learnings for future iterations:**
+  - Prefer upgrading existing end-users to verified when a trusted OAuth provider confirms the email; avoid leaving users in a limbo unverified state.
 ---
