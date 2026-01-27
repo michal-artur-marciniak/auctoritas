@@ -18,6 +18,7 @@ permissions:
 
 jobs:
   lint-build:
+    name: Frontend CI / lint-build
     runs-on: ubuntu-latest
     timeout-minutes: 15
 

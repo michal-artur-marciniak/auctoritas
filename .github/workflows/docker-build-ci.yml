@@ -3,11 +3,6 @@ name: Docker Build CI
 on:
   pull_request:
     branches: [master]
-    paths:
-      - backend/**
-      - infra/docker/**
-      - docker-compose.yml
-      - .github/workflows/docker-build-ci.yml
   push:
     branches: [master]
     paths:
@@ -24,7 +19,46 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      docker_changed: ${{ steps.changes.outputs.docker_changed }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect docker build changes
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE_SHA="${{ github.event.before }}"
+            HEAD_SHA="${{ github.sha }}"
+          fi
+
+          ZERO_SHA="0000000000000000000000000000000000000000"
+          if [ "$BASE_SHA" = "$ZERO_SHA" ]; then
+            CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r "$HEAD_SHA" || true)
+          else
+            CHANGED_FILES=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" || true)
+          fi
+
+          if printf '%s\n' "$CHANGED_FILES" | grep -Eq '^(backend/|infra/docker/|docker-compose\.yml$|\.github/workflows/docker-build-ci\.yml$)'; then
+            echo "docker_changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "docker_changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
   auth-service:
+    needs: changes
+    if: needs.changes.outputs.docker_changed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -45,6 +79,8 @@ jobs:
           cache-to: type=gha,mode=max
 
   gateway-service:
+    needs: changes
+    if: needs.changes.outputs.docker_changed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -65,6 +101,8 @@ jobs:
           cache-to: type=gha,mode=max
 
   worker-service:
+    needs: changes
+    if: needs.changes.outputs.docker_changed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -85,9 +123,11 @@ jobs:
           cache-to: type=gha,mode=max
 
   all:
+    name: Docker Build CI / all
     runs-on: ubuntu-latest
     timeout-minutes: 5
     needs:
+      - changes
       - auth-service
       - gateway-service
       - worker-service
@@ -95,6 +135,11 @@ jobs:
     steps:
       - name: Verify all Docker builds succeeded
         run: |
+          echo "docker_changed: ${{ needs.changes.outputs.docker_changed }}"
+          if [ "${{ needs.changes.outputs.docker_changed }}" != "true" ]; then
+            echo "No docker-relevant changes detected; skipping Docker builds."
+            exit 0
+          fi
           echo "auth-service:   ${{ needs.auth-service.result }}"
           echo "gateway-service:${{ needs.gateway-service.result }}"
           echo "worker-service: ${{ needs.worker-service.result }}"
