@@ -50,11 +50,12 @@ public class OAuthAuthorizationRequest extends BaseAuditEntity {
     if (codeVerifier == null || codeVerifier.isBlank()) {
       return codeVerifier;
     }
-    try {
-      return oauthClientSecretEncryptor.decrypt(codeVerifier);
-    } catch (Exception ex) {
-      // Backward compatibility if an older row stored plaintext.
-      return codeVerifier;
+    String trimmed = codeVerifier.trim();
+    if (!trimmed.startsWith(OAuthAuthorizationRequestEntityListener.ENC_PREFIX)) {
+      throw new IllegalStateException("codeVerifier is not encrypted");
     }
+    String ciphertext =
+        trimmed.substring(OAuthAuthorizationRequestEntityListener.ENC_PREFIX.length());
+    return oauthClientSecretEncryptor.decrypt(ciphertext);
   }
 }

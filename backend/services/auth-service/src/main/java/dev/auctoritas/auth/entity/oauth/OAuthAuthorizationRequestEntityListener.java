@@ -10,6 +10,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class OAuthAuthorizationRequestEntityListener {
 
+  static final String ENC_PREFIX = "ENC:";
+
   private static volatile TextEncryptor oauthClientSecretEncryptor;
 
   @Autowired
@@ -40,22 +42,17 @@ public class OAuthAuthorizationRequestEntityListener {
     }
 
     // Avoid double-encrypting on updates.
-    if (isEncryptedValue(trimmed, encryptor)) {
+    if (isEncryptedValue(trimmed)) {
       if (!trimmed.equals(raw)) {
         entity.setCodeVerifier(trimmed);
       }
       return;
     }
 
-    entity.setCodeVerifier(encryptor.encrypt(trimmed));
+    entity.setCodeVerifier(ENC_PREFIX + encryptor.encrypt(trimmed));
   }
 
-  private static boolean isEncryptedValue(String value, TextEncryptor encryptor) {
-    try {
-      encryptor.decrypt(value);
-      return true;
-    } catch (Exception ex) {
-      return false;
-    }
+  private static boolean isEncryptedValue(String value) {
+    return value != null && value.startsWith(ENC_PREFIX);
   }
 }

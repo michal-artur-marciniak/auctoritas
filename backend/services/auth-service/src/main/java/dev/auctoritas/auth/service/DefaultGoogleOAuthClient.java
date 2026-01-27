@@ -16,6 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class DefaultGoogleOAuthClient implements GoogleOAuthClient {
   private static final String GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
   private static final String GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo";
+  private static final String ENC_PREFIX = "ENC:";
 
   private final RestClient restClient;
   private final TextEncryptor oauthClientSecretEncryptor;
@@ -35,11 +36,13 @@ public class DefaultGoogleOAuthClient implements GoogleOAuthClient {
 
     MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
     form.add("grant_type", "authorization_code");
-    form.add("code", value(request.code()));
-    form.add("client_id", value(request.clientId()));
-    form.add("client_secret", value(request.clientSecret()));
-    form.add("redirect_uri", value(request.redirectUri()));
-    form.add("code_verifier", decryptCodeVerifier(value(request.codeVerifier())));
+    form.add("code", value(request.code(), "oauth_google_exchange_failed"));
+    form.add("client_id", value(request.clientId(), "oauth_google_exchange_failed"));
+    form.add("client_secret", value(request.clientSecret(), "oauth_google_exchange_failed"));
+    form.add("redirect_uri", value(request.redirectUri(), "oauth_google_exchange_failed"));
+    form.add(
+        "code_verifier",
+        decryptCodeVerifier(value(request.codeVerifier(), "oauth_google_exchange_failed")));
 
     try {
       GoogleTokenResponse response =
@@ -62,7 +65,7 @@ public class DefaultGoogleOAuthClient implements GoogleOAuthClient {
 
   @Override
   public GoogleUserInfo fetchUserInfo(String accessToken) {
-    String token = value(accessToken);
+    String token = value(accessToken, "oauth_google_userinfo_failed");
     try {
       GoogleUserInfo info =
           restClient
@@ -85,21 +88,29 @@ public class DefaultGoogleOAuthClient implements GoogleOAuthClient {
   }
 
   private String decryptCodeVerifier(String codeVerifier) {
+    if (codeVerifier == null) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_google_exchange_failed");
+    }
+
+    String trimmed = codeVerifier.trim();
+    if (!trimmed.startsWith(ENC_PREFIX)) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_google_exchange_failed");
+    }
+    String ciphertext = trimmed.substring(ENC_PREFIX.length());
     try {
-      return oauthClientSecretEncryptor.decrypt(codeVerifier);
+      return oauthClientSecretEncryptor.decrypt(ciphertext);
     } catch (Exception ex) {
-      // Backward compatibility if an older row stored plaintext.
-      return codeVerifier;
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_google_exchange_failed", ex);
     }
   }
 
-  private static String value(String s) {
+  private static String value(String s, String errorCode) {
     if (s == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_google_exchange_failed");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
     }
     String trimmed = s.trim();
     if (trimmed.isEmpty()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_google_exchange_failed");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
     }
     return trimmed;
   }
