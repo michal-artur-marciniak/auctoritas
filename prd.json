@@ -1,16 +1,16 @@
 {
   "project": "Auctoritas",
-  "branchName": "feature/v0-4-0-oauth-google",
-  "description": "v0.4.0 OAuth Integration (Google) - Redirect-based OAuth with PKCE/state and one-time exchange codes (no tokens in URL).",
+  "branchName": "feature/v0-4-1-oauth-additional-providers",
+  "description": "v0.4.1 Additional OAuth Providers - Add GitHub, Apple, Microsoft, and Facebook via a shared provider abstraction and consistent linking rules.",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Persist OAuth connections",
-      "description": "As a developer, I need OAuth connections persisted so that future logins can identify users.",
+      "title": "Add OAuth provider abstraction and registry",
+      "description": "As a developer, I want a provider interface so that adding providers is consistent and maintainable.",
       "acceptanceCriteria": [
-        "Add migration creating oauth_connections with: id, project_id, user_id, provider, provider_user_id, email, created_at, updated_at",
-        "Enforce uniqueness: one connection per provider+provider_user_id per project",
-        "Migration runs cleanly on startup",
+        "Create a provider interface with methods needed for authorize URL creation and callback token exchange",
+        "Implement a provider factory/registry keyed by provider name",
+        "Existing Google provider uses the same abstraction",
         "mvn -pl backend/services/auth-service test passes",
         "Typecheck passes"
       ],
@@ -20,12 +20,12 @@
     },
     {
       "id": "US-002",
-      "title": "Configure Google OAuth per project",
-      "description": "As a project admin, I want to configure Google OAuth credentials so that users can sign in with Google.",
+      "title": "Implement unified account linking rules for OAuth callbacks",
+      "description": "As the platform, I want consistent account linking rules so that provider logins map to the correct user.",
       "acceptanceCriteria": [
-        "Project settings support Google OAuth fields: enabled, clientId, clientSecret",
-        "clientSecret is stored encrypted at rest and never returned in full via API",
-        "Project settings include an allowlist of redirectUris for OAuth",
+        "If an OAuth connection exists for provider+provider_user_id, it is used",
+        "Otherwise, if provider returns a verified email and a user exists with that email in the project, link to that user",
+        "Otherwise create a new user and mark emailVerified=true only when provider asserts verified email",
         "mvn -pl backend/services/auth-service test passes",
         "Typecheck passes"
       ],
@@ -35,51 +35,122 @@
     },
     {
       "id": "US-003",
-      "title": "Start Google OAuth authorization",
-      "description": "As an end user, I want to start Google sign-in so that I can authenticate without a password.",
+      "title": "Add GitHub OAuth project configuration",
+      "description": "As a project admin, I want GitHub sign-in configurable per project so that users can authenticate via GitHub.",
       "acceptanceCriteria": [
-        "GET /api/v1/auth/oauth/google/authorize?redirect_uri=... requires X-API-Key",
-        "redirect_uri is validated against the project's redirectUris allowlist",
-        "System generates state and PKCE verifier/challenge and persists them server-side with short TTL",
-        "Response is an HTTP 302 redirect to Google's authorize URL with required parameters",
-        "mvn -pl backend/services/gateway-service test passes",
+        "Project settings support GitHub fields: enabled, clientId, clientSecret, redirectUris",
+        "clientSecret is stored encrypted at rest and never returned in full via API",
+        "Redirect URIs are validated against the project's allowlist for GitHub",
+        "mvn -pl backend/services/auth-service test passes",
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-004",
-      "title": "Handle Google OAuth callback and redirect to app with exchange code",
-      "description": "As the platform, I want to handle the provider callback so that the user returns to the app with an exchange code.",
+      "title": "Implement GitHub OAuth provider end-to-end",
+      "description": "As a project admin, I want GitHub sign-in working so that users can authenticate via GitHub.",
       "acceptanceCriteria": [
-        "GET /api/v1/auth/oauth/google/callback?code=...&state=... validates state and retrieves PKCE verifier",
-        "System exchanges provider code for provider tokens using stored PKCE verifier",
-        "If a user with matching email exists in the project, link OAuth connection to that user; otherwise create a new user",
-        "New users created via Google are marked emailVerified=true",
-        "Callback redirects to validated redirect_uri with auctoritas_code=<one-time-code> (TTL <= 2 minutes)",
+        "Authorize/callback endpoints support provider=github using the shared provider abstraction",
+        "End-to-end flow works: /authorize -> GitHub -> /callback -> redirect with auctoritas_code -> exchange",
+        "OAuth connection is persisted under provider github",
         "mvn -pl backend/services/auth-service test passes",
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-005",
-      "title": "Exchange code for Auctoritas tokens",
-      "description": "As an app client, I want to exchange the redirect code for Auctoritas tokens so that I can establish a session.",
+      "title": "Add Microsoft OAuth project configuration",
+      "description": "As a project admin, I want Microsoft sign-in configurable per project so that users can authenticate via Microsoft.",
       "acceptanceCriteria": [
-        "POST /api/v1/auth/oauth/exchange requires X-API-Key and accepts { code }",
-        "Exchange code is one-time use and expires quickly (<= 2 minutes)",
-        "On success, response matches existing login format: { user, accessToken, refreshToken }",
-        "Exchange code cannot be replayed",
+        "Project settings support Microsoft fields: enabled, clientId, clientSecret, tenant (if applicable), redirectUris",
+        "clientSecret is stored encrypted at rest and never returned in full via API",
+        "Redirect URIs are validated against the project's allowlist for Microsoft",
         "mvn -pl backend/services/auth-service test passes",
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": true,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Implement Microsoft OAuth provider end-to-end",
+      "description": "As a project admin, I want Microsoft sign-in working so that users can authenticate via Microsoft accounts.",
+      "acceptanceCriteria": [
+        "Authorize/callback endpoints support provider=microsoft using the shared provider abstraction",
+        "End-to-end flow works: /authorize -> Microsoft -> /callback -> redirect with auctoritas_code -> exchange",
+        "OAuth connection is persisted under provider microsoft",
+        "mvn -pl backend/services/auth-service test passes",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Add Facebook OAuth project configuration",
+      "description": "As a project admin, I want Facebook sign-in configurable per project so that users can authenticate via Facebook.",
+      "acceptanceCriteria": [
+        "Project settings support Facebook fields: enabled, clientId, clientSecret, redirectUris",
+        "clientSecret is stored encrypted at rest and never returned in full via API",
+        "Redirect URIs are validated against the project's allowlist for Facebook",
+        "mvn -pl backend/services/auth-service test passes",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Implement Facebook OAuth provider end-to-end",
+      "description": "As a project admin, I want Facebook sign-in working so that users can authenticate via Facebook.",
+      "acceptanceCriteria": [
+        "Authorize/callback endpoints support provider=facebook using the shared provider abstraction",
+        "End-to-end flow works: /authorize -> Facebook -> /callback -> redirect with auctoritas_code -> exchange",
+        "OAuth connection is persisted under provider facebook",
+        "mvn -pl backend/services/auth-service test passes",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Add Apple Sign-In project configuration",
+      "description": "As a project admin, I want Apple sign-in configurable per project so that users can authenticate via Apple.",
+      "acceptanceCriteria": [
+        "Project settings support Apple fields required for server-side flow (e.g., teamId, keyId, serviceId, privateKey or reference, redirectUris)",
+        "Apple secrets/keys are stored encrypted at rest and never returned in full via API",
+        "Redirect URIs are validated against the project's allowlist for Apple",
+        "mvn -pl backend/services/auth-service test passes",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Implement Apple Sign-In provider end-to-end",
+      "description": "As a project admin, I want Apple sign-in working so that users can authenticate via Apple.",
+      "acceptanceCriteria": [
+        "Authorize/callback endpoints support provider=apple using the shared provider abstraction",
+        "Apple-specific constraints are handled (e.g., ID token validation) while keeping the same redirect + exchange pattern",
+        "OAuth connection is persisted under provider apple",
+        "mvn -pl backend/services/auth-service test passes",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
       "notes": ""
     }
   ]

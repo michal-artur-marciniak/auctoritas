@@ -11,6 +11,7 @@
 - End-user email verification tokens are stored hashed with 24-hour expiry and a used_at marker; resends mark existing tokens used.
 - For tests that need plaintext verification token/code, call `EndUserEmailVerificationService.issueVerificationToken(...)`; persistence only stores hashes.
 - In Spring Boot 4 tests, prefer overriding beans via `@TestConfiguration` + `@Primary` (e.g., to capture DomainEventPublisher publishes); `@MockBean` isn't available here.
+- In `@DataJpaTest` slices, Spring won't component-scan new `@Service/@Component` beans; add them via `@Import(...)` or a `@TestConfiguration`.
 - For JPA repository constraint tests, persist duplicates then assert `entityManager.flush()` throws `jakarta.persistence.PersistenceException`.
 - Per-service Maven runs should include `-am` to build local libs (e.g. `mvn -pl services/auth-service -am test`) so `dev.auctoritas:common` resolves.
 - Email verification dev logging can be toggled via `auctoritas.auth.email-verification.log-challenge` (defaults true).
@@ -25,47 +26,27 @@
 - Domain events from auth-service use DomainEventPublisher; RabbitMQ publishes JSON to the default exchange with routing key = event type (disable in tests via `auctoritas.messaging.rabbit.enabled=false` and `spring.rabbitmq.dynamic=false`).
 - For structured service logs, prefer `StructuredArguments.kv(...)` so LogstashEncoder emits searchable JSON fields; correlation id is carried via MDC key `correlationId`.
 - In JPA tests, if you `entityManager.clear()`, re-fetch entities (find/getReference) before persisting new rows with @ManyToOne relations.
-- When linking OAuth identities, treat a successful provider login as email verification: set `EndUser.emailVerified=true` (and optionally populate missing `name`).
+- When linking OAuth identities, set `EndUser.emailVerified=true` only when the provider asserts the email is verified; do not link existing users by unverified email.
+- Keep OAuth account linking provider-agnostic in `OAuthAccountLinkingService` (providers should only map userinfo, not enforce linking rules).
 
-## 2026-01-27 14:18 CET - US-001
+## 2026-01-27 21:50 CET - US-001
 Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
-- Added persisted OAuth connections for end users (JPA entity + repository) and Flyway migration for `oauth_connections`.
-- Files changed: `backend/services/auth-service/src/main/java/dev/auctoritas/auth/entity/oauth/OAuthConnection.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/OAuthConnectionRepository.java`, `backend/services/auth-service/src/main/resources/db/migration/V18__oauth_connections.sql`, `backend/services/auth-service/src/test/java/dev/auctoritas/auth/repository/OAuthConnectionRepositoryTest.java`, `prd.json`, `progress.txt`.
+- Implemented an `OAuthProvider` interface + `OAuthProviderRegistry`, and moved Google token exchange/userinfo fetch behind `GoogleOAuthProvider`.
+- Updated Google authorize/callback services to use the provider abstraction.
+- Files changed: `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/oauth/OAuthProvider.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/oauth/OAuthProviderRegistry.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/oauth/GoogleOAuthProvider.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/OAuthGoogleAuthorizationService.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/OAuthGoogleCallbackService.java`, `backend/services/auth-service/src/test/java/dev/auctoritas/auth/service/OAuthGoogleCallbackServiceTest.java`, `prd.json`, `progress.txt`.
 - **Learnings for future iterations:**
-  - New auth-service persistence should update both Flyway and JPA entity mappings; tests use Hibernate DDL, prod/dev use Flyway + `ddl-auto: validate`.
-  - For unique constraint enforcement in JPA tests, `entityManager.flush()` is the point where the constraint violation surfaces.
+  - `OAuthProvider` should own provider-specific config parsing + token exchange + userinfo mapping; keep account linking logic provider-agnostic.
+  - Use `OAuthProviderRegistry.require("<provider>")` to fail fast with `oauth_provider_invalid` for unknown providers.
+  - In `@DataJpaTest` service tests, remember to `@Import` new provider/registry beans (slice tests don't component-scan).
 ---
 
-## 2026-01-27 15:02 CET - US-002
+## 2026-01-27 21:55 CET - US-002
 Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
-- Implemented per-project Google OAuth config with redirect URI allowlist; clientSecret stored encrypted-at-rest and never returned in full.
-- Files changed: `backend/services/auth-service/src/main/java/dev/auctoritas/auth/entity/project/ProjectSettings.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/ProjectService.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/config/OAuthCryptoConfig.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/config/OAuthEncryptionProperties.java`, `backend/services/auth-service/src/main/resources/db/migration/V19__project_settings_google_oauth_secret.sql`, `backend/services/auth-service/src/main/resources/application-dev.yml`, `backend/services/auth-service/src/main/resources/application-prod.yml`, `backend/services/auth-service/src/main/resources/application-test.yml`, `backend/services/auth-service/src/test/resources/application-test.yml`, `backend/services/auth-service/src/test/java/dev/auctoritas/auth/config/OAuthCryptoConfigTest.java`, `prd.json`, `progress.txt`.
+- Centralized OAuth callback linking rules (connection by provider_user_id -> verified email match -> create) into `OAuthAccountLinkingService`.
+- Updated Google callback + provider to stop rejecting unverified emails; only set `emailVerified=true` when provider asserts verified email.
+- Added/updated tests to cover the three linking branches.
+- Files changed: `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/oauth/OAuthAccountLinkingService.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/oauth/GoogleOAuthProvider.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/OAuthGoogleCallbackService.java`, `backend/services/auth-service/src/test/java/dev/auctoritas/auth/service/OAuthGoogleCallbackServiceTest.java`, `prd.json`, `progress.txt`.
 - **Learnings for future iterations:**
-  - Store OAuth client secrets outside JSON config and always sanitize API responses; expose `clientSecretSet` + masked placeholder only.
-  - When adding new required Spring beans (e.g. encryptors), wire test profile properties in `src/test/resources/application-test.yml` to keep ApplicationContext loading.
-
-## 2026-01-27 15:20 CET - US-003
-Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
-- Implemented `GET /api/v1/auth/oauth/google/authorize?redirect_uri=...` to generate state + PKCE and 302-redirect to Google's authorize URL.
-- Persisted the OAuth authorization request server-side (state hash + PKCE verifier + app redirect URI, TTL 10m) via auth-service internal endpoint.
-- Files changed: `backend/services/gateway-service/src/main/java/dev/auctoritas/gateway/filter/GoogleOAuthAuthorizeGatewayFilterFactory.java`, `backend/services/gateway-service/src/main/resources/application.yml`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/InternalGoogleOAuthController.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/InternalGoogleAuthorizeRequest.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/InternalGoogleAuthorizeResponse.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/OAuthGoogleAuthorizationService.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/entity/oauth/OAuthAuthorizationRequest.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/repository/OAuthAuthorizationRequestRepository.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/config/SecurityConfig.java`, `backend/services/auth-service/src/main/resources/db/migration/V20__oauth_authorization_requests.sql`, `prd.json`, `progress.txt`.
-- **Learnings for future iterations:**
-  - OAuth start is best implemented as a gateway route filter (not a controller) so rate limiting and global gateway filters still apply.
-  - Any new auth-service `/internal/**` endpoint used by gateway must be whitelisted in `SecurityConfig.PUBLIC_ENDPOINTS` or calls will fail with 401.
----
-
-## 2026-01-27 15:23 CET - US-004
-Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
-- Hardened Google OAuth callback handling: reject unverified Google emails and mark existing users as `emailVerified=true` on successful Google sign-in.
-- Files changed: `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/OAuthGoogleCallbackService.java`, `backend/services/auth-service/src/test/java/dev/auctoritas/auth/service/OAuthGoogleCallbackServiceTest.java`, `prd.json`, `progress.txt`.
-- **Learnings for future iterations:**
-  - Prefer upgrading existing end-users to verified when a trusted OAuth provider confirms the email; avoid leaving users in a limbo unverified state.
----
-
-## 2026-01-27 15:30 CET - US-005
-Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
-- Implemented `POST /api/v1/auth/oauth/exchange` to accept `{ code }`, validate the project via `X-API-Key`, mark the OAuth exchange code as used (one-time), and issue end-user access + refresh tokens.
-- Files changed: `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/EndUserAuthController.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/api/OAuthExchangeRequest.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/config/SecurityConfig.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/OAuthExchangeService.java`, `backend/services/auth-service/src/test/java/dev/auctoritas/auth/service/OAuthExchangeServiceTest.java`, `prd.json`, `progress.txt`.
-- **Learnings for future iterations:**
-  - For API-key-authenticated endpoints that don't have an end-user JWT yet (like OAuth code exchange), remember to whitelist the route in `SecurityConfig.PUBLIC_ENDPOINTS`.
+  - Keep provider implementations focused on userinfo mapping; apply account-linking rules in a shared service so future providers behave consistently.
+  - Don’t block logins on `emailVerified=false`; instead carry the flag through and only link-by-email when verified.
 ---

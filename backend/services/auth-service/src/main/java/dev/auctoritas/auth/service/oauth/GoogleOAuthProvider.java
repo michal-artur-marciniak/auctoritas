@@ -98,10 +98,6 @@ public class GoogleOAuthProvider implements OAuthProvider {
     Boolean emailVerified = userInfo == null ? null : userInfo.emailVerified();
     String name = userInfo == null ? null : userInfo.name();
 
-    if (Boolean.FALSE.equals(emailVerified)) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_google_email_not_verified");
-    }
-
     return new OAuthUserInfo(providerUserId, email, emailVerified, name);
   }
 

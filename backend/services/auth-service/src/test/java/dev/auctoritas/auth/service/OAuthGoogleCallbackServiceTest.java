@@ -1,7 +1,6 @@
 package dev.auctoritas.auth.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.auctoritas.auth.config.JpaConfig;
 import dev.auctoritas.auth.entity.oauth.OAuthAuthorizationRequest;
@@ -23,8 +22,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -37,6 +34,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.util.UriComponentsBuilder;
 import dev.auctoritas.auth.service.oauth.GoogleOAuthProvider;
+import dev.auctoritas.auth.service.oauth.OAuthAccountLinkingService;
 import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
 
 @DataJpaTest
@@ -46,6 +44,7 @@ import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
   TokenService.class,
   OAuthProviderRegistry.class,
   GoogleOAuthProvider.class,
+  OAuthAccountLinkingService.class,
   OAuthGoogleCallbackService.class,
   OAuthGoogleCallbackServiceTest.TestConfig.class
 })
@@ -200,8 +199,71 @@ class OAuthGoogleCallbackServiceTest {
   }
 
   @Test
-  @DisplayName("Should reject Google sign-in when Google reports email not verified")
-  void shouldRejectUnverifiedGoogleEmail() {
+  @DisplayName("Should use existing OAuth connection when provider_user_id matches")
+  void shouldUseExistingConnectionByProviderUserId() {
+    EndUser existing = new EndUser();
+    existing.setProject(project);
+    existing.setEmail("user@example.com");
+    existing.setName(null);
+    existing.setEmailVerified(false);
+    existing.setPasswordHash("hash");
+    entityManager.persist(existing);
+
+    dev.auctoritas.auth.entity.oauth.OAuthConnection conn =
+        new dev.auctoritas.auth.entity.oauth.OAuthConnection();
+    conn.setProject(project);
+    conn.setUser(existing);
+    conn.setProvider("google");
+    conn.setProviderUserId("google-sub-conn");
+    conn.setEmail("user@example.com");
+    entityManager.persist(conn);
+    entityManager.flush();
+
+    String state = "state-existing-conn";
+    OAuthAuthorizationRequest authRequest = new OAuthAuthorizationRequest();
+    authRequest.setProject(project);
+    authRequest.setProvider("google");
+    authRequest.setStateHash(tokenService.hashToken(state));
+    authRequest.setCodeVerifier("pkce-verifier");
+    authRequest.setAppRedirectUri("https://example.com/app/callback");
+    authRequest.setExpiresAt(Instant.now().plusSeconds(600));
+    entityManager.persist(authRequest);
+    entityManager.flush();
+
+    stubGoogleOAuthClient.userInfoRef.set(
+        new GoogleOAuthClient.GoogleUserInfo(
+            "google-sub-conn", "Changed@Example.com", false, "New Name"));
+
+    callbackService.handleCallback(
+        "provider-code",
+        state,
+        "https://gateway.example.com/api/v1/auth/oauth/google/callback");
+
+    assertThat(endUserRepository.findAll()).hasSize(1);
+    assertThat(endUserRepository.findByEmailAndProjectId("user@example.com", project.getId()))
+        .isPresent()
+        .get()
+        .satisfies(
+            user -> {
+              assertThat(user.getEmailVerified()).isFalse();
+              assertThat(user.getName()).isEqualTo("New Name");
+            });
+
+    assertThat(
+            oauthConnectionRepository.findByProjectIdAndProviderAndProviderUserId(
+                project.getId(), "google", "google-sub-conn"))
+        .isPresent()
+        .get()
+        .satisfies(
+            updated -> {
+              assertThat(updated.getEmail()).isEqualTo("changed@example.com");
+              assertThat(updated.getUser().getId()).isEqualTo(existing.getId());
+            });
+  }
+
+  @Test
+  @DisplayName("Should create user with emailVerified=false when provider email is not verified")
+  void shouldCreateUnverifiedUserWhenProviderEmailNotVerified() {
     String state = "state-unverified";
     OAuthAuthorizationRequest authRequest = new OAuthAuthorizationRequest();
     authRequest.setProject(project);
@@ -217,18 +279,18 @@ class OAuthGoogleCallbackServiceTest {
         new GoogleOAuthClient.GoogleUserInfo(
             "google-sub-2", "user2@example.com", false, "Unverified User"));
 
-    assertThatThrownBy(
-            () ->
-                callbackService.handleCallback(
-                    "provider-code",
-                    state,
-                    "https://gateway.example.com/api/v1/auth/oauth/google/callback"))
-        .isInstanceOf(ResponseStatusException.class)
+    callbackService.handleCallback(
+        "provider-code",
+        state,
+        "https://gateway.example.com/api/v1/auth/oauth/google/callback");
+
+    assertThat(endUserRepository.findByEmailAndProjectId("user2@example.com", project.getId()))
+        .isPresent()
+        .get()
         .satisfies(
-            ex -> {
-              ResponseStatusException err = (ResponseStatusException) ex;
-              assertThat(err.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-              assertThat(err.getReason()).isEqualTo("oauth_google_email_not_verified");
+            user -> {
+              assertThat(user.getEmailVerified()).isFalse();
+              assertThat(user.getName()).isEqualTo("Unverified User");
             });
   }
 
