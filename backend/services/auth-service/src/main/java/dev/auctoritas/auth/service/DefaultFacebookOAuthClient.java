@@ -1,12 +1,13 @@
 package dev.auctoritas.auth.service;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.encrypt.TextEncryptor;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.server.ResponseStatusException;
@@ -33,25 +34,22 @@ public class DefaultFacebookOAuthClient implements FacebookOAuthClient {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_facebook_exchange_failed");
     }
 
-    String url =
-        FACEBOOK_TOKEN_URL
-            + "?client_id="
-            + urlEncode(value(request.clientId(), "oauth_facebook_exchange_failed"))
-            + "&client_secret="
-            + urlEncode(value(request.clientSecret(), "oauth_facebook_exchange_failed"))
-            + "&redirect_uri="
-            + urlEncode(value(request.redirectUri(), "oauth_facebook_exchange_failed"))
-            + "&code="
-            + urlEncode(value(request.code(), "oauth_facebook_exchange_failed"))
-            + "&code_verifier="
-            + urlEncode(
-                decryptCodeVerifier(value(request.codeVerifier(), "oauth_facebook_exchange_failed")));
+    MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+    form.add("client_id", value(request.clientId(), "oauth_facebook_exchange_failed"));
+    form.add("client_secret", value(request.clientSecret(), "oauth_facebook_exchange_failed"));
+    form.add("redirect_uri", value(request.redirectUri(), "oauth_facebook_exchange_failed"));
+    form.add("code", value(request.code(), "oauth_facebook_exchange_failed"));
+    form.add(
+        "code_verifier",
+        decryptCodeVerifier(value(request.codeVerifier(), "oauth_facebook_exchange_failed")));
 
     try {
       FacebookTokenResponse response =
           restClient
-              .get()
-              .uri(url)
+              .post()
+              .uri(FACEBOOK_TOKEN_URL)
+              .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+              .body(form)
               .accept(MediaType.APPLICATION_JSON)
               .retrieve()
               .body(FacebookTokenResponse.class);
@@ -68,14 +66,12 @@ public class DefaultFacebookOAuthClient implements FacebookOAuthClient {
   public FacebookUserInfo fetchUserInfo(String accessToken) {
     String token = value(accessToken, "oauth_facebook_userinfo_failed");
 
-    String url =
-        FACEBOOK_ME_URL + "?fields=" + urlEncode("id,name,email") + "&access_token=" + urlEncode(token);
-
     try {
       FacebookUserInfo info =
           restClient
               .get()
-              .uri(url)
+              .uri(FACEBOOK_ME_URL + "?fields=id,name,email")
+              .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
               .accept(MediaType.APPLICATION_JSON)
               .retrieve()
               .body(FacebookUserInfo.class);
@@ -114,9 +110,5 @@ public class DefaultFacebookOAuthClient implements FacebookOAuthClient {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
     }
     return trimmed;
-  }
-
-  private static String urlEncode(String value) {
-    return URLEncoder.encode(value, StandardCharsets.UTF_8);
   }
 }

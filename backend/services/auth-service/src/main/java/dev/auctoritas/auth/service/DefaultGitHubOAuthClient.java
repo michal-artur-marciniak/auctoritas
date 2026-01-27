@@ -19,6 +19,7 @@ public class DefaultGitHubOAuthClient implements GitHubOAuthClient {
   private static final String GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token";
   private static final String GITHUB_USER_URL = "https://api.github.com/user";
   private static final String GITHUB_USER_EMAILS_URL = "https://api.github.com/user/emails";
+  private static final String GITHUB_USER_AGENT = "auctoritas-auth-service";
   private static final String ENC_PREFIX = "ENC:";
 
   private final RestClient restClient;
@@ -74,6 +75,7 @@ public class DefaultGitHubOAuthClient implements GitHubOAuthClient {
               .get()
               .uri(GITHUB_USER_URL)
               .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+              .header(HttpHeaders.USER_AGENT, GITHUB_USER_AGENT)
               .accept(MediaType.APPLICATION_JSON)
               .retrieve()
               .body(GitHubUser.class);
@@ -95,6 +97,7 @@ public class DefaultGitHubOAuthClient implements GitHubOAuthClient {
               .get()
               .uri(GITHUB_USER_EMAILS_URL)
               .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+              .header(HttpHeaders.USER_AGENT, GITHUB_USER_AGENT)
               .accept(MediaType.APPLICATION_JSON)
               .retrieve()
               .body(GitHubUserEmail[].class);

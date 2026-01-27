@@ -64,6 +64,7 @@ public class GitHubOAuthCallbackGatewayFilterFactory
                 if (status != null && status.is2xxSuccessful()) {
                   return response
                       .bodyToMono(InternalGitHubCallbackResponse.class)
+                      .defaultIfEmpty(new InternalGitHubCallbackResponse(null))
                       .flatMap(
                           body -> {
                             if (body == null || body.redirectUrl() == null || body.redirectUrl().isBlank()) {

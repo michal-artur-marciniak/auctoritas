@@ -79,6 +79,9 @@ public class OAuthGitHubCallbackService {
             settings,
             new OAuthTokenExchangeRequest(resolvedCode, resolvedCallbackUri, authRequest.getCodeVerifier()));
 
+    if (userInfo == null) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_github_userinfo_failed");
+    }
     String providerUserId = requireValue(userInfo.providerUserId(), "oauth_github_userinfo_failed");
     EndUser user =
         oauthAccountLinkingService.linkOrCreateEndUser(

@@ -248,7 +248,7 @@ class OAuthAppleCallbackServiceTest {
 
     @Override
     public OAuthAuthorizeDetails getAuthorizeDetails(ProjectSettings settings) {
-      return new OAuthAuthorizeDetails("apple-service-id", "https://appleid.apple.com/auth/authorize", "name email");
+      return new OAuthAuthorizeDetails("apple-service-id", "https://appleid.apple.com/auth/authorize", "email");
     }
 
     @Override

@@ -50,17 +50,27 @@ public class DefaultAppleClientSecretService implements AppleClientSecretService
   private static PrivateKey parseEcPrivateKey(String pem) {
     try {
       String normalized = normalizeKey(pem);
+
+      if (normalized.contains("-----BEGIN EC PRIVATE KEY-----")) {
+        throw new ResponseStatusException(
+            HttpStatus.BAD_REQUEST,
+            "oauth_apple_private_key_pkcs8_required",
+            new IllegalArgumentException(
+                "SEC1 EC private keys are not supported; provide a PKCS#8 key (-----BEGIN PRIVATE KEY-----). "
+                    + "Convert with: openssl pkcs8 -topk8 -nocrypt -in key.sec1 -out key.pkcs8"));
+      }
+
       String privateKeyPEM =
           normalized
               .replace("-----BEGIN PRIVATE KEY-----", "")
               .replace("-----END PRIVATE KEY-----", "")
-              .replace("-----BEGIN EC PRIVATE KEY-----", "")
-              .replace("-----END EC PRIVATE KEY-----", "")
               .replaceAll("\\s", "");
       byte[] keyBytes = Base64.getDecoder().decode(privateKeyPEM);
       PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
       KeyFactory keyFactory = KeyFactory.getInstance("EC");
       return keyFactory.generatePrivate(spec);
+    } catch (ResponseStatusException ex) {
+      throw ex;
     } catch (Exception e) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_apple_not_configured", e);
     }

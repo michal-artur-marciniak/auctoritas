@@ -27,7 +27,7 @@ public class AppleOAuthAuthorizeGatewayFilterFactory
   private static final String CALLBACK_PATH = "/api/v1/auth/oauth/apple/callback";
   private static final String PROJECT_ID_HEADER = "X-Project-Id";
   private static final String AUTHORIZE_URL = "https://appleid.apple.com/auth/authorize";
-  private static final String SCOPE = "name email";
+  private static final String SCOPE = "email";
 
   private static final int STATE_BYTES = 32;
   private static final int CODE_VERIFIER_BYTES = 48;

@@ -66,18 +66,20 @@ public class OAuthAppleAuthorizationService {
     OAuthProvider provider = oauthProviderRegistry.require(PROVIDER);
     OAuthAuthorizeDetails details = provider.getAuthorizeDetails(settings);
 
-    if (state == null || state.isBlank()) {
+    String trimmedState = state == null ? null : state.trim();
+    if (trimmedState == null || trimmedState.isEmpty()) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_state_missing");
     }
-    if (codeVerifier == null || codeVerifier.isBlank()) {
+    String trimmedCodeVerifier = codeVerifier == null ? null : codeVerifier.trim();
+    if (trimmedCodeVerifier == null || trimmedCodeVerifier.isEmpty()) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_code_verifier_missing");
     }
 
     OAuthAuthorizationRequest request = new OAuthAuthorizationRequest();
     request.setProject(project);
     request.setProvider(PROVIDER);
-    request.setStateHash(tokenService.hashToken(state));
-    request.setCodeVerifier(codeVerifier);
+    request.setStateHash(tokenService.hashToken(trimmedState));
+    request.setCodeVerifier(trimmedCodeVerifier);
     request.setAppRedirectUri(normalizedRedirectUri);
     request.setExpiresAt(Instant.now().plus(AUTH_REQUEST_TTL));
     oauthAuthorizationRequestRepository.save(request);

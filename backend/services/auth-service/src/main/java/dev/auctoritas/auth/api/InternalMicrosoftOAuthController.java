@@ -3,6 +3,7 @@ package dev.auctoritas.auth.api;
 import dev.auctoritas.auth.service.OAuthMicrosoftAuthorizationService;
 import dev.auctoritas.auth.service.OAuthMicrosoftCallbackService;
 import dev.auctoritas.auth.service.oauth.OAuthAuthorizeDetails;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -35,7 +36,7 @@ public class InternalMicrosoftOAuthController {
 
   @PostMapping("/callback")
   public ResponseEntity<InternalMicrosoftCallbackResponse> callback(
-      @RequestBody InternalMicrosoftCallbackRequest request) {
+      @Valid @RequestBody InternalMicrosoftCallbackRequest request) {
     String redirectUrl =
         oauthMicrosoftCallbackService.handleCallback(request.code(), request.state(), request.callbackUri());
     return ResponseEntity.ok(new InternalMicrosoftCallbackResponse(redirectUrl));

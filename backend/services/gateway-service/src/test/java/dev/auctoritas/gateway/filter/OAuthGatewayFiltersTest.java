@@ -610,7 +610,7 @@ class OAuthGatewayFiltersTest {
     assertEquals("code", uri.getQueryParams().getFirst("response_type"));
     assertEquals("query", uri.getQueryParams().getFirst("response_mode"));
     assertEquals(
-        "name email",
+        "email",
         URLDecoder.decode(uri.getQueryParams().getFirst("scope"), StandardCharsets.UTF_8));
     assertEquals("S256", uri.getQueryParams().getFirst("code_challenge_method"));
     assertEquals(

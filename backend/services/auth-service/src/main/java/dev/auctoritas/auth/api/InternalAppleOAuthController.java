@@ -24,6 +24,9 @@ public class InternalAppleOAuthController {
   @PostMapping("/authorize")
   public ResponseEntity<InternalAppleAuthorizeResponse> authorize(
       @RequestBody InternalAppleAuthorizeRequest request) {
+    if (request == null) {
+      return ResponseEntity.badRequest().build();
+    }
     String clientId =
         oauthAppleAuthorizationService.createAuthorizationRequest(
             request.projectId(), request.redirectUri(), request.state(), request.codeVerifier());
@@ -33,6 +36,9 @@ public class InternalAppleOAuthController {
   @PostMapping("/callback")
   public ResponseEntity<InternalAppleCallbackResponse> callback(
       @RequestBody InternalAppleCallbackRequest request) {
+    if (request == null) {
+      return ResponseEntity.badRequest().build();
+    }
     String redirectUrl =
         oauthAppleCallbackService.handleCallback(request.code(), request.state(), request.callbackUri());
     return ResponseEntity.ok(new InternalAppleCallbackResponse(redirectUrl));

@@ -13,7 +13,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 public class AppleOAuthProvider implements OAuthProvider {
   private static final String PROVIDER = "apple";
   private static final String AUTHORIZE_URL = "https://appleid.apple.com/auth/authorize";
-  private static final String SCOPE = "name email";
+  private static final String SCOPE = "email";
 
   private final TextEncryptor oauthClientSecretEncryptor;
   private final AppleOAuthClient appleOAuthClient;
