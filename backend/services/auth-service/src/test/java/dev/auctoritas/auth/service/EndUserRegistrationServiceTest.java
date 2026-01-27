@@ -143,8 +143,6 @@ class EndUserRegistrationServiceTest {
     assertThat(event.emailVerified()).isFalse();
     assertThat(event.emailVerificationTokenId()).isEqualTo(token.getId());
     assertThat(event.emailVerificationExpiresAt()).isEqualTo(token.getExpiresAt());
-    assertThat(event.ipAddress()).isEqualTo("1.2.3.4");
-    assertThat(event.userAgent()).isEqualTo("test-agent");
   }
 
   @Test

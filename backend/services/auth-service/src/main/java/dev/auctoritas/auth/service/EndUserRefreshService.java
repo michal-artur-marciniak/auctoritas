@@ -84,6 +84,11 @@ public class EndUserRefreshService {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "refresh_token_expired");
     }
 
+    EndUser user = existingToken.getUser();
+    if (settings.isRequireVerifiedEmailForLogin() && !Boolean.TRUE.equals(user.getEmailVerified())) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "email_not_verified");
+    }
+
     existingToken.setRevoked(true);
 
     Instant refreshExpiresAt = tokenService.getRefreshTokenExpiry();
@@ -97,7 +102,6 @@ public class EndUserRefreshService {
             userAgent);
     existingToken.setReplacedBy(newToken);
 
-    EndUser user = existingToken.getUser();
     persistSession(user, refreshExpiresAt, ipAddress, userAgent);
 
     String accessToken =

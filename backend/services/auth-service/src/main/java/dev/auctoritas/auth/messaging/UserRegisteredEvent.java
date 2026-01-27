@@ -11,8 +11,6 @@ public record UserRegisteredEvent(
     String name,
     boolean emailVerified,
     UUID emailVerificationTokenId,
-    Instant emailVerificationExpiresAt,
-    String ipAddress,
-    String userAgent) {
+    Instant emailVerificationExpiresAt) {
   public static final String EVENT_TYPE = "user.registered";
 }

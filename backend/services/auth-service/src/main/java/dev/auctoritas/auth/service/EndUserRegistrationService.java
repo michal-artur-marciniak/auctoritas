@@ -116,9 +116,7 @@ public class EndUserRegistrationService {
             savedUser.getName(),
             Boolean.TRUE.equals(savedUser.getEmailVerified()),
             verificationPayload.tokenId(),
-            verificationPayload.expiresAt(),
-            trimToNull(ipAddress),
-            trimToNull(userAgent));
+            verificationPayload.expiresAt());
     try {
       domainEventPublisher.publish(UserRegisteredEvent.EVENT_TYPE, event);
     } catch (RuntimeException ex) {
