@@ -18,6 +18,7 @@
 - Gateway SDK routes resolve API keys via /internal/api-keys/resolve and forward X-Project-Id.
 - Maven modules live under `backend/`; run per-service tests from there (e.g. `mvn -pl services/auth-service test`).
 - Auth-service repository tests rely on Hibernate DDL from entity mappings (keep Flyway migrations and JPA entities in sync).
+- Auth-service Spring tests may load `src/test/resources/application-test.yml` even when `src/main/resources/application-test.yml` exists; add required properties for new beans there to avoid ApplicationContext failures.
 - Domain events from auth-service use DomainEventPublisher; RabbitMQ publishes JSON to the default exchange with routing key = event type (disable in tests via `auctoritas.messaging.rabbit.enabled=false` and `spring.rabbitmq.dynamic=false`).
 - For structured service logs, prefer `StructuredArguments.kv(...)` so LogstashEncoder emits searchable JSON fields; correlation id is carried via MDC key `correlationId`.
 - In JPA tests, if you `entityManager.clear()`, re-fetch entities (find/getReference) before persisting new rows with @ManyToOne relations.
@@ -30,3 +31,11 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
   - New auth-service persistence should update both Flyway and JPA entity mappings; tests use Hibernate DDL, prod/dev use Flyway + `ddl-auto: validate`.
   - For unique constraint enforcement in JPA tests, `entityManager.flush()` is the point where the constraint violation surfaces.
 ---
+
+## 2026-01-27 15:02 CET - US-002
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented per-project Google OAuth config with redirect URI allowlist; clientSecret stored encrypted-at-rest and never returned in full.
+- Files changed: `backend/services/auth-service/src/main/java/dev/auctoritas/auth/entity/project/ProjectSettings.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/service/ProjectService.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/config/OAuthCryptoConfig.java`, `backend/services/auth-service/src/main/java/dev/auctoritas/auth/config/OAuthEncryptionProperties.java`, `backend/services/auth-service/src/main/resources/db/migration/V19__project_settings_google_oauth_secret.sql`, `backend/services/auth-service/src/main/resources/application-dev.yml`, `backend/services/auth-service/src/main/resources/application-prod.yml`, `backend/services/auth-service/src/main/resources/application-test.yml`, `backend/services/auth-service/src/test/resources/application-test.yml`, `backend/services/auth-service/src/test/java/dev/auctoritas/auth/config/OAuthCryptoConfigTest.java`, `prd.json`, `progress.txt`.
+- **Learnings for future iterations:**
+  - Store OAuth client secrets outside JSON config and always sanitize API responses; expose `clientSecretSet` + masked placeholder only.
+  - When adding new required Spring beans (e.g. encryptors), wire test profile properties in `src/test/resources/application-test.yml` to keep ApplicationContext loading.
