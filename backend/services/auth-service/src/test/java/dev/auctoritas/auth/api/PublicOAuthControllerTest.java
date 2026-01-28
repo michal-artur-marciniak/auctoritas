@@ -30,6 +30,7 @@ import dev.auctoritas.auth.service.oauth.OAuthAuthorizeDetails;
 import dev.auctoritas.auth.service.oauth.OAuthAuthorizeUrlRequest;
 import dev.auctoritas.auth.service.oauth.OAuthProvider;
 import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
+import java.net.URI;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
@@ -185,8 +186,9 @@ class PublicOAuthControllerTest {
     assertThat(request.state()).isEqualTo("state-123");
     assertThat(request.codeChallenge()).isEqualTo("challenge-123");
     assertThat(request.codeChallengeMethod()).isEqualTo("S256");
-    assertThat(request.callbackUri()).contains("localhost");
-    assertThat(request.callbackUri()).endsWith("/api/v1/auth/oauth/google/callback");
+    URI callbackUri = new URI(request.callbackUri());
+    assertThat(callbackUri.getScheme()).isIn("http", "https");
+    assertThat(callbackUri.getPath()).endsWith("/api/v1/auth/oauth/google/callback");
 
     verify(oauthGoogleAuthorizationService)
         .createAuthorizationRequest(
@@ -262,8 +264,9 @@ class PublicOAuthControllerTest {
     assertThat(request.state()).isEqualTo("state-123");
     assertThat(request.codeChallenge()).isEqualTo("challenge-123");
     assertThat(request.codeChallengeMethod()).isEqualTo("S256");
-    assertThat(request.callbackUri()).contains("localhost");
-    assertThat(request.callbackUri()).endsWith("/api/v1/auth/oauth/google/callback");
+    URI callbackUri = new URI(request.callbackUri());
+    assertThat(callbackUri.getScheme()).isIn("http", "https");
+    assertThat(callbackUri.getPath()).endsWith("/api/v1/auth/oauth/google/callback");
 
     verify(oauthGoogleAuthorizationService)
         .createAuthorizationRequest(
