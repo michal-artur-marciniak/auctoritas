@@ -13,23 +13,23 @@ import java.util.UUID;
 
 @Component
 @Order(1)
-public class CorrelationIdFilter extends OncePerRequestFilter {
+public class RequestIdFilter extends OncePerRequestFilter {
 
-  private static final String CORRELATION_ID_HEADER = "X-Correlation-ID";
-  private static final String MDC_KEY = "correlationId";
+  private static final String REQUEST_ID_HEADER = "X-Request-Id";
+  private static final String MDC_KEY = "requestId";
 
   @Override
   protected void doFilterInternal(
       HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
       throws ServletException, IOException {
 
-    String correlationId = request.getHeader(CORRELATION_ID_HEADER);
-    if (correlationId == null || correlationId.isBlank()) {
-      correlationId = UUID.randomUUID().toString();
+    String requestId = request.getHeader(REQUEST_ID_HEADER);
+    if (requestId == null || requestId.trim().isEmpty()) {
+      requestId = UUID.randomUUID().toString();
     }
 
-    MDC.put(MDC_KEY, correlationId);
-    response.setHeader(CORRELATION_ID_HEADER, correlationId);
+    MDC.put(MDC_KEY, requestId);
+    response.setHeader(REQUEST_ID_HEADER, requestId);
 
     try {
       filterChain.doFilter(request, response);

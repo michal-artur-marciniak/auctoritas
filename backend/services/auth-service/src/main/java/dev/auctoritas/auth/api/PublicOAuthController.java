@@ -106,6 +106,15 @@ public class PublicOAuthController {
                 .collect(Collectors.toUnmodifiableList());
   }
 
+  @GetMapping("/{provider}")
+  public ResponseEntity<Void> authorizeAlias(
+      @PathVariable("provider") String provider,
+      @RequestHeader(value = API_KEY_HEADER, required = false) String apiKey,
+      @RequestParam(value = "redirect_uri", required = false) String redirectUri,
+      HttpServletRequest request) {
+    return authorize(provider, apiKey, redirectUri, request);
+  }
+
   @GetMapping("/{provider}/authorize")
   public ResponseEntity<Void> authorize(
       @PathVariable("provider") String provider,
