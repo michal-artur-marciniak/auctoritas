@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.entity.project;
 
-import dev.auctoritas.common.entity.BaseEntity;
+import dev.auctoritas.auth.shared.persistence.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;

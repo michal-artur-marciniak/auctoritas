@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.entity.oauth;
 
 import dev.auctoritas.auth.entity.project.Project;
-import dev.auctoritas.common.entity.BaseAuditEntity;
+import dev.auctoritas.auth.shared.persistence.BaseAuditEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;

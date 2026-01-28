@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.entity.project;
 
-import dev.auctoritas.common.entity.BaseAuditEntity;
-import dev.auctoritas.common.enums.ApiKeyStatus;
+import dev.auctoritas.auth.shared.persistence.BaseAuditEntity;
+import dev.auctoritas.auth.shared.enums.ApiKeyStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

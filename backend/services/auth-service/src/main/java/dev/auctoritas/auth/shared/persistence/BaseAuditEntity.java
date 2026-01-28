@@ -1,4 +1,4 @@
-package dev.auctoritas.common.entity;
+package dev.auctoritas.auth.shared.persistence;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.MappedSuperclass;

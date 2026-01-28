@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.repository;
 
 import dev.auctoritas.auth.entity.project.Project;
-import dev.auctoritas.common.enums.ProjectStatus;
+import dev.auctoritas.auth.shared.enums.ProjectStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

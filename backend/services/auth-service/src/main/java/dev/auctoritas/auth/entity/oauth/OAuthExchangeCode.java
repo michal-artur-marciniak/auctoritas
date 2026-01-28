@@ -2,7 +2,7 @@ package dev.auctoritas.auth.entity.oauth;
 
 import dev.auctoritas.auth.entity.enduser.EndUser;
 import dev.auctoritas.auth.entity.project.Project;
-import dev.auctoritas.common.entity.BaseEntity;
+import dev.auctoritas.auth.shared.persistence.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
