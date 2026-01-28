@@ -65,3 +65,8 @@ auctoritas:
   auth:
     password-reset:
       log-token: false
+
+auth:
+  public-api-base-url: ${AUTH_PUBLIC_API_BASE_URL:}
+  security:
+    trusted-proxies: ${AUTH_TRUSTED_PROXIES:}
