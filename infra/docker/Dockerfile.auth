@@ -10,7 +10,6 @@ COPY backend/.mvn/ .mvn/
 COPY infra/docker/pom-auth.xml pom.xml
 
 # Copy only the modules we need
-COPY backend/libs/common/ libs/common/
 COPY backend/services/auth-service/ services/auth-service/
 
 # Build using the minimal POM
