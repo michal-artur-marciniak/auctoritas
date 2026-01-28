@@ -1,6 +1,5 @@
-package dev.auctoritas.common.validation;
+package dev.auctoritas.auth.shared.security;
 
-import dev.auctoritas.common.dto.PasswordPolicy;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -68,7 +67,8 @@ public class PasswordValidator {
     }
 
     if (countUniqueChars(password) < policy.minUniqueChars()) {
-      errors.add("Password must contain at least " + policy.minUniqueChars() + " unique characters");
+      errors.add(
+          "Password must contain at least " + policy.minUniqueChars() + " unique characters");
     }
 
     return new ValidationResult(errors.isEmpty(), List.copyOf(errors));

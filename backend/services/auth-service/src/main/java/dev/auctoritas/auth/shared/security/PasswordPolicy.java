@@ -1,4 +1,4 @@
-package dev.auctoritas.common.dto;
+package dev.auctoritas.auth.shared.security;
 
 /**
  * Password policy configuration DTO.

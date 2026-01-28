@@ -10,7 +10,6 @@ COPY backend/.mvn/ .mvn/
 COPY infra/docker/pom-gateway.xml pom.xml
 
 # Copy only the modules we need
-COPY backend/libs/common/ libs/common/
 COPY backend/services/gateway-service/ services/gateway-service/
 
 # Build using the minimal POM

@@ -8,7 +8,7 @@ import dev.auctoritas.auth.entity.organization.OrganizationMember;
 import dev.auctoritas.auth.repository.OrgMemberRefreshTokenRepository;
 import dev.auctoritas.auth.repository.OrganizationMemberRepository;
 import dev.auctoritas.auth.repository.OrganizationRepository;
-import dev.auctoritas.common.enums.OrgMemberRole;
+import dev.auctoritas.auth.shared.enums.OrgMemberRole;
 import java.util.Locale;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;

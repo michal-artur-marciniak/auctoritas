@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.service;
 
 import dev.auctoritas.auth.config.JwtProperties;
-import dev.auctoritas.common.enums.OrgMemberRole;
+import dev.auctoritas.auth.shared.enums.OrgMemberRole;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;

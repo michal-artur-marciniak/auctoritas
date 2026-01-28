@@ -1,8 +1,8 @@
 package dev.auctoritas.auth.entity.project;
 
 import dev.auctoritas.auth.entity.organization.Organization;
-import dev.auctoritas.common.entity.BaseAuditEntity;
-import dev.auctoritas.common.enums.ProjectStatus;
+import dev.auctoritas.auth.shared.persistence.BaseAuditEntity;
+import dev.auctoritas.auth.shared.enums.ProjectStatus;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

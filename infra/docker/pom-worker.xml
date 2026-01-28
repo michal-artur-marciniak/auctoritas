@@ -26,7 +26,6 @@
   </properties>
 
   <modules>
-    <module>libs/common</module>
     <module>services/worker-service</module>
   </modules>
 

@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.security;
 
-import dev.auctoritas.common.enums.OrgMemberRole;
+import dev.auctoritas.auth.shared.enums.OrgMemberRole;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;

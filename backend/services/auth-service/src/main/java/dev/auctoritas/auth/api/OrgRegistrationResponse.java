@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.api;
 
-import dev.auctoritas.common.enums.OrgMemberRole;
+import dev.auctoritas.auth.shared.enums.OrgMemberRole;
 import java.util.UUID;
 
 public record OrgRegistrationResponse(
