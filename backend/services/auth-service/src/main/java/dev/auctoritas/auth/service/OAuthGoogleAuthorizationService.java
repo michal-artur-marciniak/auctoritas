@@ -59,7 +59,7 @@ public class OAuthGoogleAuthorizationService {
 
     String normalizedRedirectUri = validateRedirectUri(appRedirectUri);
     Map<String, Object> oauthConfig = settings.getOauthConfig() == null ? Map.of() : settings.getOauthConfig();
-    if (!isRedirectUriAllowed(oauthConfig, normalizedRedirectUri)) {
+    if (!isRedirectUriAllowed(oauthConfig, PROVIDER, normalizedRedirectUri)) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_redirect_uri_not_allowed");
     }
 
@@ -85,13 +85,23 @@ public class OAuthGoogleAuthorizationService {
     return details.clientId();
   }
 
-  private static boolean isRedirectUriAllowed(Map<String, Object> oauthConfig, String redirectUri) {
-    Object raw = oauthConfig.get("redirectUris");
-    if (!(raw instanceof List<?> list)) {
-      return false;
+  private static boolean isRedirectUriAllowed(
+      Map<String, Object> oauthConfig, String provider, String redirectUri) {
+    Object providerRaw = oauthConfig.get(provider);
+    if (providerRaw instanceof Map<?, ?> m) {
+      Object raw = m.get("redirectUris");
+      if (raw instanceof List<?> list && containsString(list, redirectUri)) {
+        return true;
+      }
     }
+
+    Object raw = oauthConfig.get("redirectUris");
+    return raw instanceof List<?> list && containsString(list, redirectUri);
+  }
+
+  private static boolean containsString(List<?> list, String value) {
     for (Object entry : list) {
-      if (entry instanceof String s && redirectUri.equals(s)) {
+      if (entry instanceof String s && value.equals(s)) {
         return true;
       }
     }

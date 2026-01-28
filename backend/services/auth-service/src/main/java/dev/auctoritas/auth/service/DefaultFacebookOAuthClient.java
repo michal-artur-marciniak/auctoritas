@@ -14,8 +14,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class DefaultFacebookOAuthClient implements FacebookOAuthClient {
-  private static final String FACEBOOK_TOKEN_URL = "https://graph.facebook.com/v18.0/oauth/access_token";
-  private static final String FACEBOOK_ME_URL = "https://graph.facebook.com/me";
+  private static final String FACEBOOK_TOKEN_URL = "https://graph.facebook.com/v19.0/oauth/access_token";
+  private static final String FACEBOOK_ME_URL = "https://graph.facebook.com/v19.0/me";
   private static final String ENC_PREFIX = "ENC:";
 
   private final RestClient restClient;
