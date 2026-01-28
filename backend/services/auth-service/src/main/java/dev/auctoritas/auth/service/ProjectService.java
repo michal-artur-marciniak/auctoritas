@@ -270,13 +270,393 @@ public class ProjectService {
       }
     }
 
+    // github: enabled/clientId/redirectUris in config, clientSecret encrypted in column
+    if (patch.containsKey("github")) {
+      Object githubObj = patch.get("github");
+      if (!(githubObj instanceof Map<?, ?> githubRaw)) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_github_config_invalid");
+      }
+
+      Map<String, Object> existingGithub = asObjectMap(merged.get("github"));
+      Map<String, Object> github = new HashMap<>(existingGithub);
+
+      if (githubRaw.containsKey("enabled")) {
+        Boolean enabled = asBoolean(githubRaw.get("enabled"));
+        if (enabled == null) {
+          throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_github_enabled_invalid");
+        }
+        github.put("enabled", enabled);
+      }
+
+      if (githubRaw.containsKey("clientId")) {
+        String clientId = asTrimmedString(githubRaw.get("clientId"));
+        if (clientId == null) {
+          github.remove("clientId");
+        } else {
+          github.put("clientId", clientId);
+        }
+      }
+
+      if (githubRaw.containsKey("redirectUris")) {
+        List<String> allowlist = asStringList(merged.get("redirectUris"));
+        List<String> redirectUris = normalizeRedirectUris(githubRaw.get("redirectUris"));
+        for (String uri : redirectUris) {
+          if (!allowlist.contains(uri)) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST, "oauth_github_redirect_uri_not_allowed");
+          }
+        }
+        if (redirectUris.isEmpty()) {
+          github.remove("redirectUris");
+        } else {
+          github.put("redirectUris", redirectUris);
+        }
+      }
+
+      // Never store plaintext secrets in oauth_config.
+      github.remove("clientSecret");
+      github.remove("clientSecretSet");
+
+      if (githubRaw.containsKey("clientSecret")) {
+        String secret = asTrimmedStringAllowEmpty(githubRaw.get("clientSecret"));
+        if (secret == null || secret.isEmpty()) {
+          settings.setOauthGithubClientSecretEnc(null);
+        } else {
+          settings.setOauthGithubClientSecretEnc(oauthClientSecretEncryptor.encrypt(secret));
+        }
+      }
+
+      boolean enabled = Boolean.TRUE.equals(github.get("enabled"));
+      String clientId = github.get("clientId") instanceof String s ? s : null;
+      boolean secretSet =
+          settings.getOauthGithubClientSecretEnc() != null
+              && !settings.getOauthGithubClientSecretEnc().trim().isEmpty();
+      List<String> redirectUris = asStringList(github.get("redirectUris"));
+
+      if (enabled && (clientId == null || clientId.trim().isEmpty())) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_github_client_id_required");
+      }
+      if (enabled && !secretSet) {
+        throw new ResponseStatusException(
+            HttpStatus.BAD_REQUEST, "oauth_github_client_secret_required");
+      }
+      if (enabled && redirectUris.isEmpty()) {
+        throw new ResponseStatusException(
+            HttpStatus.BAD_REQUEST, "oauth_github_redirect_uris_required");
+      }
+
+      if (github.isEmpty()) {
+        merged.remove("github");
+      } else {
+        merged.put("github", github);
+      }
+    }
+
+    // microsoft: enabled/clientId/tenant/redirectUris in config, clientSecret encrypted in column
+    if (patch.containsKey("microsoft")) {
+      Object microsoftObj = patch.get("microsoft");
+      if (!(microsoftObj instanceof Map<?, ?> microsoftRaw)) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_microsoft_config_invalid");
+      }
+
+      Map<String, Object> existingMicrosoft = asObjectMap(merged.get("microsoft"));
+      Map<String, Object> microsoft = new HashMap<>(existingMicrosoft);
+
+      if (microsoftRaw.containsKey("enabled")) {
+        Boolean enabled = asBoolean(microsoftRaw.get("enabled"));
+        if (enabled == null) {
+          throw new ResponseStatusException(
+              HttpStatus.BAD_REQUEST, "oauth_microsoft_enabled_invalid");
+        }
+        microsoft.put("enabled", enabled);
+      }
+
+      if (microsoftRaw.containsKey("clientId")) {
+        String clientId = asTrimmedString(microsoftRaw.get("clientId"));
+        if (clientId == null) {
+          microsoft.remove("clientId");
+        } else {
+          microsoft.put("clientId", clientId);
+        }
+      }
+
+      if (microsoftRaw.containsKey("tenant")) {
+        String tenant = asTrimmedString(microsoftRaw.get("tenant"));
+        if (tenant == null) {
+          microsoft.remove("tenant");
+        } else {
+          microsoft.put("tenant", tenant);
+        }
+      }
+
+      if (microsoftRaw.containsKey("redirectUris")) {
+        List<String> allowlist = asStringList(merged.get("redirectUris"));
+        List<String> redirectUris = normalizeRedirectUris(microsoftRaw.get("redirectUris"));
+        for (String uri : redirectUris) {
+          if (!allowlist.contains(uri)) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST, "oauth_microsoft_redirect_uri_not_allowed");
+          }
+        }
+        if (redirectUris.isEmpty()) {
+          microsoft.remove("redirectUris");
+        } else {
+          microsoft.put("redirectUris", redirectUris);
+        }
+      }
+
+      // Never store plaintext secrets in oauth_config.
+      microsoft.remove("clientSecret");
+      microsoft.remove("clientSecretSet");
+
+      if (microsoftRaw.containsKey("clientSecret")) {
+        String secret = asTrimmedStringAllowEmpty(microsoftRaw.get("clientSecret"));
+        if (secret == null || secret.isEmpty()) {
+          settings.setOauthMicrosoftClientSecretEnc(null);
+        } else {
+          settings.setOauthMicrosoftClientSecretEnc(oauthClientSecretEncryptor.encrypt(secret));
+        }
+      }
+
+      boolean enabled = Boolean.TRUE.equals(microsoft.get("enabled"));
+      String clientId = microsoft.get("clientId") instanceof String s ? s : null;
+      boolean secretSet =
+          settings.getOauthMicrosoftClientSecretEnc() != null
+              && !settings.getOauthMicrosoftClientSecretEnc().trim().isEmpty();
+      List<String> redirectUris = asStringList(microsoft.get("redirectUris"));
+
+      if (enabled && (clientId == null || clientId.trim().isEmpty())) {
+        throw new ResponseStatusException(
+            HttpStatus.BAD_REQUEST, "oauth_microsoft_client_id_required");
+      }
+      if (enabled && !secretSet) {
+        throw new ResponseStatusException(
+            HttpStatus.BAD_REQUEST, "oauth_microsoft_client_secret_required");
+      }
+      if (enabled && redirectUris.isEmpty()) {
+        throw new ResponseStatusException(
+            HttpStatus.BAD_REQUEST, "oauth_microsoft_redirect_uris_required");
+      }
+
+      if (microsoft.isEmpty()) {
+        merged.remove("microsoft");
+      } else {
+        merged.put("microsoft", microsoft);
+      }
+    }
+
+    // facebook: enabled/clientId/redirectUris in config, clientSecret encrypted in column
+    if (patch.containsKey("facebook")) {
+      Object facebookObj = patch.get("facebook");
+      if (!(facebookObj instanceof Map<?, ?> facebookRaw)) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_facebook_config_invalid");
+      }
+
+      Map<String, Object> existingFacebook = asObjectMap(merged.get("facebook"));
+      Map<String, Object> facebook = new HashMap<>(existingFacebook);
+
+      if (facebookRaw.containsKey("enabled")) {
+        Boolean enabled = asBoolean(facebookRaw.get("enabled"));
+        if (enabled == null) {
+          throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_facebook_enabled_invalid");
+        }
+        facebook.put("enabled", enabled);
+      }
+
+      if (facebookRaw.containsKey("clientId")) {
+        String clientId = asTrimmedString(facebookRaw.get("clientId"));
+        if (clientId == null) {
+          facebook.remove("clientId");
+        } else {
+          facebook.put("clientId", clientId);
+        }
+      }
+
+      if (facebookRaw.containsKey("redirectUris")) {
+        List<String> allowlist = asStringList(merged.get("redirectUris"));
+        List<String> redirectUris = normalizeRedirectUris(facebookRaw.get("redirectUris"));
+        for (String uri : redirectUris) {
+          if (!allowlist.contains(uri)) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST, "oauth_facebook_redirect_uri_not_allowed");
+          }
+        }
+        if (redirectUris.isEmpty()) {
+          facebook.remove("redirectUris");
+        } else {
+          facebook.put("redirectUris", redirectUris);
+        }
+      }
+
+      // Never store plaintext secrets in oauth_config.
+      facebook.remove("clientSecret");
+      facebook.remove("clientSecretSet");
+
+      if (facebookRaw.containsKey("clientSecret")) {
+        String secret = asTrimmedStringAllowEmpty(facebookRaw.get("clientSecret"));
+        if (secret == null || secret.isEmpty()) {
+          settings.setOauthFacebookClientSecretEnc(null);
+        } else {
+          settings.setOauthFacebookClientSecretEnc(oauthClientSecretEncryptor.encrypt(secret));
+        }
+      }
+
+      boolean enabled = Boolean.TRUE.equals(facebook.get("enabled"));
+      String clientId = facebook.get("clientId") instanceof String s ? s : null;
+      boolean secretSet =
+          settings.getOauthFacebookClientSecretEnc() != null
+              && !settings.getOauthFacebookClientSecretEnc().trim().isEmpty();
+      List<String> redirectUris = asStringList(facebook.get("redirectUris"));
+
+      if (enabled && (clientId == null || clientId.trim().isEmpty())) {
+        throw new ResponseStatusException(
+            HttpStatus.BAD_REQUEST, "oauth_facebook_client_id_required");
+      }
+      if (enabled && !secretSet) {
+        throw new ResponseStatusException(
+            HttpStatus.BAD_REQUEST, "oauth_facebook_client_secret_required");
+      }
+      if (enabled && redirectUris.isEmpty()) {
+        throw new ResponseStatusException(
+            HttpStatus.BAD_REQUEST, "oauth_facebook_redirect_uris_required");
+      }
+
+      if (facebook.isEmpty()) {
+        merged.remove("facebook");
+      } else {
+        merged.put("facebook", facebook);
+      }
+    }
+
+    // apple: enabled/teamId/keyId/serviceId/redirectUris/privateKeyRef in config, privateKey encrypted in column
+    if (patch.containsKey("apple")) {
+      Object appleObj = patch.get("apple");
+      if (!(appleObj instanceof Map<?, ?> appleRaw)) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_apple_config_invalid");
+      }
+
+      Map<String, Object> existingApple = asObjectMap(merged.get("apple"));
+      Map<String, Object> apple = new HashMap<>(existingApple);
+
+      if (appleRaw.containsKey("enabled")) {
+        Boolean enabled = asBoolean(appleRaw.get("enabled"));
+        if (enabled == null) {
+          throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_apple_enabled_invalid");
+        }
+        apple.put("enabled", enabled);
+      }
+
+      if (appleRaw.containsKey("teamId")) {
+        String teamId = asTrimmedString(appleRaw.get("teamId"));
+        if (teamId == null) {
+          apple.remove("teamId");
+        } else {
+          apple.put("teamId", teamId);
+        }
+      }
+
+      if (appleRaw.containsKey("keyId")) {
+        String keyId = asTrimmedString(appleRaw.get("keyId"));
+        if (keyId == null) {
+          apple.remove("keyId");
+        } else {
+          apple.put("keyId", keyId);
+        }
+      }
+
+      if (appleRaw.containsKey("serviceId")) {
+        String serviceId = asTrimmedString(appleRaw.get("serviceId"));
+        if (serviceId == null) {
+          apple.remove("serviceId");
+        } else {
+          apple.put("serviceId", serviceId);
+        }
+      }
+
+      if (appleRaw.containsKey("privateKeyRef")) {
+        String ref = asTrimmedString(appleRaw.get("privateKeyRef"));
+        if (ref == null) {
+          apple.remove("privateKeyRef");
+        } else {
+          apple.put("privateKeyRef", ref);
+        }
+      }
+
+      if (appleRaw.containsKey("redirectUris")) {
+        List<String> allowlist = asStringList(merged.get("redirectUris"));
+        List<String> redirectUris = normalizeRedirectUris(appleRaw.get("redirectUris"));
+        for (String uri : redirectUris) {
+          if (!allowlist.contains(uri)) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST, "oauth_apple_redirect_uri_not_allowed");
+          }
+        }
+        if (redirectUris.isEmpty()) {
+          apple.remove("redirectUris");
+        } else {
+          apple.put("redirectUris", redirectUris);
+        }
+      }
+
+      // Never store plaintext secrets in oauth_config.
+      apple.remove("privateKey");
+      apple.remove("privateKeySet");
+
+      if (appleRaw.containsKey("privateKey")) {
+        String privateKey = asTrimmedStringAllowEmpty(appleRaw.get("privateKey"));
+        if (privateKey == null || privateKey.isEmpty()) {
+          settings.setOauthApplePrivateKeyEnc(null);
+        } else {
+          settings.setOauthApplePrivateKeyEnc(oauthClientSecretEncryptor.encrypt(privateKey));
+        }
+      }
+
+      boolean enabled = Boolean.TRUE.equals(apple.get("enabled"));
+      String teamId = apple.get("teamId") instanceof String s ? s : null;
+      String keyId = apple.get("keyId") instanceof String s ? s : null;
+      String serviceId = apple.get("serviceId") instanceof String s ? s : null;
+      String privateKeyRef = apple.get("privateKeyRef") instanceof String s ? s : null;
+      boolean privateKeySet =
+          settings.getOauthApplePrivateKeyEnc() != null
+              && !settings.getOauthApplePrivateKeyEnc().trim().isEmpty();
+      List<String> redirectUris = asStringList(apple.get("redirectUris"));
+
+      if (enabled && (teamId == null || teamId.trim().isEmpty())) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_apple_team_id_required");
+      }
+      if (enabled && (keyId == null || keyId.trim().isEmpty())) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_apple_key_id_required");
+      }
+      if (enabled && (serviceId == null || serviceId.trim().isEmpty())) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_apple_service_id_required");
+      }
+      if (enabled && !(privateKeySet || (privateKeyRef != null && !privateKeyRef.trim().isEmpty()))) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_apple_private_key_required");
+      }
+      if (enabled && redirectUris.isEmpty()) {
+        throw new ResponseStatusException(
+            HttpStatus.BAD_REQUEST, "oauth_apple_redirect_uris_required");
+      }
+
+      if (apple.isEmpty()) {
+        merged.remove("apple");
+      } else {
+        merged.put("apple", apple);
+      }
+    }
+
     // Pass through other config keys as-is.
     for (Map.Entry<String, Object> entry : patch.entrySet()) {
       String key = entry.getKey();
       if (key == null) {
         continue;
       }
-      if (key.equals("google") || key.equals("redirectUris")) {
+      if (key.equals("google")
+          || key.equals("github")
+          || key.equals("microsoft")
+          || key.equals("facebook")
+          || key.equals("apple")
+          || key.equals("redirectUris")) {
         continue;
       }
       merged.put(key, entry.getValue());
@@ -369,6 +749,70 @@ public class ProjectService {
       safe.put("google", google);
     }
 
+    boolean hadGithub = stored.containsKey("github");
+    Map<String, Object> github = asObjectMap(safe.get("github"));
+    github.remove("clientSecret");
+    github.remove("clientSecretSet");
+
+    boolean githubSecretSet =
+        settings.getOauthGithubClientSecretEnc() != null
+            && !settings.getOauthGithubClientSecretEnc().trim().isEmpty();
+    if (hadGithub || githubSecretSet) {
+      github.put("clientSecretSet", githubSecretSet);
+      if (githubSecretSet) {
+        github.put("clientSecret", "********");
+      }
+      safe.put("github", github);
+    }
+
+    boolean hadMicrosoft = stored.containsKey("microsoft");
+    Map<String, Object> microsoft = asObjectMap(safe.get("microsoft"));
+    microsoft.remove("clientSecret");
+    microsoft.remove("clientSecretSet");
+
+    boolean microsoftSecretSet =
+        settings.getOauthMicrosoftClientSecretEnc() != null
+            && !settings.getOauthMicrosoftClientSecretEnc().trim().isEmpty();
+    if (hadMicrosoft || microsoftSecretSet) {
+      microsoft.put("clientSecretSet", microsoftSecretSet);
+      if (microsoftSecretSet) {
+        microsoft.put("clientSecret", "********");
+      }
+      safe.put("microsoft", microsoft);
+    }
+
+    boolean hadFacebook = stored.containsKey("facebook");
+    Map<String, Object> facebook = asObjectMap(safe.get("facebook"));
+    facebook.remove("clientSecret");
+    facebook.remove("clientSecretSet");
+
+    boolean facebookSecretSet =
+        settings.getOauthFacebookClientSecretEnc() != null
+            && !settings.getOauthFacebookClientSecretEnc().trim().isEmpty();
+    if (hadFacebook || facebookSecretSet) {
+      facebook.put("clientSecretSet", facebookSecretSet);
+      if (facebookSecretSet) {
+        facebook.put("clientSecret", "********");
+      }
+      safe.put("facebook", facebook);
+    }
+
+    boolean hadApple = stored.containsKey("apple");
+    Map<String, Object> apple = asObjectMap(safe.get("apple"));
+    apple.remove("privateKey");
+    apple.remove("privateKeySet");
+
+    boolean appleKeySet =
+        settings.getOauthApplePrivateKeyEnc() != null
+            && !settings.getOauthApplePrivateKeyEnc().trim().isEmpty();
+    if (hadApple || appleKeySet) {
+      apple.put("privateKeySet", appleKeySet);
+      if (appleKeySet) {
+        apple.put("privateKey", "********");
+      }
+      safe.put("apple", apple);
+    }
+
     return safe;
   }
 
@@ -415,6 +859,13 @@ public class ProjectService {
         .map(ProjectService::validateRedirectUri)
         .distinct()
         .toList();
+  }
+
+  private static List<String> asStringList(Object value) {
+    if (!(value instanceof List<?> list)) {
+      return List.of();
+    }
+    return list.stream().filter(v -> v instanceof String).map(v -> v.toString()).toList();
   }
 
   private static String validateRedirectUri(String raw) {

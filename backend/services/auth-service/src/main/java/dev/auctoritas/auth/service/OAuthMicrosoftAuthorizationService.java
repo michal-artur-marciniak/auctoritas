@@ -21,16 +21,16 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
-public class OAuthGoogleAuthorizationService {
+public class OAuthMicrosoftAuthorizationService {
   private static final Duration AUTH_REQUEST_TTL = Duration.ofMinutes(10);
-  private static final String PROVIDER = "google";
+  private static final String PROVIDER = "microsoft";
 
   private final ProjectRepository projectRepository;
   private final OAuthAuthorizationRequestRepository oauthAuthorizationRequestRepository;
   private final TokenService tokenService;
   private final OAuthProviderRegistry oauthProviderRegistry;
 
-  public OAuthGoogleAuthorizationService(
+  public OAuthMicrosoftAuthorizationService(
       ProjectRepository projectRepository,
       OAuthAuthorizationRequestRepository oauthAuthorizationRequestRepository,
       TokenService tokenService,
@@ -42,7 +42,7 @@ public class OAuthGoogleAuthorizationService {
   }
 
   @Transactional
-  public String createAuthorizationRequest(
+  public OAuthAuthorizeDetails createAuthorizationRequest(
       UUID projectId, String appRedirectUri, String state, String codeVerifier) {
     if (projectId == null) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "project_id_missing");
@@ -50,8 +50,7 @@ public class OAuthGoogleAuthorizationService {
     Project project =
         projectRepository
             .findById(projectId)
-            .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "project_not_found"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "project_not_found"));
     ProjectSettings settings = project.getSettings();
     if (settings == null) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "project_settings_missing");
@@ -82,7 +81,7 @@ public class OAuthGoogleAuthorizationService {
     request.setExpiresAt(Instant.now().plus(AUTH_REQUEST_TTL));
     oauthAuthorizationRequestRepository.save(request);
 
-    return details.clientId();
+    return details;
   }
 
   private static boolean isRedirectUriAllowed(
@@ -107,7 +106,6 @@ public class OAuthGoogleAuthorizationService {
     }
     return false;
   }
-
 
   private static String validateRedirectUri(String raw) {
     if (raw == null) {
@@ -134,5 +132,4 @@ public class OAuthGoogleAuthorizationService {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_redirect_uri_invalid", e);
     }
   }
-
 }

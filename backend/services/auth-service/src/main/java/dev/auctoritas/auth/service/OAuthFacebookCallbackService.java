@@ -20,8 +20,8 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 @Service
-public class OAuthGoogleCallbackService {
-  private static final String PROVIDER = "google";
+public class OAuthFacebookCallbackService {
+  private static final String PROVIDER = "facebook";
 
   private final OAuthAuthorizationRequestRepository oauthAuthorizationRequestRepository;
   private final OAuthExchangeCodeRepository oauthExchangeCodeRepository;
@@ -29,7 +29,7 @@ public class OAuthGoogleCallbackService {
   private final OAuthProviderRegistry oauthProviderRegistry;
   private final OAuthAccountLinkingService oauthAccountLinkingService;
 
-  public OAuthGoogleCallbackService(
+  public OAuthFacebookCallbackService(
       OAuthAuthorizationRequestRepository oauthAuthorizationRequestRepository,
       OAuthExchangeCodeRepository oauthExchangeCodeRepository,
       TokenService tokenService,
@@ -52,7 +52,8 @@ public class OAuthGoogleCallbackService {
     OAuthAuthorizationRequest authRequest =
         oauthAuthorizationRequestRepository
             .findByStateHashForUpdate(stateHash)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_state_invalid"));
+            .orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_state_invalid"));
 
     if (!PROVIDER.equalsIgnoreCase(authRequest.getProvider())) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_provider_invalid");
@@ -80,7 +81,8 @@ public class OAuthGoogleCallbackService {
             new OAuthTokenExchangeRequest(
                 resolvedCode, resolvedCallbackUri, authRequest.getCodeVerifier()));
 
-    String providerUserId = requireValue(userInfo.providerUserId(), "oauth_google_userinfo_failed");
+    String providerUserId =
+        requireValue(userInfo.providerUserId(), "oauth_facebook_userinfo_failed");
     EndUser user =
         oauthAccountLinkingService.linkOrCreateEndUser(
             project,
@@ -89,7 +91,7 @@ public class OAuthGoogleCallbackService {
             userInfo.email(),
             userInfo.emailVerified(),
             userInfo.name(),
-            "oauth_google_userinfo_failed");
+            "oauth_facebook_userinfo_failed");
 
     // Consume the state only after we've successfully linked/created the user.
     oauthAuthorizationRequestRepository.delete(authRequest);

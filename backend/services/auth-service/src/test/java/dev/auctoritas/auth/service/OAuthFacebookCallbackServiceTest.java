@@ -3,8 +3,8 @@ package dev.auctoritas.auth.service;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.auctoritas.auth.config.JpaConfig;
-import dev.auctoritas.auth.entity.oauth.OAuthAuthorizationRequest;
 import dev.auctoritas.auth.entity.enduser.EndUser;
+import dev.auctoritas.auth.entity.oauth.OAuthAuthorizationRequest;
 import dev.auctoritas.auth.entity.organization.Organization;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
@@ -12,6 +12,9 @@ import dev.auctoritas.auth.repository.EndUserRepository;
 import dev.auctoritas.auth.repository.OAuthAuthorizationRequestRepository;
 import dev.auctoritas.auth.repository.OAuthConnectionRepository;
 import dev.auctoritas.auth.repository.OAuthExchangeCodeRepository;
+import dev.auctoritas.auth.service.oauth.FacebookOAuthProvider;
+import dev.auctoritas.auth.service.oauth.OAuthAccountLinkingService;
+import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
 import dev.auctoritas.common.enums.OrganizationStatus;
 import dev.auctoritas.common.enums.ProjectStatus;
 import jakarta.persistence.EntityManager;
@@ -27,15 +30,12 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.encrypt.Encryptors;
 import org.springframework.security.crypto.encrypt.TextEncryptor;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.util.UriComponentsBuilder;
-import dev.auctoritas.auth.service.oauth.GoogleOAuthProvider;
-import dev.auctoritas.auth.service.oauth.OAuthAccountLinkingService;
-import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
 
 @DataJpaTest
 @ActiveProfiles("test")
@@ -43,21 +43,21 @@ import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
   JpaConfig.class,
   TokenService.class,
   OAuthProviderRegistry.class,
-  GoogleOAuthProvider.class,
+  FacebookOAuthProvider.class,
   OAuthAccountLinkingService.class,
-  OAuthGoogleCallbackService.class,
-  OAuthGoogleCallbackServiceTest.TestConfig.class
+  OAuthFacebookCallbackService.class,
+  OAuthFacebookCallbackServiceTest.TestConfig.class
 })
-class OAuthGoogleCallbackServiceTest {
+class OAuthFacebookCallbackServiceTest {
 
   @org.springframework.beans.factory.annotation.Autowired private EntityManager entityManager;
   @org.springframework.beans.factory.annotation.Autowired private TokenService tokenService;
-  @org.springframework.beans.factory.annotation.Autowired private OAuthGoogleCallbackService callbackService;
+  @org.springframework.beans.factory.annotation.Autowired private OAuthFacebookCallbackService callbackService;
   @org.springframework.beans.factory.annotation.Autowired private OAuthAuthorizationRequestRepository oauthAuthorizationRequestRepository;
   @org.springframework.beans.factory.annotation.Autowired private EndUserRepository endUserRepository;
   @org.springframework.beans.factory.annotation.Autowired private OAuthConnectionRepository oauthConnectionRepository;
   @org.springframework.beans.factory.annotation.Autowired private OAuthExchangeCodeRepository oauthExchangeCodeRepository;
-  @org.springframework.beans.factory.annotation.Autowired private StubGoogleOAuthClient stubGoogleOAuthClient;
+  @org.springframework.beans.factory.annotation.Autowired private StubFacebookOAuthClient stubFacebookOAuthClient;
 
   private Project project;
 
@@ -65,25 +65,25 @@ class OAuthGoogleCallbackServiceTest {
   void setUp() {
     Organization org = new Organization();
     org.setName("Test Org");
-    org.setSlug("test-org-oauth-callback");
+    org.setSlug("test-org-facebook-oauth-callback");
     org.setStatus(OrganizationStatus.ACTIVE);
     entityManager.persist(org);
     entityManager.flush();
 
     ProjectSettings settings = new ProjectSettings();
-    Map<String, Object> google = new HashMap<>();
-    google.put("enabled", true);
-    google.put("clientId", "google-client-id");
+    Map<String, Object> facebook = new HashMap<>();
+    facebook.put("enabled", true);
+    facebook.put("clientId", "facebook-client-id");
 
     Map<String, Object> oauthConfig = new HashMap<>();
-    oauthConfig.put("google", google);
+    oauthConfig.put("facebook", facebook);
     settings.setOauthConfig(oauthConfig);
-    settings.setOauthGoogleClientSecretEnc("google-client-secret");
+    settings.setOauthFacebookClientSecretEnc("facebook-client-secret");
 
     project = new Project();
     project.setOrganization(org);
     project.setName("Test Project");
-    project.setSlug("test-project-oauth-callback");
+    project.setSlug("test-project-facebook-oauth-callback");
     project.setStatus(ProjectStatus.ACTIVE);
     project.setSettings(settings);
     settings.setProject(project);
@@ -98,7 +98,7 @@ class OAuthGoogleCallbackServiceTest {
     String state = "state-123";
     OAuthAuthorizationRequest authRequest = new OAuthAuthorizationRequest();
     authRequest.setProject(project);
-    authRequest.setProvider("google");
+    authRequest.setProvider("facebook");
     authRequest.setStateHash(tokenService.hashToken(state));
     authRequest.setCodeVerifier("pkce-verifier");
     authRequest.setAppRedirectUri("https://example.com/app/callback");
@@ -106,36 +106,33 @@ class OAuthGoogleCallbackServiceTest {
     entityManager.persist(authRequest);
     entityManager.flush();
 
-    stubGoogleOAuthClient.userInfoRef.set(
-        new GoogleOAuthClient.GoogleUserInfo("google-sub-1", "User@Example.com", true, "Test User"));
+    stubFacebookOAuthClient.userInfoRef.set(
+        new FacebookOAuthClient.FacebookUserInfo("fb-123", "Test User", "User@Example.com"));
 
     String redirectUrl =
         callbackService.handleCallback(
-            "provider-code",
-            state,
-            "https://gateway.example.com/api/v1/auth/oauth/google/callback");
+            "provider-code", state, "https://gateway.example.com/api/v1/auth/oauth/facebook/callback");
 
     assertThat(redirectUrl).startsWith("https://example.com/app/callback");
     assertThat(redirectUrl).contains("auctoritas_code=");
 
     // state is consumed
-    assertThat(oauthAuthorizationRequestRepository.findByStateHash(tokenService.hashToken(state)))
-        .isEmpty();
+    assertThat(oauthAuthorizationRequestRepository.findByStateHash(tokenService.hashToken(state))).isEmpty();
 
-    // user created and verified
+    // user created (email is not asserted as verified by Facebook)
     assertThat(endUserRepository.findByEmailAndProjectId("user@example.com", project.getId()))
         .isPresent()
         .get()
         .satisfies(
             user -> {
-              assertThat(user.getEmailVerified()).isTrue();
+              assertThat(user.getEmailVerified()).isFalse();
               assertThat(user.getPasswordHash()).isNotBlank();
             });
 
     // oauth connection created
     assertThat(
             oauthConnectionRepository.findByProjectIdAndProviderAndProviderUserId(
-                project.getId(), "google", "google-sub-1"))
+                project.getId(), "facebook", "fb-123"))
         .isPresent();
 
     // exchange code persisted
@@ -158,47 +155,6 @@ class OAuthGoogleCallbackServiceTest {
   }
 
   @Test
-  @DisplayName("Should mark existing end-user as emailVerified when signing in with Google")
-  void shouldMarkExistingUserVerified() {
-    EndUser existing = new EndUser();
-    existing.setProject(project);
-    existing.setEmail("user@example.com");
-    existing.setName(null);
-    existing.setEmailVerified(false);
-    existing.setPasswordHash("hash");
-    entityManager.persist(existing);
-    entityManager.flush();
-
-    String state = "state-existing-user";
-    OAuthAuthorizationRequest authRequest = new OAuthAuthorizationRequest();
-    authRequest.setProject(project);
-    authRequest.setProvider("google");
-    authRequest.setStateHash(tokenService.hashToken(state));
-    authRequest.setCodeVerifier("pkce-verifier");
-    authRequest.setAppRedirectUri("https://example.com/app/callback");
-    authRequest.setExpiresAt(Instant.now().plusSeconds(600));
-    entityManager.persist(authRequest);
-    entityManager.flush();
-
-    stubGoogleOAuthClient.userInfoRef.set(
-        new GoogleOAuthClient.GoogleUserInfo("google-sub-existing", "user@example.com", true, "Existing Name"));
-
-    callbackService.handleCallback(
-        "provider-code",
-        state,
-        "https://gateway.example.com/api/v1/auth/oauth/google/callback");
-
-    assertThat(endUserRepository.findByEmailAndProjectId("user@example.com", project.getId()))
-        .isPresent()
-        .get()
-        .satisfies(
-            user -> {
-              assertThat(user.getEmailVerified()).isTrue();
-              assertThat(user.getName()).isEqualTo("Existing Name");
-            });
-  }
-
-  @Test
   @DisplayName("Should use existing OAuth connection when provider_user_id matches")
   void shouldUseExistingConnectionByProviderUserId() {
     EndUser existing = new EndUser();
@@ -213,8 +169,8 @@ class OAuthGoogleCallbackServiceTest {
         new dev.auctoritas.auth.entity.oauth.OAuthConnection();
     conn.setProject(project);
     conn.setUser(existing);
-    conn.setProvider("google");
-    conn.setProviderUserId("google-sub-conn");
+    conn.setProvider("facebook");
+    conn.setProviderUserId("fb-999");
     conn.setEmail("user@example.com");
     entityManager.persist(conn);
     entityManager.flush();
@@ -222,7 +178,7 @@ class OAuthGoogleCallbackServiceTest {
     String state = "state-existing-conn";
     OAuthAuthorizationRequest authRequest = new OAuthAuthorizationRequest();
     authRequest.setProject(project);
-    authRequest.setProvider("google");
+    authRequest.setProvider("facebook");
     authRequest.setStateHash(tokenService.hashToken(state));
     authRequest.setCodeVerifier("pkce-verifier");
     authRequest.setAppRedirectUri("https://example.com/app/callback");
@@ -230,14 +186,11 @@ class OAuthGoogleCallbackServiceTest {
     entityManager.persist(authRequest);
     entityManager.flush();
 
-    stubGoogleOAuthClient.userInfoRef.set(
-        new GoogleOAuthClient.GoogleUserInfo(
-            "google-sub-conn", "Changed@Example.com", false, "New Name"));
+    stubFacebookOAuthClient.userInfoRef.set(
+        new FacebookOAuthClient.FacebookUserInfo("fb-999", "New Name", "Changed@Example.com"));
 
     callbackService.handleCallback(
-        "provider-code",
-        state,
-        "https://gateway.example.com/api/v1/auth/oauth/google/callback");
+        "provider-code", state, "https://gateway.example.com/api/v1/auth/oauth/facebook/callback");
 
     assertThat(endUserRepository.findAll()).hasSize(1);
     assertThat(endUserRepository.findByEmailAndProjectId("user@example.com", project.getId()))
@@ -251,7 +204,7 @@ class OAuthGoogleCallbackServiceTest {
 
     assertThat(
             oauthConnectionRepository.findByProjectIdAndProviderAndProviderUserId(
-                project.getId(), "google", "google-sub-conn"))
+                project.getId(), "facebook", "fb-999"))
         .isPresent()
         .get()
         .satisfies(
@@ -261,45 +214,12 @@ class OAuthGoogleCallbackServiceTest {
             });
   }
 
-  @Test
-  @DisplayName("Should create user with emailVerified=false when provider email is not verified")
-  void shouldCreateUnverifiedUserWhenProviderEmailNotVerified() {
-    String state = "state-unverified";
-    OAuthAuthorizationRequest authRequest = new OAuthAuthorizationRequest();
-    authRequest.setProject(project);
-    authRequest.setProvider("google");
-    authRequest.setStateHash(tokenService.hashToken(state));
-    authRequest.setCodeVerifier("pkce-verifier");
-    authRequest.setAppRedirectUri("https://example.com/app/callback");
-    authRequest.setExpiresAt(Instant.now().plusSeconds(600));
-    entityManager.persist(authRequest);
-    entityManager.flush();
-
-    stubGoogleOAuthClient.userInfoRef.set(
-        new GoogleOAuthClient.GoogleUserInfo(
-            "google-sub-2", "user2@example.com", false, "Unverified User"));
-
-    callbackService.handleCallback(
-        "provider-code",
-        state,
-        "https://gateway.example.com/api/v1/auth/oauth/google/callback");
-
-    assertThat(endUserRepository.findByEmailAndProjectId("user2@example.com", project.getId()))
-        .isPresent()
-        .get()
-        .satisfies(
-            user -> {
-              assertThat(user.getEmailVerified()).isFalse();
-              assertThat(user.getName()).isEqualTo("Unverified User");
-            });
-  }
-
   @TestConfiguration
   static class TestConfig {
     @Bean
     @Primary
-    GoogleOAuthClient googleOAuthClient() {
-      return new StubGoogleOAuthClient();
+    FacebookOAuthClient facebookOAuthClient() {
+      return new StubFacebookOAuthClient();
     }
 
     @Bean
@@ -315,21 +235,21 @@ class OAuthGoogleCallbackServiceTest {
     }
   }
 
-  static class StubGoogleOAuthClient implements GoogleOAuthClient {
-    final AtomicReference<GoogleTokenExchangeRequest> exchangeRequestRef = new AtomicReference<>();
-    final AtomicReference<GoogleUserInfo> userInfoRef = new AtomicReference<>();
+  static class StubFacebookOAuthClient implements FacebookOAuthClient {
+    final AtomicReference<FacebookTokenExchangeRequest> exchangeRequestRef = new AtomicReference<>();
+    final AtomicReference<FacebookUserInfo> userInfoRef = new AtomicReference<>();
 
     @Override
-    public GoogleTokenResponse exchangeAuthorizationCode(GoogleTokenExchangeRequest request) {
+    public FacebookTokenResponse exchangeAuthorizationCode(FacebookTokenExchangeRequest request) {
       exchangeRequestRef.set(request);
-      return new GoogleTokenResponse("access-token", null, null, "Bearer", 3600L, "openid email profile");
+      return new FacebookTokenResponse("access-token", "bearer", 3600L, null);
     }
 
     @Override
-    public GoogleUserInfo fetchUserInfo(String accessToken) {
-      GoogleUserInfo info = userInfoRef.get();
+    public FacebookUserInfo fetchUserInfo(String accessToken) {
+      FacebookUserInfo info = userInfoRef.get();
       if (info == null) {
-        return new GoogleUserInfo("google-sub-1", "user@example.com", true, "Test User");
+        return new FacebookUserInfo("fb-123", "Test User", "user@example.com");
       }
       return info;
     }

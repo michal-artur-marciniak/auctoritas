@@ -21,16 +21,16 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
-public class OAuthGoogleAuthorizationService {
+public class OAuthFacebookAuthorizationService {
   private static final Duration AUTH_REQUEST_TTL = Duration.ofMinutes(10);
-  private static final String PROVIDER = "google";
+  private static final String PROVIDER = "facebook";
 
   private final ProjectRepository projectRepository;
   private final OAuthAuthorizationRequestRepository oauthAuthorizationRequestRepository;
   private final TokenService tokenService;
   private final OAuthProviderRegistry oauthProviderRegistry;
 
-  public OAuthGoogleAuthorizationService(
+  public OAuthFacebookAuthorizationService(
       ProjectRepository projectRepository,
       OAuthAuthorizationRequestRepository oauthAuthorizationRequestRepository,
       TokenService tokenService,
@@ -108,7 +108,6 @@ public class OAuthGoogleAuthorizationService {
     return false;
   }
 
-
   private static String validateRedirectUri(String raw) {
     if (raw == null) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_redirect_uri_missing");
@@ -134,5 +133,4 @@ public class OAuthGoogleAuthorizationService {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_redirect_uri_invalid", e);
     }
   }
-
 }

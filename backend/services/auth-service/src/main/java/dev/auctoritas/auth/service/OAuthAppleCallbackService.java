@@ -20,8 +20,8 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 @Service
-public class OAuthGoogleCallbackService {
-  private static final String PROVIDER = "google";
+public class OAuthAppleCallbackService {
+  private static final String PROVIDER = "apple";
 
   private final OAuthAuthorizationRequestRepository oauthAuthorizationRequestRepository;
   private final OAuthExchangeCodeRepository oauthExchangeCodeRepository;
@@ -29,7 +29,7 @@ public class OAuthGoogleCallbackService {
   private final OAuthProviderRegistry oauthProviderRegistry;
   private final OAuthAccountLinkingService oauthAccountLinkingService;
 
-  public OAuthGoogleCallbackService(
+  public OAuthAppleCallbackService(
       OAuthAuthorizationRequestRepository oauthAuthorizationRequestRepository,
       OAuthExchangeCodeRepository oauthExchangeCodeRepository,
       TokenService tokenService,
@@ -80,7 +80,7 @@ public class OAuthGoogleCallbackService {
             new OAuthTokenExchangeRequest(
                 resolvedCode, resolvedCallbackUri, authRequest.getCodeVerifier()));
 
-    String providerUserId = requireValue(userInfo.providerUserId(), "oauth_google_userinfo_failed");
+    String providerUserId = requireValue(userInfo.providerUserId(), "oauth_apple_userinfo_failed");
     EndUser user =
         oauthAccountLinkingService.linkOrCreateEndUser(
             project,
@@ -89,7 +89,7 @@ public class OAuthGoogleCallbackService {
             userInfo.email(),
             userInfo.emailVerified(),
             userInfo.name(),
-            "oauth_google_userinfo_failed");
+            "oauth_apple_userinfo_failed");
 
     // Consume the state only after we've successfully linked/created the user.
     oauthAuthorizationRequestRepository.delete(authRequest);

@@ -3,8 +3,8 @@ package dev.auctoritas.auth.service;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.auctoritas.auth.config.JpaConfig;
-import dev.auctoritas.auth.entity.oauth.OAuthAuthorizationRequest;
 import dev.auctoritas.auth.entity.enduser.EndUser;
+import dev.auctoritas.auth.entity.oauth.OAuthAuthorizationRequest;
 import dev.auctoritas.auth.entity.organization.Organization;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
@@ -12,11 +12,15 @@ import dev.auctoritas.auth.repository.EndUserRepository;
 import dev.auctoritas.auth.repository.OAuthAuthorizationRequestRepository;
 import dev.auctoritas.auth.repository.OAuthConnectionRepository;
 import dev.auctoritas.auth.repository.OAuthExchangeCodeRepository;
+import dev.auctoritas.auth.service.oauth.GitHubOAuthProvider;
+import dev.auctoritas.auth.service.oauth.OAuthAccountLinkingService;
+import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
 import dev.auctoritas.common.enums.OrganizationStatus;
 import dev.auctoritas.common.enums.ProjectStatus;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,9 +37,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.util.UriComponentsBuilder;
-import dev.auctoritas.auth.service.oauth.GoogleOAuthProvider;
-import dev.auctoritas.auth.service.oauth.OAuthAccountLinkingService;
-import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
 
 @DataJpaTest
 @ActiveProfiles("test")
@@ -43,21 +44,22 @@ import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
   JpaConfig.class,
   TokenService.class,
   OAuthProviderRegistry.class,
-  GoogleOAuthProvider.class,
+  GitHubOAuthProvider.class,
   OAuthAccountLinkingService.class,
-  OAuthGoogleCallbackService.class,
-  OAuthGoogleCallbackServiceTest.TestConfig.class
+  OAuthGitHubCallbackService.class,
+  OAuthGitHubCallbackServiceTest.TestConfig.class
 })
-class OAuthGoogleCallbackServiceTest {
+class OAuthGitHubCallbackServiceTest {
 
   @org.springframework.beans.factory.annotation.Autowired private EntityManager entityManager;
   @org.springframework.beans.factory.annotation.Autowired private TokenService tokenService;
-  @org.springframework.beans.factory.annotation.Autowired private OAuthGoogleCallbackService callbackService;
-  @org.springframework.beans.factory.annotation.Autowired private OAuthAuthorizationRequestRepository oauthAuthorizationRequestRepository;
+  @org.springframework.beans.factory.annotation.Autowired private OAuthGitHubCallbackService callbackService;
+  @org.springframework.beans.factory.annotation.Autowired
+  private OAuthAuthorizationRequestRepository oauthAuthorizationRequestRepository;
   @org.springframework.beans.factory.annotation.Autowired private EndUserRepository endUserRepository;
   @org.springframework.beans.factory.annotation.Autowired private OAuthConnectionRepository oauthConnectionRepository;
   @org.springframework.beans.factory.annotation.Autowired private OAuthExchangeCodeRepository oauthExchangeCodeRepository;
-  @org.springframework.beans.factory.annotation.Autowired private StubGoogleOAuthClient stubGoogleOAuthClient;
+  @org.springframework.beans.factory.annotation.Autowired private StubGitHubOAuthClient stubGitHubOAuthClient;
 
   private Project project;
 
@@ -65,25 +67,25 @@ class OAuthGoogleCallbackServiceTest {
   void setUp() {
     Organization org = new Organization();
     org.setName("Test Org");
-    org.setSlug("test-org-oauth-callback");
+    org.setSlug("test-org-github-oauth-callback");
     org.setStatus(OrganizationStatus.ACTIVE);
     entityManager.persist(org);
     entityManager.flush();
 
     ProjectSettings settings = new ProjectSettings();
-    Map<String, Object> google = new HashMap<>();
-    google.put("enabled", true);
-    google.put("clientId", "google-client-id");
+    Map<String, Object> github = new HashMap<>();
+    github.put("enabled", true);
+    github.put("clientId", "github-client-id");
 
     Map<String, Object> oauthConfig = new HashMap<>();
-    oauthConfig.put("google", google);
+    oauthConfig.put("github", github);
     settings.setOauthConfig(oauthConfig);
-    settings.setOauthGoogleClientSecretEnc("google-client-secret");
+    settings.setOauthGithubClientSecretEnc("github-client-secret");
 
     project = new Project();
     project.setOrganization(org);
     project.setName("Test Project");
-    project.setSlug("test-project-oauth-callback");
+    project.setSlug("test-project-github-oauth-callback");
     project.setStatus(ProjectStatus.ACTIVE);
     project.setSettings(settings);
     settings.setProject(project);
@@ -98,7 +100,7 @@ class OAuthGoogleCallbackServiceTest {
     String state = "state-123";
     OAuthAuthorizationRequest authRequest = new OAuthAuthorizationRequest();
     authRequest.setProject(project);
-    authRequest.setProvider("google");
+    authRequest.setProvider("github");
     authRequest.setStateHash(tokenService.hashToken(state));
     authRequest.setCodeVerifier("pkce-verifier");
     authRequest.setAppRedirectUri("https://example.com/app/callback");
@@ -106,21 +108,21 @@ class OAuthGoogleCallbackServiceTest {
     entityManager.persist(authRequest);
     entityManager.flush();
 
-    stubGoogleOAuthClient.userInfoRef.set(
-        new GoogleOAuthClient.GoogleUserInfo("google-sub-1", "User@Example.com", true, "Test User"));
+    stubGitHubOAuthClient.userRef.set(new GitHubOAuthClient.GitHubUser(123L, "octo", "Test User", null));
+    stubGitHubOAuthClient.emailsRef.set(
+        List.of(new GitHubOAuthClient.GitHubUserEmail("User@Example.com", true, true, null)));
 
     String redirectUrl =
         callbackService.handleCallback(
             "provider-code",
             state,
-            "https://gateway.example.com/api/v1/auth/oauth/google/callback");
+            "https://gateway.example.com/api/v1/auth/oauth/github/callback");
 
     assertThat(redirectUrl).startsWith("https://example.com/app/callback");
     assertThat(redirectUrl).contains("auctoritas_code=");
 
     // state is consumed
-    assertThat(oauthAuthorizationRequestRepository.findByStateHash(tokenService.hashToken(state)))
-        .isEmpty();
+    assertThat(oauthAuthorizationRequestRepository.findByStateHash(tokenService.hashToken(state))).isEmpty();
 
     // user created and verified
     assertThat(endUserRepository.findByEmailAndProjectId("user@example.com", project.getId()))
@@ -135,7 +137,7 @@ class OAuthGoogleCallbackServiceTest {
     // oauth connection created
     assertThat(
             oauthConnectionRepository.findByProjectIdAndProviderAndProviderUserId(
-                project.getId(), "google", "google-sub-1"))
+                project.getId(), "github", "123"))
         .isPresent();
 
     // exchange code persisted
@@ -158,7 +160,7 @@ class OAuthGoogleCallbackServiceTest {
   }
 
   @Test
-  @DisplayName("Should mark existing end-user as emailVerified when signing in with Google")
+  @DisplayName("Should mark existing end-user as emailVerified when signing in with GitHub")
   void shouldMarkExistingUserVerified() {
     EndUser existing = new EndUser();
     existing.setProject(project);
@@ -172,7 +174,7 @@ class OAuthGoogleCallbackServiceTest {
     String state = "state-existing-user";
     OAuthAuthorizationRequest authRequest = new OAuthAuthorizationRequest();
     authRequest.setProject(project);
-    authRequest.setProvider("google");
+    authRequest.setProvider("github");
     authRequest.setStateHash(tokenService.hashToken(state));
     authRequest.setCodeVerifier("pkce-verifier");
     authRequest.setAppRedirectUri("https://example.com/app/callback");
@@ -180,13 +182,14 @@ class OAuthGoogleCallbackServiceTest {
     entityManager.persist(authRequest);
     entityManager.flush();
 
-    stubGoogleOAuthClient.userInfoRef.set(
-        new GoogleOAuthClient.GoogleUserInfo("google-sub-existing", "user@example.com", true, "Existing Name"));
+    stubGitHubOAuthClient.userRef.set(new GitHubOAuthClient.GitHubUser(456L, "octo", "Existing Name", null));
+    stubGitHubOAuthClient.emailsRef.set(
+        List.of(new GitHubOAuthClient.GitHubUserEmail("user@example.com", true, true, null)));
 
     callbackService.handleCallback(
         "provider-code",
         state,
-        "https://gateway.example.com/api/v1/auth/oauth/google/callback");
+        "https://gateway.example.com/api/v1/auth/oauth/github/callback");
 
     assertThat(endUserRepository.findByEmailAndProjectId("user@example.com", project.getId()))
         .isPresent()
@@ -209,12 +212,11 @@ class OAuthGoogleCallbackServiceTest {
     existing.setPasswordHash("hash");
     entityManager.persist(existing);
 
-    dev.auctoritas.auth.entity.oauth.OAuthConnection conn =
-        new dev.auctoritas.auth.entity.oauth.OAuthConnection();
+    dev.auctoritas.auth.entity.oauth.OAuthConnection conn = new dev.auctoritas.auth.entity.oauth.OAuthConnection();
     conn.setProject(project);
     conn.setUser(existing);
-    conn.setProvider("google");
-    conn.setProviderUserId("google-sub-conn");
+    conn.setProvider("github");
+    conn.setProviderUserId("789");
     conn.setEmail("user@example.com");
     entityManager.persist(conn);
     entityManager.flush();
@@ -222,7 +224,7 @@ class OAuthGoogleCallbackServiceTest {
     String state = "state-existing-conn";
     OAuthAuthorizationRequest authRequest = new OAuthAuthorizationRequest();
     authRequest.setProject(project);
-    authRequest.setProvider("google");
+    authRequest.setProvider("github");
     authRequest.setStateHash(tokenService.hashToken(state));
     authRequest.setCodeVerifier("pkce-verifier");
     authRequest.setAppRedirectUri("https://example.com/app/callback");
@@ -230,14 +232,14 @@ class OAuthGoogleCallbackServiceTest {
     entityManager.persist(authRequest);
     entityManager.flush();
 
-    stubGoogleOAuthClient.userInfoRef.set(
-        new GoogleOAuthClient.GoogleUserInfo(
-            "google-sub-conn", "Changed@Example.com", false, "New Name"));
+    stubGitHubOAuthClient.userRef.set(new GitHubOAuthClient.GitHubUser(789L, "octo", "New Name", null));
+    stubGitHubOAuthClient.emailsRef.set(
+        List.of(new GitHubOAuthClient.GitHubUserEmail("Changed@Example.com", true, false, null)));
 
     callbackService.handleCallback(
         "provider-code",
         state,
-        "https://gateway.example.com/api/v1/auth/oauth/google/callback");
+        "https://gateway.example.com/api/v1/auth/oauth/github/callback");
 
     assertThat(endUserRepository.findAll()).hasSize(1);
     assertThat(endUserRepository.findByEmailAndProjectId("user@example.com", project.getId()))
@@ -251,7 +253,7 @@ class OAuthGoogleCallbackServiceTest {
 
     assertThat(
             oauthConnectionRepository.findByProjectIdAndProviderAndProviderUserId(
-                project.getId(), "google", "google-sub-conn"))
+                project.getId(), "github", "789"))
         .isPresent()
         .get()
         .satisfies(
@@ -267,7 +269,7 @@ class OAuthGoogleCallbackServiceTest {
     String state = "state-unverified";
     OAuthAuthorizationRequest authRequest = new OAuthAuthorizationRequest();
     authRequest.setProject(project);
-    authRequest.setProvider("google");
+    authRequest.setProvider("github");
     authRequest.setStateHash(tokenService.hashToken(state));
     authRequest.setCodeVerifier("pkce-verifier");
     authRequest.setAppRedirectUri("https://example.com/app/callback");
@@ -275,14 +277,14 @@ class OAuthGoogleCallbackServiceTest {
     entityManager.persist(authRequest);
     entityManager.flush();
 
-    stubGoogleOAuthClient.userInfoRef.set(
-        new GoogleOAuthClient.GoogleUserInfo(
-            "google-sub-2", "user2@example.com", false, "Unverified User"));
+    stubGitHubOAuthClient.userRef.set(new GitHubOAuthClient.GitHubUser(321L, "octo", "Unverified User", null));
+    stubGitHubOAuthClient.emailsRef.set(
+        List.of(new GitHubOAuthClient.GitHubUserEmail("user2@example.com", true, false, null)));
 
     callbackService.handleCallback(
         "provider-code",
         state,
-        "https://gateway.example.com/api/v1/auth/oauth/google/callback");
+        "https://gateway.example.com/api/v1/auth/oauth/github/callback");
 
     assertThat(endUserRepository.findByEmailAndProjectId("user2@example.com", project.getId()))
         .isPresent()
@@ -298,8 +300,8 @@ class OAuthGoogleCallbackServiceTest {
   static class TestConfig {
     @Bean
     @Primary
-    GoogleOAuthClient googleOAuthClient() {
-      return new StubGoogleOAuthClient();
+    GitHubOAuthClient gitHubOAuthClient() {
+      return new StubGitHubOAuthClient();
     }
 
     @Bean
@@ -315,23 +317,33 @@ class OAuthGoogleCallbackServiceTest {
     }
   }
 
-  static class StubGoogleOAuthClient implements GoogleOAuthClient {
-    final AtomicReference<GoogleTokenExchangeRequest> exchangeRequestRef = new AtomicReference<>();
-    final AtomicReference<GoogleUserInfo> userInfoRef = new AtomicReference<>();
+  static class StubGitHubOAuthClient implements GitHubOAuthClient {
+    final AtomicReference<GitHubTokenExchangeRequest> exchangeRequestRef = new AtomicReference<>();
+    final AtomicReference<GitHubUser> userRef = new AtomicReference<>();
+    final AtomicReference<List<GitHubUserEmail>> emailsRef = new AtomicReference<>();
 
     @Override
-    public GoogleTokenResponse exchangeAuthorizationCode(GoogleTokenExchangeRequest request) {
+    public GitHubTokenResponse exchangeAuthorizationCode(GitHubTokenExchangeRequest request) {
       exchangeRequestRef.set(request);
-      return new GoogleTokenResponse("access-token", null, null, "Bearer", 3600L, "openid email profile");
+      return new GitHubTokenResponse("access-token", "bearer", "read:user user:email");
     }
 
     @Override
-    public GoogleUserInfo fetchUserInfo(String accessToken) {
-      GoogleUserInfo info = userInfoRef.get();
-      if (info == null) {
-        return new GoogleUserInfo("google-sub-1", "user@example.com", true, "Test User");
+    public GitHubUser fetchUser(String accessToken) {
+      GitHubUser user = userRef.get();
+      if (user == null) {
+        return new GitHubUser(123L, "octo", "Test User", null);
       }
-      return info;
+      return user;
+    }
+
+    @Override
+    public List<GitHubUserEmail> fetchUserEmails(String accessToken) {
+      List<GitHubUserEmail> emails = emailsRef.get();
+      if (emails == null) {
+        return List.of(new GitHubUserEmail("user@example.com", true, true, null));
+      }
+      return emails;
     }
   }
 }
