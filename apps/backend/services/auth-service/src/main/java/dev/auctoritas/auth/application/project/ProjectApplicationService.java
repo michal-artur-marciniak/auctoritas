@@ -5,13 +5,13 @@ import dev.auctoritas.auth.api.ProjectCreateRequest;
 import dev.auctoritas.auth.api.ProjectCreateResponse;
 import dev.auctoritas.auth.api.ProjectSummaryResponse;
 import dev.auctoritas.auth.api.ProjectUpdateRequest;
+import dev.auctoritas.auth.application.apikey.ApiKeyApplicationService;
 import dev.auctoritas.auth.entity.organization.Organization;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
 import dev.auctoritas.auth.repository.OrganizationRepository;
 import dev.auctoritas.auth.repository.ProjectRepository;
 import dev.auctoritas.auth.security.OrgMemberPrincipal;
-import dev.auctoritas.auth.service.ApiKeyService;
 import dev.auctoritas.auth.shared.enums.OrgMemberRole;
 import dev.auctoritas.auth.shared.enums.ProjectStatus;
 import java.util.List;
@@ -27,15 +27,15 @@ import org.springframework.web.server.ResponseStatusException;
 public class ProjectApplicationService {
   private final OrganizationRepository organizationRepository;
   private final ProjectRepository projectRepository;
-  private final ApiKeyService apiKeyService;
+  private final ApiKeyApplicationService apiKeyApplicationService;
 
   public ProjectApplicationService(
       OrganizationRepository organizationRepository,
       ProjectRepository projectRepository,
-      ApiKeyService apiKeyService) {
+      ApiKeyApplicationService apiKeyApplicationService) {
     this.organizationRepository = organizationRepository;
     this.projectRepository = projectRepository;
-    this.apiKeyService = apiKeyService;
+    this.apiKeyApplicationService = apiKeyApplicationService;
   }
 
   @Transactional
@@ -65,17 +65,11 @@ public class ProjectApplicationService {
     project.setSettings(settings);
 
     Project savedProject = projectRepository.save(project);
-    ApiKeyService.ApiKeySecret apiKeySecret = apiKeyService.createDefaultKey(savedProject);
+    ApiKeySecretResponse apiKeySecret = apiKeyApplicationService.createDefaultKey(savedProject);
 
     return new ProjectCreateResponse(
         toSummary(savedProject),
-        new ApiKeySecretResponse(
-            apiKeySecret.apiKey().getId(),
-            apiKeySecret.apiKey().getName(),
-            apiKeySecret.apiKey().getPrefix(),
-            apiKeySecret.rawKey(),
-            apiKeySecret.apiKey().getStatus(),
-            apiKeySecret.apiKey().getCreatedAt()));
+        apiKeySecret);
   }
 
   @Transactional(readOnly = true)
@@ -117,7 +111,7 @@ public class ProjectApplicationService {
     Project project = loadProject(orgId, projectId);
     project.setStatus(ProjectStatus.DELETED);
     projectRepository.save(project);
-    apiKeyService.revokeAllByProjectId(projectId);
+    apiKeyApplicationService.revokeAllByProjectId(projectId);
   }
 
   private ProjectSummaryResponse toSummary(Project project) {

@@ -12,15 +12,14 @@ import dev.auctoritas.auth.api.ProjectSessionSettingsRequest;
 import dev.auctoritas.auth.api.ProjectSettingsResponse;
 import dev.auctoritas.auth.api.ProjectSummaryResponse;
 import dev.auctoritas.auth.api.ProjectUpdateRequest;
+import dev.auctoritas.auth.application.apikey.ApiKeyApplicationService;
 import dev.auctoritas.auth.application.project.ProjectApplicationService;
 import dev.auctoritas.auth.application.project.ProjectOAuthSettingsApplicationService;
-import dev.auctoritas.auth.entity.project.ApiKey;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
 import dev.auctoritas.auth.repository.ProjectRepository;
 import dev.auctoritas.auth.repository.ProjectSettingsRepository;
 import dev.auctoritas.auth.security.OrgMemberPrincipal;
-import dev.auctoritas.auth.shared.enums.OrgMemberRole;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,19 +35,19 @@ public class ProjectService {
   private final ProjectSettingsRepository projectSettingsRepository;
   private final ProjectApplicationService projectApplicationService;
   private final ProjectOAuthSettingsApplicationService projectOAuthSettingsApplicationService;
-  private final ApiKeyService apiKeyService;
+  private final ApiKeyApplicationService apiKeyApplicationService;
 
   public ProjectService(
       ProjectRepository projectRepository,
       ProjectSettingsRepository projectSettingsRepository,
       ProjectApplicationService projectApplicationService,
       ProjectOAuthSettingsApplicationService projectOAuthSettingsApplicationService,
-      ApiKeyService apiKeyService) {
+      ApiKeyApplicationService apiKeyApplicationService) {
     this.projectRepository = projectRepository;
     this.projectSettingsRepository = projectSettingsRepository;
     this.projectApplicationService = projectApplicationService;
     this.projectOAuthSettingsApplicationService = projectOAuthSettingsApplicationService;
-    this.apiKeyService = apiKeyService;
+    this.apiKeyApplicationService = apiKeyApplicationService;
   }
 
   @Transactional
@@ -143,34 +142,19 @@ public class ProjectService {
       UUID projectId,
       OrgMemberPrincipal principal,
       ApiKeyCreateRequest request) {
-    enforceOrgAccess(orgId, principal);
-    Project project = loadProject(orgId, projectId);
-    String name = requireValue(request.name(), "api_key_name_required");
-    ApiKeyService.ApiKeySecret apiKeySecret = apiKeyService.createKey(project, name, request.environment());
-    return new ApiKeySecretResponse(
-        apiKeySecret.apiKey().getId(),
-        apiKeySecret.apiKey().getName(),
-        apiKeySecret.apiKey().getPrefix(),
-        apiKeySecret.rawKey(),
-        apiKeySecret.apiKey().getStatus(),
-        apiKeySecret.apiKey().getCreatedAt());
+    return apiKeyApplicationService.createApiKey(orgId, projectId, principal, request);
   }
 
   @Transactional(readOnly = true)
   public List<ApiKeySummaryResponse> listApiKeys(
       UUID orgId, UUID projectId, OrgMemberPrincipal principal) {
-    enforceOrgAccess(orgId, principal);
-    loadProject(orgId, projectId);
-    return apiKeyService.listKeys(projectId).stream().map(this::toApiKeySummary).toList();
+    return apiKeyApplicationService.listApiKeys(orgId, projectId, principal);
   }
 
   @Transactional
   public void revokeApiKey(
       UUID orgId, UUID projectId, UUID keyId, OrgMemberPrincipal principal) {
-    enforceOrgAccess(orgId, principal);
-    enforceAdminAccess(principal);
-    loadProject(orgId, projectId);
-    apiKeyService.revokeKey(projectId, keyId);
+    apiKeyApplicationService.revokeApiKey(orgId, projectId, keyId, principal);
   }
 
   private ProjectSettingsResponse toSettingsResponse(ProjectSettings settings) {
@@ -285,30 +269,12 @@ public class ProjectService {
     return new HashMap<>();
   }
 
-
-  private ApiKeySummaryResponse toApiKeySummary(ApiKey apiKey) {
-    return new ApiKeySummaryResponse(
-        apiKey.getId(),
-        apiKey.getName(),
-        apiKey.getPrefix(),
-        apiKey.getStatus(),
-        apiKey.getLastUsedAt(),
-        apiKey.getCreatedAt());
-  }
-
   private void enforceOrgAccess(UUID orgId, OrgMemberPrincipal principal) {
     if (principal == null) {
       throw new IllegalStateException("Authenticated org member principal is required.");
     }
     if (!orgId.equals(principal.orgId())) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "org_access_denied");
-    }
-  }
-
-  private void enforceAdminAccess(OrgMemberPrincipal principal) {
-    OrgMemberRole role = principal.role();
-    if (role != OrgMemberRole.OWNER && role != OrgMemberRole.ADMIN) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "insufficient_role");
     }
   }
 
@@ -323,14 +289,4 @@ public class ProjectService {
     return project;
   }
 
-  private String requireValue(String value, String errorCode) {
-    if (value == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
-    }
-    String trimmed = value.trim();
-    if (trimmed.isEmpty()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
-    }
-    return trimmed;
-  }
 }
