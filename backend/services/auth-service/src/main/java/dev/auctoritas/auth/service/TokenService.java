@@ -21,6 +21,9 @@ public class TokenService {
   private static final int OAUTH_EXCHANGE_CODE_BYTES = 32;
   private static final Duration OAUTH_EXCHANGE_CODE_TTL = Duration.ofMinutes(2);
 
+  private static final int OAUTH_STATE_BYTES = 32;
+  private static final int OAUTH_CODE_VERIFIER_BYTES = 48;
+
   private final SecureRandom secureRandom = new SecureRandom();
   private final Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();
 
@@ -38,6 +41,14 @@ public class TokenService {
 
   public String generateOAuthExchangeCode() {
     return generateToken(OAUTH_EXCHANGE_CODE_BYTES);
+  }
+
+  public String generateOAuthState() {
+    return generateToken(OAUTH_STATE_BYTES);
+  }
+
+  public String generateOAuthCodeVerifier() {
+    return generateToken(OAUTH_CODE_VERIFIER_BYTES);
   }
 
   public String generateEmailVerificationCode() {

@@ -20,4 +20,7 @@ public interface ProjectRepository extends JpaRepository<Project, UUID> {
 
   @Query("SELECT p FROM Project p WHERE p.organization.id = :orgId")
   List<Project> findAllByOrganizationId(@Param("orgId") UUID organizationId);
+
+  @Query("SELECT p FROM Project p LEFT JOIN FETCH p.settings WHERE p.id = :projectId")
+  Optional<Project> findByIdWithSettings(@Param("projectId") UUID projectId);
 }
