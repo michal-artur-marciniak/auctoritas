@@ -12,21 +12,18 @@ import dev.auctoritas.auth.api.ProjectSessionSettingsRequest;
 import dev.auctoritas.auth.api.ProjectSettingsResponse;
 import dev.auctoritas.auth.api.ProjectSummaryResponse;
 import dev.auctoritas.auth.api.ProjectUpdateRequest;
-import dev.auctoritas.auth.entity.organization.Organization;
+import dev.auctoritas.auth.application.project.ProjectApplicationService;
 import dev.auctoritas.auth.entity.project.ApiKey;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
-import dev.auctoritas.auth.repository.OrganizationRepository;
 import dev.auctoritas.auth.repository.ProjectRepository;
 import dev.auctoritas.auth.repository.ProjectSettingsRepository;
 import dev.auctoritas.auth.security.OrgMemberPrincipal;
 import dev.auctoritas.auth.shared.enums.OrgMemberRole;
-import dev.auctoritas.auth.shared.enums.ProjectStatus;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -37,21 +34,21 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class ProjectService {
-  private final OrganizationRepository organizationRepository;
   private final ProjectRepository projectRepository;
   private final ProjectSettingsRepository projectSettingsRepository;
+  private final ProjectApplicationService projectApplicationService;
   private final ApiKeyService apiKeyService;
   private final TextEncryptor oauthClientSecretEncryptor;
 
   public ProjectService(
-      OrganizationRepository organizationRepository,
       ProjectRepository projectRepository,
       ProjectSettingsRepository projectSettingsRepository,
+      ProjectApplicationService projectApplicationService,
       ApiKeyService apiKeyService,
       TextEncryptor oauthClientSecretEncryptor) {
-    this.organizationRepository = organizationRepository;
     this.projectRepository = projectRepository;
     this.projectSettingsRepository = projectSettingsRepository;
+    this.projectApplicationService = projectApplicationService;
     this.apiKeyService = apiKeyService;
     this.oauthClientSecretEncryptor = oauthClientSecretEncryptor;
   }
@@ -59,83 +56,23 @@ public class ProjectService {
   @Transactional
   public ProjectCreateResponse createProject(
       UUID orgId, OrgMemberPrincipal principal, ProjectCreateRequest request) {
-    enforceOrgAccess(orgId, principal);
-
-    String name = requireValue(request.name(), "project_name_required");
-    String slug = normalizeSlug(requireValue(request.slug(), "project_slug_required"));
-
-    if (projectRepository.existsBySlugAndOrganizationId(slug, orgId)) {
-      throw new ResponseStatusException(HttpStatus.CONFLICT, "project_slug_taken");
-    }
-
-    Organization organization =
-        organizationRepository
-            .findById(orgId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "org_not_found"));
-
-    Project project = new Project();
-    project.setOrganization(organization);
-    project.setName(name);
-    project.setSlug(slug);
-
-    ProjectSettings settings = new ProjectSettings();
-    settings.setProject(project);
-    project.setSettings(settings);
-
-    Project savedProject = projectRepository.save(project);
-    ApiKeyService.ApiKeySecret apiKeySecret = apiKeyService.createDefaultKey(savedProject);
-
-    return new ProjectCreateResponse(
-        toSummary(savedProject),
-        new ApiKeySecretResponse(
-            apiKeySecret.apiKey().getId(),
-            apiKeySecret.apiKey().getName(),
-            apiKeySecret.apiKey().getPrefix(),
-            apiKeySecret.rawKey(),
-            apiKeySecret.apiKey().getStatus(),
-            apiKeySecret.apiKey().getCreatedAt()));
+    return projectApplicationService.createProject(orgId, principal, request);
   }
 
   @Transactional(readOnly = true)
   public List<ProjectSummaryResponse> listProjects(UUID orgId, OrgMemberPrincipal principal) {
-    enforceOrgAccess(orgId, principal);
-    return projectRepository.findAllByOrganizationId(orgId).stream().map(this::toSummary).toList();
+    return projectApplicationService.listProjects(orgId, principal);
   }
 
   @Transactional
   public ProjectSummaryResponse updateProject(
       UUID orgId, UUID projectId, OrgMemberPrincipal principal, ProjectUpdateRequest request) {
-    enforceOrgAccess(orgId, principal);
-    Project project = loadProject(orgId, projectId);
-
-    if (request.name() != null) {
-      project.setName(requireValue(request.name(), "project_name_required"));
-    }
-
-    if (request.slug() != null) {
-      String normalized = normalizeSlug(requireValue(request.slug(), "project_slug_required"));
-      if (!normalized.equals(project.getSlug())
-          && projectRepository.existsBySlugAndOrganizationId(normalized, orgId)) {
-        throw new ResponseStatusException(HttpStatus.CONFLICT, "project_slug_taken");
-      }
-      project.setSlug(normalized);
-    }
-
-    if (request.status() != null) {
-      project.setStatus(request.status());
-    }
-
-    return toSummary(projectRepository.save(project));
+    return projectApplicationService.updateProject(orgId, projectId, principal, request);
   }
 
   @Transactional
   public void deleteProject(UUID orgId, UUID projectId, OrgMemberPrincipal principal) {
-    enforceOrgAccess(orgId, principal);
-    enforceAdminAccess(principal);
-    Project project = loadProject(orgId, projectId);
-    project.setStatus(ProjectStatus.DELETED);
-    projectRepository.save(project);
-    apiKeyService.revokeAllByProjectId(projectId);
+    projectApplicationService.deleteProject(orgId, projectId, principal);
   }
 
   @Transactional(readOnly = true)
@@ -702,16 +639,6 @@ public class ProjectService {
     apiKeyService.revokeKey(projectId, keyId);
   }
 
-  private ProjectSummaryResponse toSummary(Project project) {
-    return new ProjectSummaryResponse(
-        project.getId(),
-        project.getName(),
-        project.getSlug(),
-        project.getStatus(),
-        project.getCreatedAt(),
-        project.getUpdatedAt());
-  }
-
   private ProjectSettingsResponse toSettingsResponse(ProjectSettings settings) {
     return new ProjectSettingsResponse(
         settings.getMinLength(),
@@ -911,10 +838,6 @@ public class ProjectService {
     if (role != OrgMemberRole.OWNER && role != OrgMemberRole.ADMIN) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "insufficient_role");
     }
-  }
-
-  private String normalizeSlug(String slug) {
-    return slug.trim().toLowerCase(Locale.ROOT);
   }
 
   private Project loadProject(UUID orgId, UUID projectId) {
