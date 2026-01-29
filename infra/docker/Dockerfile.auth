@@ -2,18 +2,20 @@
 FROM eclipse-temurin:21-jdk-alpine AS build
 WORKDIR /app
 
-# Copy Maven wrapper
-COPY apps/backend/mvnw mvnw
-COPY apps/backend/.mvn/ .mvn/
+# Copy Gradle wrapper and build files
+COPY apps/backend/gradlew gradlew
+COPY apps/backend/gradle/ gradle/
+COPY apps/backend/settings.gradle.kts settings.gradle.kts
+COPY apps/backend/build.gradle.kts build.gradle.kts
 
-# Copy the auth-specific build POM
-COPY infra/docker/pom-auth.xml pom.xml
+# Copy only the module we need
+COPY apps/backend/services/auth-service/build.gradle.kts services/auth-service/build.gradle.kts
+COPY apps/backend/services/auth-service/src/ services/auth-service/src/
+RUN mkdir -p services/gateway-service services/worker-service \
+  && touch services/gateway-service/build.gradle.kts services/worker-service/build.gradle.kts
 
-# Copy only the modules we need
-COPY apps/backend/services/auth-service/ services/auth-service/
-
-# Build using the minimal POM
-RUN chmod +x mvnw && ./mvnw clean package -DskipTests
+# Build the service jar
+RUN chmod +x gradlew && ./gradlew --no-daemon :services:auth-service:bootJar -x test
 
 # Runtime stage
 FROM eclipse-temurin:21-jre-alpine
@@ -22,7 +24,7 @@ WORKDIR /app
 RUN addgroup -S auctoritas && adduser -S auctoritas -G auctoritas
 USER auctoritas
 
-COPY --from=build /app/services/auth-service/target/*.jar app.jar
+COPY --from=build /app/services/auth-service/build/libs/app.jar app.jar
 
 EXPOSE 8081
 

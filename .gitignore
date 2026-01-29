@@ -1,6 +1,8 @@
 # ====================
-# Backend (Java/Maven)
+# Backend (Java/Gradle)
 # ====================
+build/
+.gradle/
 target/
 !**/src/main/**/target/
 !**/src/test/**/target/
@@ -9,8 +11,8 @@ target/
 *.ear
 *.class
 
-# Maven wrapper jar (downloaded on demand)
-.mvn/wrapper/maven-wrapper.jar
+# Gradle wrapper jar (committed)
+!**/gradle/wrapper/gradle-wrapper.jar
 
 # ====================
 # Frontend (Node/pnpm)

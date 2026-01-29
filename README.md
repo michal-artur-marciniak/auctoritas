@@ -21,7 +21,7 @@ Auctoritas follows a microservices architecture with clear separation of concern
 ```
 auctoritas/
 ├── apps/
-│   ├── backend/                # Java ecosystem (Maven)
+│   ├── backend/                # Java ecosystem (Gradle)
 │   │   ├── services/
 │   │   │   ├── gateway-service/ # API Gateway (Spring Cloud Gateway)
 │   │   │   ├── auth-service/    # Core auth logic (Spring Boot)
@@ -83,7 +83,7 @@ For detailed roadmap and version breakdown, see [docs/Roadmap.md](docs/Roadmap.m
 auctoritas/
 ├── apps/
 │   ├── backend/
-│   │   ├── pom.xml              # Maven parent POM
+│   │   ├── build.gradle.kts     # Gradle root build
 │   │   ├── services/
 │   │   │   ├── gateway-service/ # API routing, rate limiting, JWT validation
 │   │   │   ├── auth-service/    # Authentication, authorization, user management

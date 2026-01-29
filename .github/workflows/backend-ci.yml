@@ -65,12 +65,12 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
-          cache: maven
+          cache: gradle
 
-      - name: Build and test (Maven)
+      - name: Build and test (Gradle)
         if: steps.changes.outputs.backend_changed == 'true'
         working-directory: apps/backend
-        run: ./mvnw -B -ntp verify
+        run: ./gradlew --no-daemon build
 
       - name: Upload test reports (on failure)
         if: failure()
@@ -79,5 +79,5 @@ jobs:
           name: backend-test-reports
           if-no-files-found: ignore
           path: |
-            apps/backend/**/target/surefire-reports/**
-            apps/backend/**/target/failsafe-reports/**
+            apps/backend/**/build/test-results/test/**
+            apps/backend/**/build/reports/tests/test/**
