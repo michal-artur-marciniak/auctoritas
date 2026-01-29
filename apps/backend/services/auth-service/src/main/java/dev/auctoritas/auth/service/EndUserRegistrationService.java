@@ -2,6 +2,8 @@ package dev.auctoritas.auth.service;
 
 import dev.auctoritas.auth.application.enduser.EndUserRegistrationCommand;
 import dev.auctoritas.auth.application.enduser.EndUserRegistrationResult;
+import dev.auctoritas.auth.domain.exception.DomainConflictException;
+import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.entity.enduser.EndUser;
 import dev.auctoritas.auth.entity.enduser.EndUserRefreshToken;
 import dev.auctoritas.auth.entity.enduser.EndUserSession;
@@ -24,11 +26,9 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import static net.logstash.logback.argument.StructuredArguments.kv;
 
@@ -101,14 +101,14 @@ public class EndUserRegistrationService {
     Project project = resolvedKey.getProject();
     ProjectSettings settings = project.getSettings();
     if (settings == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "project_settings_missing");
+      throw new DomainValidationException("project_settings_missing");
     }
 
     String normalizedEmail = normalizeEmail(requireValue(email, "email_required"));
     String normalizedPassword = requireValue(password, "password_required");
 
     if (endUserRepository.existsByEmailAndProjectId(normalizedEmail, project.getId())) {
-      throw new ResponseStatusException(HttpStatus.CONFLICT, "email_taken");
+      throw new DomainConflictException("email_taken");
     }
 
     validatePassword(settings, normalizedPassword);
@@ -195,7 +195,7 @@ public class EndUserRegistrationService {
             minUnique);
     PasswordValidator.ValidationResult result = new PasswordValidator(policy).validate(password);
     if (!result.valid()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "password_policy_failed");
+      throw new DomainValidationException("password_policy_failed");
     }
   }
 
@@ -238,11 +238,11 @@ public class EndUserRegistrationService {
 
   private String requireValue(String value, String errorCode) {
     if (value == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     String trimmed = value.trim();
     if (trimmed.isEmpty()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     return trimmed;
   }
