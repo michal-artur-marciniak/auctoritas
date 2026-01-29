@@ -2,6 +2,7 @@ package dev.auctoritas.auth.service;
 
 import dev.auctoritas.auth.api.EndUserLoginRequest;
 import dev.auctoritas.auth.api.EndUserLoginResponse;
+import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.entity.enduser.EndUser;
 import dev.auctoritas.auth.entity.enduser.EndUserRefreshToken;
 import dev.auctoritas.auth.entity.enduser.EndUserSession;
@@ -19,12 +20,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Handles EndUser login and session issuance.
+ */
 @Service
 public class EndUserLoginService {
   private static final int DEFAULT_MAX_FAILED_ATTEMPTS = 5;
@@ -66,7 +68,7 @@ public class EndUserLoginService {
     Project project = resolvedKey.getProject();
     ProjectSettings settings = project.getSettings();
     if (settings == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "project_settings_missing");
+      throw new DomainValidationException("project_settings_missing");
     }
 
     String email = normalizeEmail(requireValue(request.email(), "email_required"));
@@ -76,30 +78,30 @@ public class EndUserLoginService {
         endUserRepository
             .findByEmailAndProjectIdForUpdate(email, project.getId())
             .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid_credentials"));
+                () -> new DomainValidationException("invalid_credentials"));
 
     int windowSeconds = resolveWindowSeconds(settings);
     resetExpiredLockout(user, windowSeconds);
 
     if (isLockedOut(user)) {
       endUserRepository.save(user);
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "account_locked");
+      throw new DomainValidationException("account_locked");
     }
 
     if (!passwordEncoder.matches(password, user.getPasswordHash())) {
       boolean locked = recordFailedAttempt(user, settings, windowSeconds);
       endUserRepository.save(user);
       if (locked) {
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "account_locked");
+        throw new DomainValidationException("account_locked");
       }
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid_credentials");
+      throw new DomainValidationException("invalid_credentials");
     }
 
     clearFailedAttempts(user);
     endUserRepository.save(user);
 
     if (settings.isRequireVerifiedEmailForLogin() && !Boolean.TRUE.equals(user.getEmailVerified())) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "email_not_verified");
+      throw new DomainValidationException("email_not_verified");
     }
 
     Instant refreshExpiresAt = tokenHasherPort.getRefreshTokenExpiry();
@@ -222,11 +224,11 @@ public class EndUserLoginService {
 
   private String requireValue(String value, String errorCode) {
     if (value == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     String trimmed = value.trim();
     if (trimmed.isEmpty()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     return trimmed;
   }
