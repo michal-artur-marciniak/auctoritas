@@ -8,6 +8,8 @@ import dev.auctoritas.auth.entity.enduser.EndUserSession;
 import dev.auctoritas.auth.entity.project.ApiKey;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
+import dev.auctoritas.auth.ports.security.JwtProviderPort;
+import dev.auctoritas.auth.ports.security.TokenHasherPort;
 import dev.auctoritas.auth.repository.EndUserRefreshTokenRepository;
 import dev.auctoritas.auth.repository.EndUserRepository;
 import dev.auctoritas.auth.repository.EndUserSessionRepository;
@@ -34,8 +36,8 @@ public class EndUserLoginService {
   private final EndUserSessionRepository endUserSessionRepository;
   private final EndUserRefreshTokenRepository endUserRefreshTokenRepository;
   private final PasswordEncoder passwordEncoder;
-  private final TokenService tokenService;
-  private final JwtService jwtService;
+  private final TokenHasherPort tokenHasherPort;
+  private final JwtProviderPort jwtProviderPort;
 
   public EndUserLoginService(
       ApiKeyService apiKeyService,
@@ -43,15 +45,15 @@ public class EndUserLoginService {
       EndUserSessionRepository endUserSessionRepository,
       EndUserRefreshTokenRepository endUserRefreshTokenRepository,
       PasswordEncoder passwordEncoder,
-      TokenService tokenService,
-      JwtService jwtService) {
+      TokenHasherPort tokenHasherPort,
+      JwtProviderPort jwtProviderPort) {
     this.apiKeyService = apiKeyService;
     this.endUserRepository = endUserRepository;
     this.endUserSessionRepository = endUserSessionRepository;
     this.endUserRefreshTokenRepository = endUserRefreshTokenRepository;
     this.passwordEncoder = passwordEncoder;
-    this.tokenService = tokenService;
-    this.jwtService = jwtService;
+    this.tokenHasherPort = tokenHasherPort;
+    this.jwtProviderPort = jwtProviderPort;
   }
 
   @Transactional
@@ -100,13 +102,13 @@ public class EndUserLoginService {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "email_not_verified");
     }
 
-    Instant refreshExpiresAt = tokenService.getRefreshTokenExpiry();
-    String rawRefreshToken = tokenService.generateRefreshToken();
+    Instant refreshExpiresAt = tokenHasherPort.getRefreshTokenExpiry();
+    String rawRefreshToken = tokenHasherPort.generateRefreshToken();
     persistRefreshToken(user, rawRefreshToken, refreshExpiresAt, ipAddress, userAgent);
     persistSession(user, refreshExpiresAt, ipAddress, userAgent);
 
     String accessToken =
-        jwtService.generateEndUserAccessToken(
+        jwtProviderPort.generateEndUserAccessToken(
             user.getId(),
             project.getId(),
             user.getEmail(),
@@ -185,7 +187,7 @@ public class EndUserLoginService {
       String userAgent) {
     EndUserRefreshToken token = new EndUserRefreshToken();
     token.setUser(user);
-    token.setTokenHash(tokenService.hashToken(rawToken));
+    token.setTokenHash(tokenHasherPort.hashToken(rawToken));
     token.setExpiresAt(expiresAt);
     token.setRevoked(false);
     token.setIpAddress(trimToNull(ipAddress));
