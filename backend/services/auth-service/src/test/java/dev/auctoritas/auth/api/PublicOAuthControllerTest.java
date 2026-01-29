@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -100,6 +101,19 @@ class PublicOAuthControllerTest {
     verify(apiKeyService).validateActiveKey(null);
     verify(oauthGoogleAuthorizationService, never())
         .createAuthorizationRequest(any(), any(), any(), any());
+  }
+
+  @Test
+  @DisplayName("authorize: unknown provider returns 400 and does not validate API key")
+  void authorizeUnknownProviderReturns400() throws Exception {
+    when(oauthProviderRegistry.require("unknown"))
+        .thenThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_provider_invalid"));
+
+    mockMvc
+        .perform(get("/api/v1/auth/oauth/unknown/authorize").secure(true))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(apiKeyService);
   }
 
   @Test
@@ -199,6 +213,92 @@ class PublicOAuthControllerTest {
   }
 
   @Test
+  @DisplayName("authorize: provider normalization lowercases path variable")
+  void authorizeNormalizesProvider() throws Exception {
+    UUID projectId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+
+    ProjectSettings settings = new ProjectSettings();
+    Project project = new Project();
+    project.setId(projectId);
+    project.setSettings(settings);
+    settings.setProject(project);
+
+    ApiKey key = new ApiKey();
+    key.setProject(project);
+
+    OAuthProvider provider = org.mockito.Mockito.mock(OAuthProvider.class);
+    OAuthAuthorizeDetails details =
+        new OAuthAuthorizeDetails("client-id", "https://provider.example.com/authorize", "openid");
+
+    when(oauthProviderRegistry.require("google")).thenReturn(provider);
+    when(apiKeyService.validateActiveKey("pk_test_123")).thenReturn(key);
+    when(tokenService.generateOAuthState()).thenReturn("state-123");
+    when(tokenService.generateOAuthCodeVerifier()).thenReturn("verifier-123");
+    when(tokenService.hashToken("verifier-123")).thenReturn("challenge-123");
+    when(projectRepository.findByIdWithSettings(projectId)).thenReturn(Optional.of(project));
+    when(provider.getAuthorizeDetails(settings)).thenReturn(details);
+    when(provider.buildAuthorizeUrl(eq(details), any(OAuthAuthorizeUrlRequest.class)))
+        .thenReturn("https://provider.example.com/authorize?state=state-123");
+
+    mockMvc
+        .perform(get("/api/v1/auth/oauth/GOOGLE/authorize").secure(true).header("X-API-Key", "pk_test_123"))
+        .andExpect(status().isFound());
+
+    verify(oauthProviderRegistry).require("google");
+  }
+
+  @Test
+  @DisplayName("authorize: project not found returns 404")
+  void authorizeProjectNotFoundReturns404() throws Exception {
+    UUID projectId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+
+    Project project = new Project();
+    project.setId(projectId);
+    ApiKey key = new ApiKey();
+    key.setProject(project);
+
+    OAuthProvider provider = org.mockito.Mockito.mock(OAuthProvider.class);
+    when(oauthProviderRegistry.require("google")).thenReturn(provider);
+    when(apiKeyService.validateActiveKey("pk_test_123")).thenReturn(key);
+    when(tokenService.generateOAuthState()).thenReturn("state-123");
+    when(tokenService.generateOAuthCodeVerifier()).thenReturn("verifier-123");
+    when(projectRepository.findByIdWithSettings(projectId)).thenReturn(Optional.empty());
+
+    mockMvc
+        .perform(get("/api/v1/auth/oauth/google/authorize").secure(true).header("X-API-Key", "pk_test_123"))
+        .andExpect(status().isNotFound());
+
+    verify(oauthGoogleAuthorizationService)
+        .createAuthorizationRequest(eq(projectId), isNull(), eq("state-123"), eq("verifier-123"));
+  }
+
+  @Test
+  @DisplayName("authorize: missing project settings returns 400")
+  void authorizeProjectSettingsMissingReturns400() throws Exception {
+    UUID projectId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+
+    Project project = new Project();
+    project.setId(projectId);
+    project.setSettings(null);
+    ApiKey key = new ApiKey();
+    key.setProject(project);
+
+    OAuthProvider provider = org.mockito.Mockito.mock(OAuthProvider.class);
+    when(oauthProviderRegistry.require("google")).thenReturn(provider);
+    when(apiKeyService.validateActiveKey("pk_test_123")).thenReturn(key);
+    when(tokenService.generateOAuthState()).thenReturn("state-123");
+    when(tokenService.generateOAuthCodeVerifier()).thenReturn("verifier-123");
+    when(projectRepository.findByIdWithSettings(projectId)).thenReturn(Optional.of(project));
+
+    mockMvc
+        .perform(get("/api/v1/auth/oauth/google/authorize").secure(true).header("X-API-Key", "pk_test_123"))
+        .andExpect(status().isBadRequest());
+
+    verify(oauthGoogleAuthorizationService)
+        .createAuthorizationRequest(eq(projectId), isNull(), eq("state-123"), eq("verifier-123"));
+  }
+
+  @Test
   @DisplayName("authorize alias: valid X-API-Key returns 302 and includes state + PKCE params")
   void authorizeAliasValidApiKeyReturnsRedirectWithPkce() throws Exception {
     UUID projectId = UUID.fromString("00000000-0000-0000-0000-000000000001");
@@ -277,6 +377,87 @@ class PublicOAuthControllerTest {
   }
 
   @Test
+  @DisplayName("authorize: delegates to provider authorization service (google/github/microsoft/facebook/apple)")
+  void authorizeDelegatesToProviderAuthorizationService() throws Exception {
+    UUID projectId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+
+    ProjectSettings settings = new ProjectSettings();
+    Project project = new Project();
+    project.setId(projectId);
+    project.setSettings(settings);
+    settings.setProject(project);
+
+    ApiKey key = new ApiKey();
+    key.setProject(project);
+
+    OAuthAuthorizeDetails details =
+        new OAuthAuthorizeDetails("client-id", "https://provider.example.com/authorize", "openid");
+
+    when(apiKeyService.validateActiveKey("pk_test_123")).thenReturn(key);
+    when(tokenService.generateOAuthState()).thenReturn("state-123");
+    when(tokenService.generateOAuthCodeVerifier()).thenReturn("verifier-123");
+    when(tokenService.hashToken("verifier-123")).thenReturn("challenge-123");
+    when(projectRepository.findByIdWithSettings(projectId)).thenReturn(Optional.of(project));
+
+    OAuthProvider googleProvider = org.mockito.Mockito.mock(OAuthProvider.class);
+    OAuthProvider githubProvider = org.mockito.Mockito.mock(OAuthProvider.class);
+    OAuthProvider microsoftProvider = org.mockito.Mockito.mock(OAuthProvider.class);
+    OAuthProvider facebookProvider = org.mockito.Mockito.mock(OAuthProvider.class);
+    OAuthProvider appleProvider = org.mockito.Mockito.mock(OAuthProvider.class);
+
+    when(oauthProviderRegistry.require("google")).thenReturn(googleProvider);
+    when(oauthProviderRegistry.require("github")).thenReturn(githubProvider);
+    when(oauthProviderRegistry.require("microsoft")).thenReturn(microsoftProvider);
+    when(oauthProviderRegistry.require("facebook")).thenReturn(facebookProvider);
+    when(oauthProviderRegistry.require("apple")).thenReturn(appleProvider);
+
+    when(googleProvider.getAuthorizeDetails(settings)).thenReturn(details);
+    when(githubProvider.getAuthorizeDetails(settings)).thenReturn(details);
+    when(microsoftProvider.getAuthorizeDetails(settings)).thenReturn(details);
+    when(facebookProvider.getAuthorizeDetails(settings)).thenReturn(details);
+    when(appleProvider.getAuthorizeDetails(settings)).thenReturn(details);
+
+    when(googleProvider.buildAuthorizeUrl(eq(details), any(OAuthAuthorizeUrlRequest.class)))
+        .thenReturn("https://provider.example.com/authorize?provider=google");
+    when(githubProvider.buildAuthorizeUrl(eq(details), any(OAuthAuthorizeUrlRequest.class)))
+        .thenReturn("https://provider.example.com/authorize?provider=github");
+    when(microsoftProvider.buildAuthorizeUrl(eq(details), any(OAuthAuthorizeUrlRequest.class)))
+        .thenReturn("https://provider.example.com/authorize?provider=microsoft");
+    when(facebookProvider.buildAuthorizeUrl(eq(details), any(OAuthAuthorizeUrlRequest.class)))
+        .thenReturn("https://provider.example.com/authorize?provider=facebook");
+    when(appleProvider.buildAuthorizeUrl(eq(details), any(OAuthAuthorizeUrlRequest.class)))
+        .thenReturn("https://provider.example.com/authorize?provider=apple");
+
+    mockMvc
+        .perform(get("/api/v1/auth/oauth/google/authorize").secure(true).header("X-API-Key", "pk_test_123"))
+        .andExpect(status().isFound());
+    mockMvc
+        .perform(get("/api/v1/auth/oauth/github/authorize").secure(true).header("X-API-Key", "pk_test_123"))
+        .andExpect(status().isFound());
+    mockMvc
+        .perform(
+            get("/api/v1/auth/oauth/microsoft/authorize").secure(true).header("X-API-Key", "pk_test_123"))
+        .andExpect(status().isFound());
+    mockMvc
+        .perform(get("/api/v1/auth/oauth/facebook/authorize").secure(true).header("X-API-Key", "pk_test_123"))
+        .andExpect(status().isFound());
+    mockMvc
+        .perform(get("/api/v1/auth/oauth/apple/authorize").secure(true).header("X-API-Key", "pk_test_123"))
+        .andExpect(status().isFound());
+
+    verify(oauthGoogleAuthorizationService)
+        .createAuthorizationRequest(eq(projectId), isNull(), eq("state-123"), eq("verifier-123"));
+    verify(oauthGitHubAuthorizationService)
+        .createAuthorizationRequest(eq(projectId), isNull(), eq("state-123"), eq("verifier-123"));
+    verify(oauthMicrosoftAuthorizationService)
+        .createAuthorizationRequest(eq(projectId), isNull(), eq("state-123"), eq("verifier-123"));
+    verify(oauthFacebookAuthorizationService)
+        .createAuthorizationRequest(eq(projectId), isNull(), eq("state-123"), eq("verifier-123"));
+    verify(oauthAppleAuthorizationService)
+        .createAuthorizationRequest(eq(projectId), isNull(), eq("state-123"), eq("verifier-123"));
+  }
+
+  @Test
   @DisplayName("callback: missing code returns 400")
   void callbackMissingCodeReturns400() throws Exception {
     when(oauthProviderRegistry.require("google")).thenReturn(org.mockito.Mockito.mock(OAuthProvider.class));
@@ -295,6 +476,115 @@ class PublicOAuthControllerTest {
     verify(oauthGoogleCallbackService)
         .handleCallback(isNull(), eq("state-123"), callbackUriCaptor.capture());
     assertThat(callbackUriCaptor.getValue()).endsWith("/api/v1/auth/oauth/google/callback");
+  }
+
+  @Test
+  @DisplayName("callback: unknown provider returns 400 and does not invoke callback handler")
+  void callbackUnknownProviderReturns400() throws Exception {
+    when(oauthProviderRegistry.require("unknown"))
+        .thenThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_provider_invalid"));
+
+    mockMvc
+        .perform(get("/api/v1/auth/oauth/unknown/callback").secure(true).queryParam("code", "c"))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(oauthGoogleCallbackService);
+    verifyNoInteractions(oauthGitHubCallbackService);
+    verifyNoInteractions(oauthMicrosoftCallbackService);
+    verifyNoInteractions(oauthFacebookCallbackService);
+    verifyNoInteractions(oauthAppleCallbackService);
+  }
+
+  @Test
+  @DisplayName("callback: delegates to provider callback service (google/github/microsoft/facebook/apple)")
+  void callbackDelegatesToProviderCallbackService() throws Exception {
+    when(oauthProviderRegistry.require("google")).thenReturn(org.mockito.Mockito.mock(OAuthProvider.class));
+    when(oauthProviderRegistry.require("github")).thenReturn(org.mockito.Mockito.mock(OAuthProvider.class));
+    when(oauthProviderRegistry.require("microsoft")).thenReturn(org.mockito.Mockito.mock(OAuthProvider.class));
+    when(oauthProviderRegistry.require("facebook")).thenReturn(org.mockito.Mockito.mock(OAuthProvider.class));
+    when(oauthProviderRegistry.require("apple")).thenReturn(org.mockito.Mockito.mock(OAuthProvider.class));
+
+    when(oauthGoogleCallbackService.handleCallback(eq("provider-code"), eq("state"), any(String.class)))
+        .thenReturn("https://example.com/google");
+    when(oauthGitHubCallbackService.handleCallback(eq("provider-code"), eq("state"), any(String.class)))
+        .thenReturn("https://example.com/github");
+    when(oauthMicrosoftCallbackService.handleCallback(eq("provider-code"), eq("state"), any(String.class)))
+        .thenReturn("https://example.com/microsoft");
+    when(oauthFacebookCallbackService.handleCallback(eq("provider-code"), eq("state"), any(String.class)))
+        .thenReturn("https://example.com/facebook");
+    when(oauthAppleCallbackService.handleCallback(eq("provider-code"), eq("state"), any(String.class)))
+        .thenReturn("https://example.com/apple");
+
+    assertThat(
+            mockMvc
+                .perform(
+                    get("/api/v1/auth/oauth/google/callback")
+                        .secure(true)
+                        .queryParam("code", "provider-code")
+                        .queryParam("state", "state"))
+                .andExpect(status().isFound())
+                .andReturn()
+                .getResponse()
+                .getHeader(HttpHeaders.LOCATION))
+        .isEqualTo("https://example.com/google");
+
+    assertThat(
+            mockMvc
+                .perform(
+                    get("/api/v1/auth/oauth/github/callback")
+                        .secure(true)
+                        .queryParam("code", "provider-code")
+                        .queryParam("state", "state"))
+                .andExpect(status().isFound())
+                .andReturn()
+                .getResponse()
+                .getHeader(HttpHeaders.LOCATION))
+        .isEqualTo("https://example.com/github");
+
+    assertThat(
+            mockMvc
+                .perform(
+                    get("/api/v1/auth/oauth/microsoft/callback")
+                        .secure(true)
+                        .queryParam("code", "provider-code")
+                        .queryParam("state", "state"))
+                .andExpect(status().isFound())
+                .andReturn()
+                .getResponse()
+                .getHeader(HttpHeaders.LOCATION))
+        .isEqualTo("https://example.com/microsoft");
+
+    assertThat(
+            mockMvc
+                .perform(
+                    get("/api/v1/auth/oauth/facebook/callback")
+                        .secure(true)
+                        .queryParam("code", "provider-code")
+                        .queryParam("state", "state"))
+                .andExpect(status().isFound())
+                .andReturn()
+                .getResponse()
+                .getHeader(HttpHeaders.LOCATION))
+        .isEqualTo("https://example.com/facebook");
+
+    assertThat(
+            mockMvc
+                .perform(
+                    get("/api/v1/auth/oauth/apple/callback")
+                        .secure(true)
+                        .queryParam("code", "provider-code")
+                        .queryParam("state", "state"))
+                .andExpect(status().isFound())
+                .andReturn()
+                .getResponse()
+                .getHeader(HttpHeaders.LOCATION))
+        .isEqualTo("https://example.com/apple");
+
+    verify(oauthGoogleCallbackService).handleCallback(eq("provider-code"), eq("state"), any(String.class));
+    verify(oauthGitHubCallbackService).handleCallback(eq("provider-code"), eq("state"), any(String.class));
+    verify(oauthMicrosoftCallbackService).handleCallback(eq("provider-code"), eq("state"), any(String.class));
+    verify(oauthFacebookCallbackService).handleCallback(eq("provider-code"), eq("state"), any(String.class));
+    verify(oauthAppleCallbackService).handleCallback(eq("provider-code"), eq("state"), any(String.class));
   }
 
   @Test
