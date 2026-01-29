@@ -1,5 +1,7 @@
 package dev.auctoritas.auth.service;
 
+import dev.auctoritas.auth.application.enduser.EndUserRegistrationCommand;
+import dev.auctoritas.auth.application.enduser.EndUserRegistrationResult;
 import dev.auctoritas.auth.api.EndUserRegistrationRequest;
 import dev.auctoritas.auth.api.EndUserRegistrationResponse;
 import dev.auctoritas.auth.entity.enduser.EndUser;
@@ -73,6 +75,18 @@ public class EndUserRegistrationService {
     this.endUserEmailVerificationService = endUserEmailVerificationService;
     this.domainEventPublisherPort = domainEventPublisherPort;
     this.logVerificationChallenge = logVerificationChallenge;
+  }
+
+  @Transactional
+  public EndUserRegistrationResult register(
+      String apiKey,
+      EndUserRegistrationCommand command,
+      String ipAddress,
+      String userAgent) {
+    EndUserRegistrationRequest request =
+        new EndUserRegistrationRequest(command.email(), command.password(), command.name());
+    EndUserRegistrationResponse response = register(apiKey, request, ipAddress, userAgent);
+    return toApplicationResult(response);
   }
 
   @Transactional
@@ -160,6 +174,15 @@ public class EndUserRegistrationService {
             savedUser.getId(), savedUser.getEmail(), savedUser.getName(), Boolean.TRUE.equals(savedUser.getEmailVerified())),
         accessToken,
         rawRefreshToken);
+  }
+
+  private EndUserRegistrationResult toApplicationResult(EndUserRegistrationResponse response) {
+    EndUserRegistrationResponse.EndUserSummary summary = response.user();
+    return new EndUserRegistrationResult(
+        new EndUserRegistrationResult.EndUserSummary(
+            summary.id(), summary.email(), summary.name(), summary.emailVerified()),
+        response.accessToken(),
+        response.refreshToken());
   }
 
   private void validatePassword(ProjectSettings settings, String password) {

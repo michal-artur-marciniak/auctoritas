@@ -2,8 +2,8 @@ package dev.auctoritas.auth.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import dev.auctoritas.auth.api.EndUserRegistrationRequest;
-import dev.auctoritas.auth.api.EndUserRegistrationResponse;
+import dev.auctoritas.auth.application.enduser.EndUserRegistrationCommand;
+import dev.auctoritas.auth.application.enduser.EndUserRegistrationResult;
 import dev.auctoritas.auth.entity.enduser.EndUser;
 import dev.auctoritas.auth.entity.enduser.EndUserEmailVerificationToken;
 import dev.auctoritas.auth.entity.organization.Organization;
@@ -102,10 +102,10 @@ class EndUserRegistrationServiceTest {
 
   @Test
   void registerCreatesEmailVerificationTokenAndPublishesUserRegisteredEvent() {
-    EndUserRegistrationResponse response =
+    EndUserRegistrationResult response =
         registrationService.register(
             RAW_API_KEY,
-            new EndUserRegistrationRequest("user@example.com", "UserPass123", "Test User"),
+            new EndUserRegistrationCommand("user@example.com", "UserPass123", "Test User"),
             "1.2.3.4",
             "test-agent");
 
@@ -149,7 +149,7 @@ class EndUserRegistrationServiceTest {
   void registerNormalizesEmail() {
     registrationService.register(
         RAW_API_KEY,
-        new EndUserRegistrationRequest("  User@Example.com ", "UserPass123", null),
+        new EndUserRegistrationCommand("  User@Example.com ", "UserPass123", null),
         null,
         null);
 
