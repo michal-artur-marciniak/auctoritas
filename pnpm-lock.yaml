@@ -16,6 +16,8 @@ importers:
 
   packages/sdk-react: {}
 
+  packages/sdk/react: {}
+
 packages:
 
   typescript@5.9.3:
