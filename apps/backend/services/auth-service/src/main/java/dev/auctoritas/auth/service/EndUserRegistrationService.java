@@ -8,8 +8,10 @@ import dev.auctoritas.auth.entity.enduser.EndUserSession;
 import dev.auctoritas.auth.entity.project.ApiKey;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
-import dev.auctoritas.auth.messaging.DomainEventPublisher;
 import dev.auctoritas.auth.messaging.UserRegisteredEvent;
+import dev.auctoritas.auth.ports.messaging.DomainEventPublisherPort;
+import dev.auctoritas.auth.ports.security.JwtProviderPort;
+import dev.auctoritas.auth.ports.security.TokenHasherPort;
 import dev.auctoritas.auth.repository.EndUserRefreshTokenRepository;
 import dev.auctoritas.auth.repository.EndUserRepository;
 import dev.auctoritas.auth.repository.EndUserSessionRepository;
@@ -30,6 +32,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 import static net.logstash.logback.argument.StructuredArguments.kv;
 
+/**
+ * Handles EndUser registration and initial session issuance.
+ */
 @Service
 public class EndUserRegistrationService {
   private static final Logger log = LoggerFactory.getLogger(EndUserRegistrationService.class);
@@ -41,10 +46,10 @@ public class EndUserRegistrationService {
   private final EndUserSessionRepository endUserSessionRepository;
   private final EndUserRefreshTokenRepository endUserRefreshTokenRepository;
   private final PasswordEncoder passwordEncoder;
-  private final TokenService tokenService;
-  private final JwtService jwtService;
+  private final TokenHasherPort tokenHasherPort;
+  private final JwtProviderPort jwtProviderPort;
   private final EndUserEmailVerificationService endUserEmailVerificationService;
-  private final DomainEventPublisher domainEventPublisher;
+  private final DomainEventPublisherPort domainEventPublisherPort;
   private final boolean logVerificationChallenge;
 
   public EndUserRegistrationService(
@@ -53,20 +58,20 @@ public class EndUserRegistrationService {
       EndUserSessionRepository endUserSessionRepository,
       EndUserRefreshTokenRepository endUserRefreshTokenRepository,
       PasswordEncoder passwordEncoder,
-      TokenService tokenService,
-      JwtService jwtService,
+      TokenHasherPort tokenHasherPort,
+      JwtProviderPort jwtProviderPort,
       EndUserEmailVerificationService endUserEmailVerificationService,
-      DomainEventPublisher domainEventPublisher,
+      DomainEventPublisherPort domainEventPublisherPort,
       @Value("${auctoritas.auth.email-verification.log-challenge:true}") boolean logVerificationChallenge) {
     this.apiKeyService = apiKeyService;
     this.endUserRepository = endUserRepository;
     this.endUserSessionRepository = endUserSessionRepository;
     this.endUserRefreshTokenRepository = endUserRefreshTokenRepository;
     this.passwordEncoder = passwordEncoder;
-    this.tokenService = tokenService;
-    this.jwtService = jwtService;
+    this.tokenHasherPort = tokenHasherPort;
+    this.jwtProviderPort = jwtProviderPort;
     this.endUserEmailVerificationService = endUserEmailVerificationService;
-    this.domainEventPublisher = domainEventPublisher;
+    this.domainEventPublisherPort = domainEventPublisherPort;
     this.logVerificationChallenge = logVerificationChallenge;
   }
 
@@ -117,7 +122,7 @@ public class EndUserRegistrationService {
             verificationPayload.tokenId(),
             verificationPayload.expiresAt());
     try {
-      domainEventPublisher.publish(UserRegisteredEvent.EVENT_TYPE, event);
+      domainEventPublisherPort.publish(UserRegisteredEvent.EVENT_TYPE, event);
     } catch (RuntimeException ex) {
       log.warn(
           "user_registered_event_publish_failed {} {}",
@@ -137,13 +142,13 @@ public class EndUserRegistrationService {
           kv("expiresAt", verificationPayload.expiresAt()));
     }
 
-    Instant refreshExpiresAt = tokenService.getRefreshTokenExpiry();
-    String rawRefreshToken = tokenService.generateRefreshToken();
+    Instant refreshExpiresAt = tokenHasherPort.getRefreshTokenExpiry();
+    String rawRefreshToken = tokenHasherPort.generateRefreshToken();
     persistRefreshToken(savedUser, rawRefreshToken, refreshExpiresAt, ipAddress, userAgent);
     persistSession(savedUser, refreshExpiresAt, ipAddress, userAgent);
 
     String accessToken =
-        jwtService.generateEndUserAccessToken(
+        jwtProviderPort.generateEndUserAccessToken(
             savedUser.getId(),
             project.getId(),
             savedUser.getEmail(),
@@ -183,7 +188,7 @@ public class EndUserRegistrationService {
       String userAgent) {
     EndUserRefreshToken token = new EndUserRefreshToken();
     token.setUser(user);
-    token.setTokenHash(tokenService.hashToken(rawToken));
+    token.setTokenHash(tokenHasherPort.hashToken(rawToken));
     token.setExpiresAt(expiresAt);
     token.setRevoked(false);
     token.setIpAddress(trimToNull(ipAddress));
