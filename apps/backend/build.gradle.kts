@@ -9,7 +9,7 @@ plugins {
 group = "dev.auctoritas"
 version = "0.4.1"
 
-val springCloudVersion = "2025.0.1"
+val springCloudVersion = "2025.1.0"
 val testcontainersVersion = "1.20.4"
 val logstashLogbackVersion = "8.0"
 val logbackVersion = "1.5.25"

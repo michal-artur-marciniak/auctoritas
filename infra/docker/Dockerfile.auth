@@ -11,7 +11,8 @@ COPY apps/backend/build.gradle.kts build.gradle.kts
 # Copy only the module we need
 COPY apps/backend/services/auth-service/build.gradle.kts services/auth-service/build.gradle.kts
 COPY apps/backend/services/auth-service/src/ services/auth-service/src/
-RUN mkdir -p services/gateway-service services/worker-service
+RUN mkdir -p services/gateway-service services/worker-service \
+  && touch services/gateway-service/build.gradle.kts services/worker-service/build.gradle.kts
 
 # Build the service jar
 RUN chmod +x gradlew && ./gradlew --no-daemon :services:auth-service:bootJar -x test

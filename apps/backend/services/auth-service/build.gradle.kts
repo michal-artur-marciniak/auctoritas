@@ -22,7 +22,7 @@ dependencies {
   runtimeOnly("io.jsonwebtoken:jjwt-impl:$jjwtVersion")
   runtimeOnly("io.jsonwebtoken:jjwt-jackson:$jjwtVersion")
   implementation("org.springframework.boot:spring-boot-starter-security")
-  implementation("net.logstash.logback:logstash-logback-encoder")
+  implementation("net.logstash.logback:logstash-logback-encoder:9.0")
 
   testImplementation("org.springframework.boot:spring-boot-starter-test")
   testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
