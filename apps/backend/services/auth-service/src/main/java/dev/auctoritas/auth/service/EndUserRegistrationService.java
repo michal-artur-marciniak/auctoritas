@@ -2,8 +2,6 @@ package dev.auctoritas.auth.service;
 
 import dev.auctoritas.auth.application.enduser.EndUserRegistrationCommand;
 import dev.auctoritas.auth.application.enduser.EndUserRegistrationResult;
-import dev.auctoritas.auth.api.EndUserRegistrationRequest;
-import dev.auctoritas.auth.api.EndUserRegistrationResponse;
 import dev.auctoritas.auth.entity.enduser.EndUser;
 import dev.auctoritas.auth.entity.enduser.EndUserRefreshToken;
 import dev.auctoritas.auth.entity.enduser.EndUserSession;
@@ -83,16 +81,20 @@ public class EndUserRegistrationService {
       EndUserRegistrationCommand command,
       String ipAddress,
       String userAgent) {
-    EndUserRegistrationRequest request =
-        new EndUserRegistrationRequest(command.email(), command.password(), command.name());
-    EndUserRegistrationResponse response = register(apiKey, request, ipAddress, userAgent);
-    return toApplicationResult(response);
+    return register(
+        apiKey,
+        command.email(),
+        command.password(),
+        command.name(),
+        ipAddress,
+        userAgent);
   }
 
-  @Transactional
-  public EndUserRegistrationResponse register(
+  private EndUserRegistrationResult register(
       String apiKey,
-      EndUserRegistrationRequest request,
+      String email,
+      String password,
+      String name,
       String ipAddress,
       String userAgent) {
     ApiKey resolvedKey = apiKeyService.validateActiveKey(apiKey);
@@ -102,20 +104,20 @@ public class EndUserRegistrationService {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "project_settings_missing");
     }
 
-    String email = normalizeEmail(requireValue(request.email(), "email_required"));
-    String password = requireValue(request.password(), "password_required");
+    String normalizedEmail = normalizeEmail(requireValue(email, "email_required"));
+    String normalizedPassword = requireValue(password, "password_required");
 
-    if (endUserRepository.existsByEmailAndProjectId(email, project.getId())) {
+    if (endUserRepository.existsByEmailAndProjectId(normalizedEmail, project.getId())) {
       throw new ResponseStatusException(HttpStatus.CONFLICT, "email_taken");
     }
 
-    validatePassword(settings, password);
+    validatePassword(settings, normalizedPassword);
 
     EndUser user = new EndUser();
     user.setProject(project);
-    user.setEmail(email);
-    user.setPasswordHash(passwordEncoder.encode(password));
-    user.setName(trimToNull(request.name()));
+    user.setEmail(normalizedEmail);
+    user.setPasswordHash(passwordEncoder.encode(normalizedPassword));
+    user.setName(trimToNull(name));
 
     EndUser savedUser = endUserRepository.save(user);
     EndUserEmailVerificationService.EmailVerificationPayload verificationPayload =
@@ -169,20 +171,14 @@ public class EndUserRegistrationService {
             Boolean.TRUE.equals(savedUser.getEmailVerified()),
             settings.getAccessTokenTtlSeconds());
 
-    return new EndUserRegistrationResponse(
-        new EndUserRegistrationResponse.EndUserSummary(
-            savedUser.getId(), savedUser.getEmail(), savedUser.getName(), Boolean.TRUE.equals(savedUser.getEmailVerified())),
-        accessToken,
-        rawRefreshToken);
-  }
-
-  private EndUserRegistrationResult toApplicationResult(EndUserRegistrationResponse response) {
-    EndUserRegistrationResponse.EndUserSummary summary = response.user();
     return new EndUserRegistrationResult(
         new EndUserRegistrationResult.EndUserSummary(
-            summary.id(), summary.email(), summary.name(), summary.emailVerified()),
-        response.accessToken(),
-        response.refreshToken());
+            savedUser.getId(),
+            savedUser.getEmail(),
+            savedUser.getName(),
+            Boolean.TRUE.equals(savedUser.getEmailVerified())),
+        accessToken,
+        rawRefreshToken);
   }
 
   private void validatePassword(ProjectSettings settings, String password) {
