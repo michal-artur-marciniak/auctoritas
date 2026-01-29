@@ -1,0 +1,15 @@
+{
+  "name": "auctoritas",
+  "version": "0.3.1",
+  "private": true,
+  "scripts": {
+    "dev:dashboard": "pnpm --filter dashboard dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "contracts:lint": "echo 'Contracts lint placeholder - not implemented yet'",
+    "sdk:gen": "echo 'SDK generation placeholder - not implemented yet'"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

@@ -20,18 +20,21 @@ Auctoritas follows a microservices architecture with clear separation of concern
 
 ```
 auctoritas/
-├── backend/                    # Java ecosystem (Maven)
-│   ├── services/
-│   │   ├── gateway-service/    # API Gateway (Spring Cloud Gateway)
-│   │   ├── auth-service/       # Core auth logic (Spring Boot)
-│   │   └── worker-service/     # Async processing (emails, webhooks)
-│   └── libs/
-│       └── common/             # Shared DTOs, exceptions, utilities
-├── frontend/                   # JavaScript ecosystem (pnpm)
-│   ├── apps/
-│   │   └── dashboard/          # Admin dashboard (React)
-│   └── packages/
-│       └── sdk-react/          # React SDK (@auctoritas/react)
+├── apps/
+│   ├── backend/                # Java ecosystem (Maven)
+│   │   ├── services/
+│   │   │   ├── gateway-service/ # API Gateway (Spring Cloud Gateway)
+│   │   │   ├── auth-service/    # Core auth logic (Spring Boot)
+│   │   │   └── worker-service/  # Async processing (emails, webhooks)
+│   │   └── libs/
+│   │       └── common/          # Shared DTOs, exceptions, utilities
+│   ├── dashboard/              # Admin dashboard (React)
+│   ├── landing/                # Landing site (Astro)
+│   └── docs/                   # Documentation site (Mintlify)
+├── packages/
+│   ├── contracts/              # OpenAPI contract source-of-truth
+│   └── sdk/
+│       └── react/              # React SDK (@auctoritas/react)
 └── infra/                      # Infrastructure configs
     ├── docker/                 # Dockerfiles
     └── k8s/                    # Kubernetes manifests
@@ -78,30 +81,34 @@ For detailed roadmap and version breakdown, see [docs/Roadmap.md](docs/Roadmap.m
 
 ```
 auctoritas/
-├── backend/
-│   ├── pom.xml                 # Maven parent POM
-│   ├── services/
-│   │   ├── gateway-service/    # API routing, rate limiting, JWT validation
-│   │   ├── auth-service/       # Authentication, authorization, user management
-│   │   └── worker-service/     # Email delivery, webhooks, async jobs
-│   └── libs/
-│       └── common/             # Shared library
-├── frontend/
-│   ├── package.json            # pnpm workspace root
-│   ├── pnpm-workspace.yaml
-│   ├── apps/
-│   │   └── dashboard/          # Admin dashboard
-│   └── packages/
-│       └── sdk-react/          # React SDK
+├── apps/
+│   ├── backend/
+│   │   ├── pom.xml              # Maven parent POM
+│   │   ├── services/
+│   │   │   ├── gateway-service/ # API routing, rate limiting, JWT validation
+│   │   │   ├── auth-service/    # Authentication, authorization, user management
+│   │   │   └── worker-service/  # Email delivery, webhooks, async jobs
+│   │   └── libs/
+│   │       └── common/          # Shared library
+│   ├── dashboard/               # Admin dashboard
+│   ├── landing/                 # Landing site
+│   └── docs/                    # Documentation site
+├── packages/
+│   ├── contracts/               # OpenAPI contract source-of-truth
+│   │   └── openapi/
+│   │       └── openapi.yaml
+│   └── sdk/
+│       └── react/               # React SDK
 ├── infra/
-│   ├── docker/                 # Service Dockerfiles
-│   └── k8s/                    # Kubernetes manifests
-├── docs/
-│   ├── Architecture.md         # System architecture
-│   └── Roadmap.md              # Version roadmap
-├── docker-compose.yml          # Local development
+│   ├── docker/                  # Service Dockerfiles
+│   └── k8s/                     # Kubernetes manifests
+├── tools/                       # Repo scripts (optional)
+├── package.json                 # pnpm workspace root
+├── pnpm-workspace.yaml
+├── pnpm-lock.yaml
+├── docker-compose.yml           # Local development
 └── .github/
-    └── workflows/              # CI/CD pipelines
+    └── workflows/               # CI/CD pipelines
 ```
 
 ## License

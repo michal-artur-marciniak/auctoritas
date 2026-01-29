@@ -3,14 +3,14 @@ FROM eclipse-temurin:21-jdk-alpine AS build
 WORKDIR /app
 
 # Copy Maven wrapper
-COPY backend/mvnw mvnw
-COPY backend/.mvn/ .mvn/
+COPY apps/backend/mvnw mvnw
+COPY apps/backend/.mvn/ .mvn/
 
 # Copy the auth-specific build POM
 COPY infra/docker/pom-auth.xml pom.xml
 
 # Copy only the modules we need
-COPY backend/services/auth-service/ services/auth-service/
+COPY apps/backend/services/auth-service/ services/auth-service/
 
 # Build using the minimal POM
 RUN chmod +x mvnw && ./mvnw clean package -DskipTests

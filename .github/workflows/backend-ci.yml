@@ -6,7 +6,7 @@ on:
   push:
     branches: [master]
     paths:
-      - backend/**
+      - apps/backend/**
       - .github/workflows/backend-ci.yml
 
 concurrency:
@@ -49,7 +49,7 @@ jobs:
             CHANGED_FILES=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" || true)
           fi
 
-          if printf '%s\n' "$CHANGED_FILES" | grep -Eq '^(backend/|\.github/workflows/backend-ci\.yml$)'; then
+          if printf '%s\n' "$CHANGED_FILES" | grep -Eq '^(apps/backend/|\.github/workflows/backend-ci\.yml$)'; then
             echo "backend_changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "backend_changed=false" >> "$GITHUB_OUTPUT"
@@ -69,7 +69,7 @@ jobs:
 
       - name: Build and test (Maven)
         if: steps.changes.outputs.backend_changed == 'true'
-        working-directory: backend
+        working-directory: apps/backend
         run: ./mvnw -B -ntp verify
 
       - name: Upload test reports (on failure)
@@ -79,5 +79,5 @@ jobs:
           name: backend-test-reports
           if-no-files-found: ignore
           path: |
-            backend/**/target/surefire-reports/**
-            backend/**/target/failsafe-reports/**
+            apps/backend/**/target/surefire-reports/**
+            apps/backend/**/target/failsafe-reports/**

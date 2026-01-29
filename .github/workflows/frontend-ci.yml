@@ -6,7 +6,13 @@ on:
   push:
     branches: [master]
     paths:
-      - frontend/**
+      - apps/dashboard/**
+      - apps/landing/**
+      - apps/docs/**
+      - packages/**
+      - package.json
+      - pnpm-workspace.yaml
+      - pnpm-lock.yaml
       - .github/workflows/frontend-ci.yml
 
 concurrency:
@@ -53,7 +59,7 @@ jobs:
             CHANGED_FILES=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" || true)
           fi
 
-          if printf '%s\n' "$CHANGED_FILES" | grep -Eq '^(frontend/|\.github/workflows/frontend-ci\.yml$)'; then
+          if printf '%s\n' "$CHANGED_FILES" | grep -Eq '^(apps/dashboard/|apps/landing/|apps/docs/|packages/|package\.json$|pnpm-workspace\.yaml$|pnpm-lock\.yaml$|\.github/workflows/frontend-ci\.yml$)'; then
             echo "frontend_changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "frontend_changed=false" >> "$GITHUB_OUTPUT"
@@ -75,19 +81,16 @@ jobs:
         with:
           node-version: "22"
           cache: pnpm
-          cache-dependency-path: frontend/pnpm-lock.yaml
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
         if: steps.changes.outputs.frontend_changed == 'true'
-        working-directory: frontend
         run: pnpm install --frozen-lockfile
 
       - name: Lint
         if: steps.changes.outputs.frontend_changed == 'true'
-        working-directory: frontend
         run: pnpm lint
 
       - name: Build
         if: steps.changes.outputs.frontend_changed == 'true'
-        working-directory: frontend
         run: pnpm build
