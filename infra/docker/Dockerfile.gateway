@@ -2,18 +2,19 @@
 FROM eclipse-temurin:21-jdk-alpine AS build
 WORKDIR /app
 
-# Copy Maven wrapper
-COPY apps/backend/mvnw mvnw
-COPY apps/backend/.mvn/ .mvn/
+# Copy Gradle wrapper and build files
+COPY apps/backend/gradlew gradlew
+COPY apps/backend/gradle/ gradle/
+COPY apps/backend/settings.gradle.kts settings.gradle.kts
+COPY apps/backend/build.gradle.kts build.gradle.kts
 
-# Copy the gateway-specific build POM
-COPY infra/docker/pom-gateway.xml pom.xml
+# Copy only the module we need
+COPY apps/backend/services/gateway-service/build.gradle.kts services/gateway-service/build.gradle.kts
+COPY apps/backend/services/gateway-service/src/ services/gateway-service/src/
+RUN mkdir -p services/auth-service services/worker-service
 
-# Copy only the modules we need
-COPY apps/backend/services/gateway-service/ services/gateway-service/
-
-# Build using the minimal POM
-RUN chmod +x mvnw && ./mvnw clean package -DskipTests
+# Build the service jar
+RUN chmod +x gradlew && ./gradlew --no-daemon :services:gateway-service:bootJar -x test
 
 # Runtime stage
 FROM eclipse-temurin:21-jre-alpine
@@ -22,7 +23,7 @@ WORKDIR /app
 RUN addgroup -S auctoritas && adduser -S auctoritas -G auctoritas
 USER auctoritas
 
-COPY --from=build /app/services/gateway-service/target/*.jar app.jar
+COPY --from=build /app/services/gateway-service/build/libs/app.jar app.jar
 
 EXPOSE 8080
 
