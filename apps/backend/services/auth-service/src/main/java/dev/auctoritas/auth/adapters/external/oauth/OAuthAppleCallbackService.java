@@ -1,5 +1,6 @@
 package dev.auctoritas.auth.adapters.external.oauth;
 
+import dev.auctoritas.auth.domain.exception.DomainNotFoundException;
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.entity.enduser.EndUser;
 import dev.auctoritas.auth.entity.oauth.OAuthAuthorizationRequest;
@@ -66,7 +67,7 @@ public class OAuthAppleCallbackService {
 
     Project project = authRequest.getProject();
     if (project == null || project.getId() == null) {
-      throw new DomainValidationException("project_not_found");
+      throw new DomainNotFoundException("project_not_found");
     }
     ProjectSettings settings = project.getSettings();
     if (settings == null) {
