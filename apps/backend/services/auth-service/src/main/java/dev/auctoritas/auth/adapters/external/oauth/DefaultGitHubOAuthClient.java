@@ -1,10 +1,11 @@
 package dev.auctoritas.auth.adapters.external.oauth;
 
+import dev.auctoritas.auth.domain.exception.DomainExternalServiceException;
+import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import java.util.Arrays;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.encrypt.TextEncryptor;
 import org.springframework.stereotype.Service;
@@ -12,7 +13,6 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class DefaultGitHubOAuthClient implements GitHubOAuthClient {
@@ -35,7 +35,7 @@ public class DefaultGitHubOAuthClient implements GitHubOAuthClient {
   @Override
   public GitHubTokenResponse exchangeAuthorizationCode(GitHubTokenExchangeRequest request) {
     if (request == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_github_exchange_failed");
+      throw new DomainValidationException("oauth_github_exchange_failed");
     }
 
     MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
@@ -58,11 +58,11 @@ public class DefaultGitHubOAuthClient implements GitHubOAuthClient {
               .retrieve()
               .body(GitHubTokenResponse.class);
       if (response == null || response.accessToken() == null || response.accessToken().isBlank()) {
-        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "oauth_github_exchange_failed");
+        throw new DomainExternalServiceException("oauth_github_exchange_failed");
       }
       return response;
     } catch (RestClientException ex) {
-      throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "oauth_github_exchange_failed", ex);
+      throw new DomainExternalServiceException("oauth_github_exchange_failed", ex);
     }
   }
 
@@ -80,11 +80,11 @@ public class DefaultGitHubOAuthClient implements GitHubOAuthClient {
               .retrieve()
               .body(GitHubUser.class);
       if (user == null || user.id() == null) {
-        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "oauth_github_userinfo_failed");
+        throw new DomainExternalServiceException("oauth_github_userinfo_failed");
       }
       return user;
     } catch (RestClientException ex) {
-      throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "oauth_github_userinfo_failed", ex);
+      throw new DomainExternalServiceException("oauth_github_userinfo_failed", ex);
     }
   }
 
@@ -106,34 +106,34 @@ public class DefaultGitHubOAuthClient implements GitHubOAuthClient {
       }
       return Arrays.asList(emails);
     } catch (RestClientException ex) {
-      throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "oauth_github_userinfo_failed", ex);
+      throw new DomainExternalServiceException("oauth_github_userinfo_failed", ex);
     }
   }
 
   private String decryptCodeVerifier(String codeVerifier) {
     if (codeVerifier == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_github_exchange_failed");
+      throw new DomainValidationException("oauth_github_exchange_failed");
     }
 
     String trimmed = codeVerifier.trim();
     if (!trimmed.startsWith(ENC_PREFIX)) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_github_exchange_failed");
+      throw new DomainValidationException("oauth_github_exchange_failed");
     }
     String ciphertext = trimmed.substring(ENC_PREFIX.length());
     try {
       return oauthClientSecretEncryptor.decrypt(ciphertext);
     } catch (Exception ex) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_github_exchange_failed", ex);
+      throw new DomainValidationException("oauth_github_exchange_failed", ex);
     }
   }
 
   private static String value(String s, String errorCode) {
     if (s == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     String trimmed = s.trim();
     if (trimmed.isEmpty()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     return trimmed;
   }

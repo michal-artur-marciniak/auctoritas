@@ -1,5 +1,7 @@
 package dev.auctoritas.auth.adapters.external.oauth;
 
+import dev.auctoritas.auth.domain.exception.DomainNotFoundException;
+import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.entity.oauth.OAuthAuthorizationRequest;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
@@ -16,10 +18,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class OAuthGoogleAuthorizationService {
@@ -46,32 +46,31 @@ public class OAuthGoogleAuthorizationService {
   public String createAuthorizationRequest(
       UUID projectId, String appRedirectUri, String state, String codeVerifier) {
     if (projectId == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "project_id_missing");
+      throw new DomainValidationException("project_id_missing");
     }
     Project project =
         projectRepository
             .findById(projectId)
-            .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "project_not_found"));
+            .orElseThrow(() -> new DomainNotFoundException("project_not_found"));
     ProjectSettings settings = project.getSettings();
     if (settings == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "project_settings_missing");
+      throw new DomainValidationException("project_settings_missing");
     }
 
     String normalizedRedirectUri = validateRedirectUri(appRedirectUri);
     Map<String, Object> oauthConfig = settings.getOauthConfig() == null ? Map.of() : settings.getOauthConfig();
     if (!isRedirectUriAllowed(oauthConfig, PROVIDER, normalizedRedirectUri)) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_redirect_uri_not_allowed");
+      throw new DomainValidationException("oauth_redirect_uri_not_allowed");
     }
 
     OAuthProviderPort provider = oauthProviderRegistry.require(PROVIDER);
     OAuthAuthorizeDetails details = provider.getAuthorizeDetails(settings);
 
     if (state == null || state.isBlank()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_state_missing");
+      throw new DomainValidationException("oauth_state_missing");
     }
     if (codeVerifier == null || codeVerifier.isBlank()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_code_verifier_missing");
+      throw new DomainValidationException("oauth_code_verifier_missing");
     }
 
     OAuthAuthorizationRequest request = new OAuthAuthorizationRequest();
@@ -112,27 +111,27 @@ public class OAuthGoogleAuthorizationService {
 
   private static String validateRedirectUri(String raw) {
     if (raw == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_redirect_uri_missing");
+      throw new DomainValidationException("oauth_redirect_uri_missing");
     }
     String trimmed = raw.trim();
     if (trimmed.isEmpty()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_redirect_uri_missing");
+      throw new DomainValidationException("oauth_redirect_uri_missing");
     }
     try {
       URI uri = new URI(trimmed);
       String scheme = uri.getScheme();
       if (scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))) {
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_redirect_uri_invalid");
+        throw new DomainValidationException("oauth_redirect_uri_invalid");
       }
       if (uri.getHost() == null) {
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_redirect_uri_invalid");
+        throw new DomainValidationException("oauth_redirect_uri_invalid");
       }
       if (uri.getFragment() != null) {
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_redirect_uri_invalid");
+        throw new DomainValidationException("oauth_redirect_uri_invalid");
       }
       return uri.toString();
     } catch (URISyntaxException e) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_redirect_uri_invalid", e);
+      throw new DomainValidationException("oauth_redirect_uri_invalid", e);
     }
   }
 

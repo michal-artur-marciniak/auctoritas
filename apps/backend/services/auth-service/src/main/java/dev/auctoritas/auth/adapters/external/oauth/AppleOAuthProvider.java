@@ -1,5 +1,6 @@
 package dev.auctoritas.auth.adapters.external.oauth;
 
+import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
 import dev.auctoritas.auth.ports.oauth.OAuthProviderPort;
 import dev.auctoritas.auth.service.oauth.AppleClientSecretService;
@@ -9,10 +10,8 @@ import dev.auctoritas.auth.service.oauth.OAuthAuthorizeUrlRequest;
 import dev.auctoritas.auth.service.oauth.OAuthTokenExchangeRequest;
 import dev.auctoritas.auth.service.oauth.OAuthUserInfo;
 import java.util.Map;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.encrypt.TextEncryptor;
 import org.springframework.stereotype.Component;
-import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 @Component
@@ -45,13 +44,13 @@ public class AppleOAuthProvider implements OAuthProviderPort {
   @Override
   public OAuthAuthorizeDetails getAuthorizeDetails(ProjectSettings settings) {
     if (settings == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "project_settings_missing");
+      throw new DomainValidationException("project_settings_missing");
     }
     Map<String, Object> oauthConfig =
         settings.getOauthConfig() == null ? Map.of() : settings.getOauthConfig();
     Object appleObj = oauthConfig.get(PROVIDER);
     if (!(appleObj instanceof Map<?, ?> appleRaw)) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_apple_not_configured");
+      throw new DomainValidationException("oauth_apple_not_configured");
     }
 
     boolean enabled = Boolean.TRUE.equals(appleRaw.get("enabled"));
@@ -60,7 +59,7 @@ public class AppleOAuthProvider implements OAuthProviderPort {
     String keyId = trimToNull(appleRaw.get("keyId"));
 
     if (!enabled || serviceId == null || teamId == null || keyId == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_apple_not_configured");
+      throw new DomainValidationException("oauth_apple_not_configured");
     }
 
     return new OAuthAuthorizeDetails(serviceId, AUTHORIZE_URL, SCOPE);
@@ -69,10 +68,10 @@ public class AppleOAuthProvider implements OAuthProviderPort {
   @Override
   public String buildAuthorizeUrl(OAuthAuthorizeDetails details, OAuthAuthorizeUrlRequest request) {
     if (details == null || details.clientId() == null || details.clientId().isBlank()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_apple_not_configured");
+      throw new DomainValidationException("oauth_apple_not_configured");
     }
     if (request == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_apple_authorize_failed");
+      throw new DomainValidationException("oauth_apple_authorize_failed");
     }
 
     return UriComponentsBuilder.fromUriString(details.authorizationEndpoint())
@@ -97,7 +96,7 @@ public class AppleOAuthProvider implements OAuthProviderPort {
         settings.getOauthConfig() == null ? Map.of() : settings.getOauthConfig();
     Object appleObj = oauthConfig.get(PROVIDER);
     if (!(appleObj instanceof Map<?, ?> appleRaw)) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_apple_not_configured");
+      throw new DomainValidationException("oauth_apple_not_configured");
     }
 
     String teamId = requireValue(trimToNull(appleRaw.get("teamId")), "oauth_apple_not_configured");
@@ -106,7 +105,7 @@ public class AppleOAuthProvider implements OAuthProviderPort {
 
     String privateKeyPem = decryptPrivateKey(settings);
     if (privateKeyPem == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_apple_not_configured");
+      throw new DomainValidationException("oauth_apple_not_configured");
     }
 
     String code = requireValue(request == null ? null : request.code(), "oauth_code_missing");
@@ -146,11 +145,11 @@ public class AppleOAuthProvider implements OAuthProviderPort {
 
   private static String requireValue(String value, String errorCode) {
     if (value == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     String trimmed = value.trim();
     if (trimmed.isEmpty()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     return trimmed;
   }

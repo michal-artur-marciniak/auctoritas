@@ -1,5 +1,6 @@
 package dev.auctoritas.auth.adapters.external.oauth;
 
+import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
 import dev.auctoritas.auth.ports.oauth.OAuthProviderPort;
 import dev.auctoritas.auth.service.oauth.OAuthAuthorizeDetails;
@@ -8,10 +9,8 @@ import dev.auctoritas.auth.service.oauth.OAuthTokenExchangeRequest;
 import dev.auctoritas.auth.service.oauth.OAuthUserInfo;
 import java.util.List;
 import java.util.Map;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.encrypt.TextEncryptor;
 import org.springframework.stereotype.Component;
-import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 @Component
@@ -37,19 +36,19 @@ public class GitHubOAuthProvider implements OAuthProviderPort {
   @Override
   public OAuthAuthorizeDetails getAuthorizeDetails(ProjectSettings settings) {
     if (settings == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "project_settings_missing");
+      throw new DomainValidationException("project_settings_missing");
     }
     Map<String, Object> oauthConfig = settings.getOauthConfig() == null ? Map.of() : settings.getOauthConfig();
     Object githubObj = oauthConfig.get(PROVIDER);
     if (!(githubObj instanceof Map<?, ?> githubRaw)) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_github_not_configured");
+      throw new DomainValidationException("oauth_github_not_configured");
     }
 
     boolean enabled = Boolean.TRUE.equals(githubRaw.get("enabled"));
     String clientId = trimToNull(githubRaw.get("clientId"));
 
     if (!enabled || clientId == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_github_not_configured");
+      throw new DomainValidationException("oauth_github_not_configured");
     }
 
     return new OAuthAuthorizeDetails(clientId, AUTHORIZE_URL, SCOPE);
@@ -58,10 +57,10 @@ public class GitHubOAuthProvider implements OAuthProviderPort {
   @Override
   public String buildAuthorizeUrl(OAuthAuthorizeDetails details, OAuthAuthorizeUrlRequest request) {
     if (details == null || details.clientId() == null || details.clientId().isBlank()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_github_not_configured");
+      throw new DomainValidationException("oauth_github_not_configured");
     }
     if (request == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_github_authorize_failed");
+      throw new DomainValidationException("oauth_github_authorize_failed");
     }
 
     return UriComponentsBuilder.fromUriString(details.authorizationEndpoint())
@@ -82,7 +81,7 @@ public class GitHubOAuthProvider implements OAuthProviderPort {
 
     String clientSecret = decryptClientSecret(settings);
     if (clientSecret == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_github_not_configured");
+      throw new DomainValidationException("oauth_github_not_configured");
     }
 
     String code = requireValue(request == null ? null : request.code(), "oauth_code_missing");
@@ -154,11 +153,11 @@ public class GitHubOAuthProvider implements OAuthProviderPort {
 
   private static String requireValue(String value, String errorCode) {
     if (value == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     String trimmed = value.trim();
     if (trimmed.isEmpty()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     return trimmed;
   }

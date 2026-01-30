@@ -1,5 +1,6 @@
 package dev.auctoritas.auth.adapters.external.oauth;
 
+import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.entity.enduser.EndUser;
 import dev.auctoritas.auth.entity.oauth.OAuthAuthorizationRequest;
 import dev.auctoritas.auth.entity.oauth.OAuthExchangeCode;
@@ -14,10 +15,8 @@ import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
 import dev.auctoritas.auth.service.oauth.OAuthTokenExchangeRequest;
 import dev.auctoritas.auth.service.oauth.OAuthUserInfo;
 import java.time.Instant;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 @Service
@@ -53,25 +52,25 @@ public class OAuthGitHubCallbackService {
     OAuthAuthorizationRequest authRequest =
         oauthAuthorizationRequestRepository
             .findByStateHashForUpdate(stateHash)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_state_invalid"));
+            .orElseThrow(() -> new DomainValidationException("oauth_state_invalid"));
 
     if (!PROVIDER.equalsIgnoreCase(authRequest.getProvider())) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_provider_invalid");
+      throw new DomainValidationException("oauth_provider_invalid");
     }
 
     Instant now = Instant.now();
     if (authRequest.getExpiresAt() == null || authRequest.getExpiresAt().isBefore(now)) {
       oauthAuthorizationRequestRepository.delete(authRequest);
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_state_expired");
+      throw new DomainValidationException("oauth_state_expired");
     }
 
     Project project = authRequest.getProject();
     if (project == null || project.getId() == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "project_not_found");
+      throw new DomainValidationException("project_not_found");
     }
     ProjectSettings settings = project.getSettings();
     if (settings == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "project_settings_missing");
+      throw new DomainValidationException("project_settings_missing");
     }
 
     OAuthProviderPort provider = oauthProviderRegistry.require(PROVIDER);
@@ -81,7 +80,7 @@ public class OAuthGitHubCallbackService {
             new OAuthTokenExchangeRequest(resolvedCode, resolvedCallbackUri, authRequest.getCodeVerifier()));
 
     if (userInfo == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_github_userinfo_failed");
+      throw new DomainValidationException("oauth_github_userinfo_failed");
     }
     String providerUserId = requireValue(userInfo.providerUserId(), "oauth_github_userinfo_failed");
     EndUser user =
@@ -114,11 +113,11 @@ public class OAuthGitHubCallbackService {
 
   private static String requireValue(String value, String errorCode) {
     if (value == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     String trimmed = value.trim();
     if (trimmed.isEmpty()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     return trimmed;
   }
