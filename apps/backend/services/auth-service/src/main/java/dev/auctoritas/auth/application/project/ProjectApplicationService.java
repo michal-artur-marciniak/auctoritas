@@ -75,7 +75,10 @@ public class ProjectApplicationService {
   @Transactional(readOnly = true)
   public List<ProjectSummaryResponse> listProjects(UUID orgId, OrgMemberPrincipal principal) {
     enforceOrgAccess(orgId, principal);
-    return projectRepository.findAllByOrganizationId(orgId).stream().map(this::toSummary).toList();
+    return projectRepository.findAllByOrganizationId(orgId).stream()
+        .filter(project -> project.getStatus() != ProjectStatus.DELETED)
+        .map(this::toSummary)
+        .toList();
   }
 
   @Transactional

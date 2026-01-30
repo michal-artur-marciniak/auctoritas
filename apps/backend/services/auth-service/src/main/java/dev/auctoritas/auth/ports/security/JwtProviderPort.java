@@ -25,17 +25,17 @@ public interface JwtProviderPort {
   /**
    * Validation result for a JWT.
    */
-  record JwtValidationResult(boolean valid, String errorCode, Claims claims) {
+  record JwtValidationResult(boolean valid, String errorCode, String errorMessage, Claims claims) {
     public static JwtValidationResult valid(Claims claims) {
-      return new JwtValidationResult(true, null, claims);
+      return new JwtValidationResult(true, null, null, claims);
     }
 
     public static JwtValidationResult expired() {
-      return new JwtValidationResult(false, "token_expired", null);
+      return new JwtValidationResult(false, "token_expired", null, null);
     }
 
     public static JwtValidationResult invalid(String message) {
-      return new JwtValidationResult(false, "token_invalid", null);
+      return new JwtValidationResult(false, "token_invalid", message, null);
     }
   }
 }

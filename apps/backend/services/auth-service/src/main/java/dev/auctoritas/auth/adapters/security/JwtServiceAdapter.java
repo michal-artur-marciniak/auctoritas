@@ -37,7 +37,8 @@ public class JwtServiceAdapter implements JwtProviderPort {
   @Override
   public JwtValidationResult validateToken(String token) {
     JwtService.JwtValidationResult result = jwtService.validateToken(token);
-    return new JwtValidationResult(result.valid(), result.errorCode(), result.claims());
+    return new JwtValidationResult(
+        result.valid(), result.errorCode(), result.errorMessage(), result.claims());
   }
 
   @Override

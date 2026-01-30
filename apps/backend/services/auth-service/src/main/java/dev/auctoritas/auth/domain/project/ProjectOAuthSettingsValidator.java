@@ -426,7 +426,7 @@ public class ProjectOAuthSettingsValidator {
           || key.equals("redirectUris")) {
         continue;
       }
-      merged.put(key, entry.getValue());
+      throw invalid("oauth_config_key_invalid");
     }
 
     return new ProjectOAuthSettingsUpdate(
@@ -444,12 +444,18 @@ public class ProjectOAuthSettingsValidator {
     return existingEncrypted != null && !existingEncrypted.trim().isEmpty();
   }
 
-  @SuppressWarnings("unchecked")
   private static Map<String, Object> asObjectMap(Object value) {
-    if (value instanceof Map<?, ?> map) {
-      return new HashMap<>((Map<String, Object>) map);
+    Map<String, Object> result = new HashMap<>();
+    if (!(value instanceof Map<?, ?> map)) {
+      return result;
     }
-    return new HashMap<>();
+    for (Map.Entry<?, ?> entry : map.entrySet()) {
+      Object key = entry.getKey();
+      if (key instanceof String keyString) {
+        result.put(keyString, entry.getValue());
+      }
+    }
+    return result;
   }
 
   private static Boolean asBoolean(Object value) {
