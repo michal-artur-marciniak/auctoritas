@@ -1,4 +1,4 @@
-package dev.auctoritas.auth.service;
+package dev.auctoritas.auth.adapters.external.oauth;
 
 import dev.auctoritas.auth.entity.enduser.EndUser;
 import dev.auctoritas.auth.entity.oauth.OAuthAuthorizationRequest;
@@ -7,6 +7,7 @@ import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
 import dev.auctoritas.auth.repository.OAuthAuthorizationRequestRepository;
 import dev.auctoritas.auth.repository.OAuthExchangeCodeRepository;
+import dev.auctoritas.auth.service.TokenService;
 import dev.auctoritas.auth.service.oauth.OAuthAccountLinkingService;
 import dev.auctoritas.auth.service.oauth.OAuthProvider;
 import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
@@ -20,8 +21,8 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 @Service
-public class OAuthAppleCallbackService {
-  private static final String PROVIDER = "apple";
+public class OAuthGitHubCallbackService {
+  private static final String PROVIDER = "github";
 
   private final OAuthAuthorizationRequestRepository oauthAuthorizationRequestRepository;
   private final OAuthExchangeCodeRepository oauthExchangeCodeRepository;
@@ -29,7 +30,7 @@ public class OAuthAppleCallbackService {
   private final OAuthProviderRegistry oauthProviderRegistry;
   private final OAuthAccountLinkingService oauthAccountLinkingService;
 
-  public OAuthAppleCallbackService(
+  public OAuthGitHubCallbackService(
       OAuthAuthorizationRequestRepository oauthAuthorizationRequestRepository,
       OAuthExchangeCodeRepository oauthExchangeCodeRepository,
       TokenService tokenService,
@@ -77,10 +78,12 @@ public class OAuthAppleCallbackService {
     OAuthUserInfo userInfo =
         provider.exchangeAuthorizationCode(
             settings,
-            new OAuthTokenExchangeRequest(
-                resolvedCode, resolvedCallbackUri, authRequest.getCodeVerifier()));
+            new OAuthTokenExchangeRequest(resolvedCode, resolvedCallbackUri, authRequest.getCodeVerifier()));
 
-    String providerUserId = requireValue(userInfo.providerUserId(), "oauth_apple_userinfo_failed");
+    if (userInfo == null) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_github_userinfo_failed");
+    }
+    String providerUserId = requireValue(userInfo.providerUserId(), "oauth_github_userinfo_failed");
     EndUser user =
         oauthAccountLinkingService.linkOrCreateEndUser(
             project,
@@ -89,7 +92,7 @@ public class OAuthAppleCallbackService {
             userInfo.email(),
             userInfo.emailVerified(),
             userInfo.name(),
-            "oauth_apple_userinfo_failed");
+            "oauth_github_userinfo_failed");
 
     // Consume the state only after we've successfully linked/created the user.
     oauthAuthorizationRequestRepository.delete(authRequest);

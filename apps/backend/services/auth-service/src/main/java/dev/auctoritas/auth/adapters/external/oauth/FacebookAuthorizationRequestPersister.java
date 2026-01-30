@@ -1,6 +1,5 @@
-package dev.auctoritas.auth.service.oauth.adapters;
+package dev.auctoritas.auth.adapters.external.oauth;
 
-import dev.auctoritas.auth.service.OAuthFacebookAuthorizationService;
 import dev.auctoritas.auth.service.oauth.OAuthAuthorizationRequestCreateRequest;
 import dev.auctoritas.auth.service.oauth.OAuthAuthorizationRequestPersister;
 import org.springframework.stereotype.Component;

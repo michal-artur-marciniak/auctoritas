@@ -1,4 +1,4 @@
-package dev.auctoritas.auth.service;
+package dev.auctoritas.auth.adapters.external.oauth;
 
 import dev.auctoritas.auth.entity.enduser.EndUser;
 import dev.auctoritas.auth.entity.oauth.OAuthAuthorizationRequest;
@@ -7,6 +7,7 @@ import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
 import dev.auctoritas.auth.repository.OAuthAuthorizationRequestRepository;
 import dev.auctoritas.auth.repository.OAuthExchangeCodeRepository;
+import dev.auctoritas.auth.service.TokenService;
 import dev.auctoritas.auth.service.oauth.OAuthAccountLinkingService;
 import dev.auctoritas.auth.service.oauth.OAuthProvider;
 import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
@@ -20,8 +21,8 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 @Service
-public class OAuthGitHubCallbackService {
-  private static final String PROVIDER = "github";
+public class OAuthFacebookCallbackService {
+  private static final String PROVIDER = "facebook";
 
   private final OAuthAuthorizationRequestRepository oauthAuthorizationRequestRepository;
   private final OAuthExchangeCodeRepository oauthExchangeCodeRepository;
@@ -29,7 +30,7 @@ public class OAuthGitHubCallbackService {
   private final OAuthProviderRegistry oauthProviderRegistry;
   private final OAuthAccountLinkingService oauthAccountLinkingService;
 
-  public OAuthGitHubCallbackService(
+  public OAuthFacebookCallbackService(
       OAuthAuthorizationRequestRepository oauthAuthorizationRequestRepository,
       OAuthExchangeCodeRepository oauthExchangeCodeRepository,
       TokenService tokenService,
@@ -52,7 +53,8 @@ public class OAuthGitHubCallbackService {
     OAuthAuthorizationRequest authRequest =
         oauthAuthorizationRequestRepository
             .findByStateHashForUpdate(stateHash)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_state_invalid"));
+            .orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_state_invalid"));
 
     if (!PROVIDER.equalsIgnoreCase(authRequest.getProvider())) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_provider_invalid");
@@ -77,12 +79,11 @@ public class OAuthGitHubCallbackService {
     OAuthUserInfo userInfo =
         provider.exchangeAuthorizationCode(
             settings,
-            new OAuthTokenExchangeRequest(resolvedCode, resolvedCallbackUri, authRequest.getCodeVerifier()));
+            new OAuthTokenExchangeRequest(
+                resolvedCode, resolvedCallbackUri, authRequest.getCodeVerifier()));
 
-    if (userInfo == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_github_userinfo_failed");
-    }
-    String providerUserId = requireValue(userInfo.providerUserId(), "oauth_github_userinfo_failed");
+    String providerUserId =
+        requireValue(userInfo.providerUserId(), "oauth_facebook_userinfo_failed");
     EndUser user =
         oauthAccountLinkingService.linkOrCreateEndUser(
             project,
@@ -91,7 +92,7 @@ public class OAuthGitHubCallbackService {
             userInfo.email(),
             userInfo.emailVerified(),
             userInfo.name(),
-            "oauth_github_userinfo_failed");
+            "oauth_facebook_userinfo_failed");
 
     // Consume the state only after we've successfully linked/created the user.
     oauthAuthorizationRequestRepository.delete(authRequest);

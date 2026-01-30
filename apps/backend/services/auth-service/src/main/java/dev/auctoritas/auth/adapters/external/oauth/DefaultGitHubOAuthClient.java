@@ -1,4 +1,4 @@
-package dev.auctoritas.auth.service;
+package dev.auctoritas.auth.adapters.external.oauth;
 
 import java.util.Arrays;
 import java.util.List;

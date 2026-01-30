@@ -2,6 +2,8 @@ package dev.auctoritas.auth.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.auctoritas.auth.adapters.external.oauth.MicrosoftOAuthClient;
+import dev.auctoritas.auth.adapters.external.oauth.OAuthMicrosoftCallbackService;
 import dev.auctoritas.auth.config.JpaConfig;
 import dev.auctoritas.auth.entity.enduser.EndUser;
 import dev.auctoritas.auth.entity.oauth.OAuthAuthorizationRequest;

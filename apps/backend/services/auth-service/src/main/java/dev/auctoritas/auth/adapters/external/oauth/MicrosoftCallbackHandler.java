@@ -1,6 +1,5 @@
-package dev.auctoritas.auth.service.oauth.adapters;
+package dev.auctoritas.auth.adapters.external.oauth;
 
-import dev.auctoritas.auth.service.OAuthMicrosoftCallbackService;
 import dev.auctoritas.auth.service.oauth.OAuthCallbackHandleRequest;
 import dev.auctoritas.auth.service.oauth.OAuthCallbackHandler;
 import org.springframework.stereotype.Component;

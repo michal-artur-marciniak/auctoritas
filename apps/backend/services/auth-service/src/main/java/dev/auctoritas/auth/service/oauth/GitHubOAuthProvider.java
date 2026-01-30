@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.service.oauth;
 
 import dev.auctoritas.auth.entity.project.ProjectSettings;
-import dev.auctoritas.auth.service.GitHubOAuthClient;
+import dev.auctoritas.auth.adapters.external.oauth.GitHubOAuthClient;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;

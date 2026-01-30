@@ -1,10 +1,11 @@
-package dev.auctoritas.auth.service;
+package dev.auctoritas.auth.adapters.external.oauth;
 
 import dev.auctoritas.auth.entity.oauth.OAuthAuthorizationRequest;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
 import dev.auctoritas.auth.repository.OAuthAuthorizationRequestRepository;
 import dev.auctoritas.auth.repository.ProjectRepository;
+import dev.auctoritas.auth.service.TokenService;
 import dev.auctoritas.auth.service.oauth.OAuthAuthorizeDetails;
 import dev.auctoritas.auth.service.oauth.OAuthProvider;
 import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
@@ -21,16 +22,16 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
-public class OAuthAppleAuthorizationService {
+public class OAuthGoogleAuthorizationService {
   private static final Duration AUTH_REQUEST_TTL = Duration.ofMinutes(10);
-  private static final String PROVIDER = "apple";
+  private static final String PROVIDER = "google";
 
   private final ProjectRepository projectRepository;
   private final OAuthAuthorizationRequestRepository oauthAuthorizationRequestRepository;
   private final TokenService tokenService;
   private final OAuthProviderRegistry oauthProviderRegistry;
 
-  public OAuthAppleAuthorizationService(
+  public OAuthGoogleAuthorizationService(
       ProjectRepository projectRepository,
       OAuthAuthorizationRequestRepository oauthAuthorizationRequestRepository,
       TokenService tokenService,
@@ -50,15 +51,15 @@ public class OAuthAppleAuthorizationService {
     Project project =
         projectRepository
             .findById(projectId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "project_not_found"));
+            .orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "project_not_found"));
     ProjectSettings settings = project.getSettings();
     if (settings == null) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "project_settings_missing");
     }
 
     String normalizedRedirectUri = validateRedirectUri(appRedirectUri);
-    Map<String, Object> oauthConfig =
-        settings.getOauthConfig() == null ? Map.of() : settings.getOauthConfig();
+    Map<String, Object> oauthConfig = settings.getOauthConfig() == null ? Map.of() : settings.getOauthConfig();
     if (!isRedirectUriAllowed(oauthConfig, PROVIDER, normalizedRedirectUri)) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_redirect_uri_not_allowed");
     }
@@ -66,20 +67,18 @@ public class OAuthAppleAuthorizationService {
     OAuthProvider provider = oauthProviderRegistry.require(PROVIDER);
     OAuthAuthorizeDetails details = provider.getAuthorizeDetails(settings);
 
-    String trimmedState = state == null ? null : state.trim();
-    if (trimmedState == null || trimmedState.isEmpty()) {
+    if (state == null || state.isBlank()) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_state_missing");
     }
-    String trimmedCodeVerifier = codeVerifier == null ? null : codeVerifier.trim();
-    if (trimmedCodeVerifier == null || trimmedCodeVerifier.isEmpty()) {
+    if (codeVerifier == null || codeVerifier.isBlank()) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_code_verifier_missing");
     }
 
     OAuthAuthorizationRequest request = new OAuthAuthorizationRequest();
     request.setProject(project);
     request.setProvider(PROVIDER);
-    request.setStateHash(tokenService.hashToken(trimmedState));
-    request.setCodeVerifier(trimmedCodeVerifier);
+    request.setStateHash(tokenService.hashToken(state));
+    request.setCodeVerifier(codeVerifier);
     request.setAppRedirectUri(normalizedRedirectUri);
     request.setExpiresAt(Instant.now().plus(AUTH_REQUEST_TTL));
     oauthAuthorizationRequestRepository.save(request);
@@ -110,6 +109,7 @@ public class OAuthAppleAuthorizationService {
     return false;
   }
 
+
   private static String validateRedirectUri(String raw) {
     if (raw == null) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_redirect_uri_missing");
@@ -135,4 +135,5 @@ public class OAuthAppleAuthorizationService {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_redirect_uri_invalid", e);
     }
   }
+
 }

@@ -1,4 +1,4 @@
-package dev.auctoritas.auth.service;
+package dev.auctoritas.auth.adapters.external.oauth;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;

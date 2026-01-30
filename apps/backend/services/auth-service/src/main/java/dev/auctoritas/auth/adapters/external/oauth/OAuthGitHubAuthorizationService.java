@@ -1,10 +1,11 @@
-package dev.auctoritas.auth.service;
+package dev.auctoritas.auth.adapters.external.oauth;
 
 import dev.auctoritas.auth.entity.oauth.OAuthAuthorizationRequest;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
 import dev.auctoritas.auth.repository.OAuthAuthorizationRequestRepository;
 import dev.auctoritas.auth.repository.ProjectRepository;
+import dev.auctoritas.auth.service.TokenService;
 import dev.auctoritas.auth.service.oauth.OAuthAuthorizeDetails;
 import dev.auctoritas.auth.service.oauth.OAuthProvider;
 import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
@@ -21,16 +22,16 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
-public class OAuthMicrosoftAuthorizationService {
+public class OAuthGitHubAuthorizationService {
   private static final Duration AUTH_REQUEST_TTL = Duration.ofMinutes(10);
-  private static final String PROVIDER = "microsoft";
+  private static final String PROVIDER = "github";
 
   private final ProjectRepository projectRepository;
   private final OAuthAuthorizationRequestRepository oauthAuthorizationRequestRepository;
   private final TokenService tokenService;
   private final OAuthProviderRegistry oauthProviderRegistry;
 
-  public OAuthMicrosoftAuthorizationService(
+  public OAuthGitHubAuthorizationService(
       ProjectRepository projectRepository,
       OAuthAuthorizationRequestRepository oauthAuthorizationRequestRepository,
       TokenService tokenService,
@@ -42,7 +43,7 @@ public class OAuthMicrosoftAuthorizationService {
   }
 
   @Transactional
-  public OAuthAuthorizeDetails createAuthorizationRequest(
+  public String createAuthorizationRequest(
       UUID projectId, String appRedirectUri, String state, String codeVerifier) {
     if (projectId == null) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "project_id_missing");
@@ -81,7 +82,7 @@ public class OAuthMicrosoftAuthorizationService {
     request.setExpiresAt(Instant.now().plus(AUTH_REQUEST_TTL));
     oauthAuthorizationRequestRepository.save(request);
 
-    return details;
+    return details.clientId();
   }
 
   private static boolean isRedirectUriAllowed(

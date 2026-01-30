@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.service.oauth;
 
 import dev.auctoritas.auth.entity.project.ProjectSettings;
-import dev.auctoritas.auth.service.MicrosoftOAuthClient;
+import dev.auctoritas.auth.adapters.external.oauth.MicrosoftOAuthClient;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.encrypt.TextEncryptor;

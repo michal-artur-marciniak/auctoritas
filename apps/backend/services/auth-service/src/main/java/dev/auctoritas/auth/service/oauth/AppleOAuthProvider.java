@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.service.oauth;
 
 import dev.auctoritas.auth.entity.project.ProjectSettings;
-import dev.auctoritas.auth.service.AppleOAuthClient;
+import dev.auctoritas.auth.adapters.external.oauth.AppleOAuthClient;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.encrypt.TextEncryptor;

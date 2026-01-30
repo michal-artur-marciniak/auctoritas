@@ -1,6 +1,5 @@
-package dev.auctoritas.auth.service;
+package dev.auctoritas.auth.adapters.external.oauth;
 
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -8,21 +7,21 @@ import org.springframework.security.crypto.encrypt.TextEncryptor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
-public class DefaultMicrosoftOAuthClient implements MicrosoftOAuthClient {
-  private static final String MICROSOFT_TOKEN_URL_TEMPLATE =
-      "https://login.microsoftonline.com/%s/oauth2/v2.0/token";
-  private static final String MICROSOFT_USERINFO_URL = "https://graph.microsoft.com/oidc/userinfo";
+public class DefaultGoogleOAuthClient implements GoogleOAuthClient {
+  private static final String GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
+  private static final String GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo";
   private static final String ENC_PREFIX = "ENC:";
 
   private final RestClient restClient;
   private final TextEncryptor oauthClientSecretEncryptor;
 
-  public DefaultMicrosoftOAuthClient(
+  public DefaultGoogleOAuthClient(
       RestClient.Builder builder,
       @Qualifier("oauthClientSecretEncryptor") TextEncryptor oauthClientSecretEncryptor) {
     this.restClient = builder.build();
@@ -30,79 +29,78 @@ public class DefaultMicrosoftOAuthClient implements MicrosoftOAuthClient {
   }
 
   @Override
-  public MicrosoftTokenResponse exchangeAuthorizationCode(MicrosoftTokenExchangeRequest request) {
+  public GoogleTokenResponse exchangeAuthorizationCode(GoogleTokenExchangeRequest request) {
     if (request == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_microsoft_exchange_failed");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_google_exchange_failed");
     }
-
-    String tenant = value(request.tenant(), "oauth_microsoft_exchange_failed");
-    String tokenUrl = MICROSOFT_TOKEN_URL_TEMPLATE.formatted(tenant);
 
     MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
     form.add("grant_type", "authorization_code");
-    form.add("code", value(request.code(), "oauth_microsoft_exchange_failed"));
-    form.add("client_id", value(request.clientId(), "oauth_microsoft_exchange_failed"));
-    form.add("client_secret", value(request.clientSecret(), "oauth_microsoft_exchange_failed"));
-    form.add("redirect_uri", value(request.redirectUri(), "oauth_microsoft_exchange_failed"));
+    form.add("code", value(request.code(), "oauth_google_exchange_failed"));
+    form.add("client_id", value(request.clientId(), "oauth_google_exchange_failed"));
+    form.add("client_secret", value(request.clientSecret(), "oauth_google_exchange_failed"));
+    form.add("redirect_uri", value(request.redirectUri(), "oauth_google_exchange_failed"));
     form.add(
         "code_verifier",
-        decryptCodeVerifier(value(request.codeVerifier(), "oauth_microsoft_exchange_failed")));
+        decryptCodeVerifier(value(request.codeVerifier(), "oauth_google_exchange_failed")));
 
     try {
-      MicrosoftTokenResponse response =
+      GoogleTokenResponse response =
           restClient
               .post()
-              .uri(tokenUrl)
+              .uri(GOOGLE_TOKEN_URL)
               .contentType(MediaType.APPLICATION_FORM_URLENCODED)
               .body(form)
               .retrieve()
-              .body(MicrosoftTokenResponse.class);
+              .body(GoogleTokenResponse.class);
       if (response == null || response.accessToken() == null || response.accessToken().isBlank()) {
-        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "oauth_microsoft_exchange_failed");
+        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "oauth_google_exchange_failed");
       }
       return response;
     } catch (RestClientException ex) {
       throw new ResponseStatusException(
-          HttpStatus.BAD_GATEWAY, "oauth_microsoft_exchange_failed", ex);
+          HttpStatus.BAD_GATEWAY, "oauth_google_exchange_failed", ex);
     }
   }
 
   @Override
-  public MicrosoftUserInfo fetchUserInfo(String accessToken) {
-    String token = value(accessToken, "oauth_microsoft_userinfo_failed");
+  public GoogleUserInfo fetchUserInfo(String accessToken) {
+    String token = value(accessToken, "oauth_google_userinfo_failed");
     try {
-      MicrosoftUserInfo info =
+      GoogleUserInfo info =
           restClient
               .get()
-              .uri(MICROSOFT_USERINFO_URL)
+              .uri(GOOGLE_USERINFO_URL)
               .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
               .accept(MediaType.APPLICATION_JSON)
               .retrieve()
-              .body(MicrosoftUserInfo.class);
+              .body(GoogleUserInfo.class);
       if (info == null || info.sub() == null || info.sub().isBlank()) {
-        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "oauth_microsoft_userinfo_failed");
+        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "oauth_google_userinfo_failed");
+      }
+      if (info.email() == null || info.email().isBlank()) {
+        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "oauth_google_userinfo_failed");
       }
       return info;
     } catch (RestClientException ex) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_GATEWAY, "oauth_microsoft_userinfo_failed", ex);
+      throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "oauth_google_userinfo_failed", ex);
     }
   }
 
   private String decryptCodeVerifier(String codeVerifier) {
     if (codeVerifier == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_microsoft_exchange_failed");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_google_exchange_failed");
     }
 
     String trimmed = codeVerifier.trim();
     if (!trimmed.startsWith(ENC_PREFIX)) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_microsoft_exchange_failed");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_google_exchange_failed");
     }
     String ciphertext = trimmed.substring(ENC_PREFIX.length());
     try {
       return oauthClientSecretEncryptor.decrypt(ciphertext);
     } catch (Exception ex) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_microsoft_exchange_failed", ex);
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_google_exchange_failed", ex);
     }
   }
 

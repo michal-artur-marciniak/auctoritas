@@ -1,5 +1,6 @@
-package dev.auctoritas.auth.service;
+package dev.auctoritas.auth.adapters.external.oauth;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -7,21 +8,20 @@ import org.springframework.security.crypto.encrypt.TextEncryptor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
-public class DefaultGoogleOAuthClient implements GoogleOAuthClient {
-  private static final String GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
-  private static final String GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo";
+public class DefaultFacebookOAuthClient implements FacebookOAuthClient {
+  private static final String FACEBOOK_TOKEN_URL = "https://graph.facebook.com/v19.0/oauth/access_token";
+  private static final String FACEBOOK_ME_URL = "https://graph.facebook.com/v19.0/me";
   private static final String ENC_PREFIX = "ENC:";
 
   private final RestClient restClient;
   private final TextEncryptor oauthClientSecretEncryptor;
 
-  public DefaultGoogleOAuthClient(
+  public DefaultFacebookOAuthClient(
       RestClient.Builder builder,
       @Qualifier("oauthClientSecretEncryptor") TextEncryptor oauthClientSecretEncryptor) {
     this.restClient = builder.build();
@@ -29,78 +29,75 @@ public class DefaultGoogleOAuthClient implements GoogleOAuthClient {
   }
 
   @Override
-  public GoogleTokenResponse exchangeAuthorizationCode(GoogleTokenExchangeRequest request) {
+  public FacebookTokenResponse exchangeAuthorizationCode(FacebookTokenExchangeRequest request) {
     if (request == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_google_exchange_failed");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_facebook_exchange_failed");
     }
 
     MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
-    form.add("grant_type", "authorization_code");
-    form.add("code", value(request.code(), "oauth_google_exchange_failed"));
-    form.add("client_id", value(request.clientId(), "oauth_google_exchange_failed"));
-    form.add("client_secret", value(request.clientSecret(), "oauth_google_exchange_failed"));
-    form.add("redirect_uri", value(request.redirectUri(), "oauth_google_exchange_failed"));
+    form.add("client_id", value(request.clientId(), "oauth_facebook_exchange_failed"));
+    form.add("client_secret", value(request.clientSecret(), "oauth_facebook_exchange_failed"));
+    form.add("redirect_uri", value(request.redirectUri(), "oauth_facebook_exchange_failed"));
+    form.add("code", value(request.code(), "oauth_facebook_exchange_failed"));
     form.add(
         "code_verifier",
-        decryptCodeVerifier(value(request.codeVerifier(), "oauth_google_exchange_failed")));
+        decryptCodeVerifier(value(request.codeVerifier(), "oauth_facebook_exchange_failed")));
 
     try {
-      GoogleTokenResponse response =
+      FacebookTokenResponse response =
           restClient
               .post()
-              .uri(GOOGLE_TOKEN_URL)
+              .uri(FACEBOOK_TOKEN_URL)
               .contentType(MediaType.APPLICATION_FORM_URLENCODED)
               .body(form)
+              .accept(MediaType.APPLICATION_JSON)
               .retrieve()
-              .body(GoogleTokenResponse.class);
+              .body(FacebookTokenResponse.class);
       if (response == null || response.accessToken() == null || response.accessToken().isBlank()) {
-        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "oauth_google_exchange_failed");
+        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "oauth_facebook_exchange_failed");
       }
       return response;
     } catch (RestClientException ex) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_GATEWAY, "oauth_google_exchange_failed", ex);
+      throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "oauth_facebook_exchange_failed", ex);
     }
   }
 
   @Override
-  public GoogleUserInfo fetchUserInfo(String accessToken) {
-    String token = value(accessToken, "oauth_google_userinfo_failed");
+  public FacebookUserInfo fetchUserInfo(String accessToken) {
+    String token = value(accessToken, "oauth_facebook_userinfo_failed");
+
     try {
-      GoogleUserInfo info =
+      FacebookUserInfo info =
           restClient
               .get()
-              .uri(GOOGLE_USERINFO_URL)
+              .uri(FACEBOOK_ME_URL + "?fields=id,name,email")
               .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
               .accept(MediaType.APPLICATION_JSON)
               .retrieve()
-              .body(GoogleUserInfo.class);
-      if (info == null || info.sub() == null || info.sub().isBlank()) {
-        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "oauth_google_userinfo_failed");
-      }
-      if (info.email() == null || info.email().isBlank()) {
-        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "oauth_google_userinfo_failed");
+              .body(FacebookUserInfo.class);
+      if (info == null || info.id() == null || info.id().isBlank()) {
+        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "oauth_facebook_userinfo_failed");
       }
       return info;
     } catch (RestClientException ex) {
-      throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "oauth_google_userinfo_failed", ex);
+      throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "oauth_facebook_userinfo_failed", ex);
     }
   }
 
   private String decryptCodeVerifier(String codeVerifier) {
     if (codeVerifier == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_google_exchange_failed");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_facebook_exchange_failed");
     }
 
     String trimmed = codeVerifier.trim();
     if (!trimmed.startsWith(ENC_PREFIX)) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_google_exchange_failed");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_facebook_exchange_failed");
     }
     String ciphertext = trimmed.substring(ENC_PREFIX.length());
     try {
       return oauthClientSecretEncryptor.decrypt(ciphertext);
     } catch (Exception ex) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_google_exchange_failed", ex);
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_facebook_exchange_failed", ex);
     }
   }
 
