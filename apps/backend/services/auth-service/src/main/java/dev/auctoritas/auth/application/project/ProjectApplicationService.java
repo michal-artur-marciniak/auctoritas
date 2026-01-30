@@ -9,8 +9,8 @@ import dev.auctoritas.auth.application.apikey.ApiKeyApplicationService;
 import dev.auctoritas.auth.entity.organization.Organization;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
+import dev.auctoritas.auth.ports.project.ProjectRepositoryPort;
 import dev.auctoritas.auth.repository.OrganizationRepository;
-import dev.auctoritas.auth.repository.ProjectRepository;
 import dev.auctoritas.auth.security.OrgMemberPrincipal;
 import dev.auctoritas.auth.shared.enums.OrgMemberRole;
 import dev.auctoritas.auth.shared.enums.ProjectStatus;
@@ -26,12 +26,12 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class ProjectApplicationService {
   private final OrganizationRepository organizationRepository;
-  private final ProjectRepository projectRepository;
+  private final ProjectRepositoryPort projectRepository;
   private final ApiKeyApplicationService apiKeyApplicationService;
 
   public ProjectApplicationService(
       OrganizationRepository organizationRepository,
-      ProjectRepository projectRepository,
+      ProjectRepositoryPort projectRepository,
       ApiKeyApplicationService apiKeyApplicationService) {
     this.organizationRepository = organizationRepository;
     this.projectRepository = projectRepository;
