@@ -5,8 +5,8 @@ import dev.auctoritas.auth.api.ApiKeySecretResponse;
 import dev.auctoritas.auth.api.ApiKeySummaryResponse;
 import dev.auctoritas.auth.entity.project.ApiKey;
 import dev.auctoritas.auth.entity.project.Project;
+import dev.auctoritas.auth.ports.apikey.ApiKeyRepositoryPort;
 import dev.auctoritas.auth.ports.security.TokenHasherPort;
-import dev.auctoritas.auth.repository.ApiKeyRepository;
 import dev.auctoritas.auth.repository.ProjectRepository;
 import dev.auctoritas.auth.security.OrgMemberPrincipal;
 import dev.auctoritas.auth.service.ApiKeyService;
@@ -30,7 +30,7 @@ public class ApiKeyApplicationService {
   private static final String LIVE_KEY_PREFIX = "pk_live_";
   private static final String TEST_KEY_PREFIX = "pk_test_";
 
-  private final ApiKeyRepository apiKeyRepository;
+  private final ApiKeyRepositoryPort apiKeyRepository;
   private final ProjectRepository projectRepository;
   private final ApiKeyService apiKeyService;
   private final TokenHasherPort tokenHasherPort;
@@ -38,7 +38,7 @@ public class ApiKeyApplicationService {
   private final Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();
 
   public ApiKeyApplicationService(
-      ApiKeyRepository apiKeyRepository,
+      ApiKeyRepositoryPort apiKeyRepository,
       ProjectRepository projectRepository,
       ApiKeyService apiKeyService,
       TokenHasherPort tokenHasherPort) {
