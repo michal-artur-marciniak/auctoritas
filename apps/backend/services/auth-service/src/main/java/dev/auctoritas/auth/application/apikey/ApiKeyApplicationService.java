@@ -11,7 +11,7 @@ import dev.auctoritas.auth.repository.ProjectRepository;
 import dev.auctoritas.auth.security.OrgMemberPrincipal;
 import dev.auctoritas.auth.service.ApiKeyService;
 import dev.auctoritas.auth.domain.apikey.ApiKeyEnvironment;
-import dev.auctoritas.auth.shared.enums.OrgMemberRole;
+import dev.auctoritas.auth.domain.organization.OrgMemberRole;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.List;

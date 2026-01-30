@@ -6,7 +6,7 @@ import dev.auctoritas.auth.entity.project.ApiKey;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
 import dev.auctoritas.auth.domain.apikey.ApiKeyStatus;
-import dev.auctoritas.auth.shared.enums.OrganizationStatus;
+import dev.auctoritas.auth.domain.organization.OrganizationStatus;
 import dev.auctoritas.auth.domain.project.ProjectStatus;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;

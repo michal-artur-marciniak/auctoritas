@@ -20,7 +20,7 @@ import dev.auctoritas.auth.ports.oauth.OAuthProviderPort;
 import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
 import dev.auctoritas.auth.service.oauth.OAuthTokenExchangeRequest;
 import dev.auctoritas.auth.service.oauth.OAuthUserInfo;
-import dev.auctoritas.auth.shared.enums.OrganizationStatus;
+import dev.auctoritas.auth.domain.organization.OrganizationStatus;
 import dev.auctoritas.auth.domain.project.ProjectStatus;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;

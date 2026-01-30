@@ -16,7 +16,7 @@ import dev.auctoritas.auth.messaging.DomainEventPublisher;
 import dev.auctoritas.auth.messaging.EmailVerificationResentEvent;
 import dev.auctoritas.auth.repository.EndUserEmailVerificationTokenRepository;
 import dev.auctoritas.auth.domain.apikey.ApiKeyStatus;
-import dev.auctoritas.auth.shared.enums.OrganizationStatus;
+import dev.auctoritas.auth.domain.organization.OrganizationStatus;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.List;

@@ -18,7 +18,7 @@ import dev.auctoritas.auth.repository.EndUserRefreshTokenRepository;
 import dev.auctoritas.auth.repository.EndUserSessionRepository;
 import dev.auctoritas.auth.security.EndUserPrincipal;
 import dev.auctoritas.auth.domain.apikey.ApiKeyStatus;
-import dev.auctoritas.auth.shared.enums.OrganizationStatus;
+import dev.auctoritas.auth.domain.organization.OrganizationStatus;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.List;

@@ -12,7 +12,7 @@ import dev.auctoritas.auth.entity.project.ProjectSettings;
 import dev.auctoritas.auth.ports.project.ProjectRepositoryPort;
 import dev.auctoritas.auth.repository.OrganizationRepository;
 import dev.auctoritas.auth.security.OrgMemberPrincipal;
-import dev.auctoritas.auth.shared.enums.OrgMemberRole;
+import dev.auctoritas.auth.domain.organization.OrgMemberRole;
 import dev.auctoritas.auth.domain.project.ProjectStatus;
 import java.util.List;
 import java.util.Locale;

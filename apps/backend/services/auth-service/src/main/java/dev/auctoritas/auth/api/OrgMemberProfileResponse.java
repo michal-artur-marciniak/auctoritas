@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.api;
 
-import dev.auctoritas.auth.shared.enums.OrgMemberRole;
-import dev.auctoritas.auth.shared.enums.OrgMemberStatus;
+import dev.auctoritas.auth.domain.organization.OrgMemberRole;
+import dev.auctoritas.auth.domain.organization.OrgMemberStatus;
 import java.time.Instant;
 import java.util.UUID;
 
