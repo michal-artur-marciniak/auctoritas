@@ -35,7 +35,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.util.UriComponentsBuilder;
-import dev.auctoritas.auth.service.oauth.GoogleOAuthProvider;
+import dev.auctoritas.auth.adapters.external.oauth.GoogleOAuthProvider;
 import dev.auctoritas.auth.service.oauth.OAuthAccountLinkingService;
 import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
 

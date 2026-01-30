@@ -29,7 +29,7 @@ import dev.auctoritas.auth.adapters.external.oauth.OAuthMicrosoftCallbackService
 import dev.auctoritas.auth.service.TokenService;
 import dev.auctoritas.auth.service.oauth.OAuthAuthorizeDetails;
 import dev.auctoritas.auth.service.oauth.OAuthAuthorizeUrlRequest;
-import dev.auctoritas.auth.service.oauth.OAuthProvider;
+import dev.auctoritas.auth.ports.oauth.OAuthProviderPort;
 import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
 import java.net.URI;
 import java.util.Optional;
@@ -88,7 +88,7 @@ class PublicOAuthControllerTest {
   @Test
   @DisplayName("authorize: missing X-API-Key returns 401 and controller runs")
   void authorizeMissingApiKeyReturns401() throws Exception {
-    OAuthProvider provider = org.mockito.Mockito.mock(OAuthProvider.class);
+    OAuthProviderPort provider = org.mockito.Mockito.mock(OAuthProviderPort.class);
     when(oauthProviderRegistry.require("google")).thenReturn(provider);
 
     when(apiKeyService.validateActiveKey(null))
@@ -119,7 +119,7 @@ class PublicOAuthControllerTest {
   @Test
   @DisplayName("authorize alias: missing X-API-Key returns 401 and controller runs")
   void authorizeAliasMissingApiKeyReturns401() throws Exception {
-    OAuthProvider provider = org.mockito.Mockito.mock(OAuthProvider.class);
+    OAuthProviderPort provider = org.mockito.Mockito.mock(OAuthProviderPort.class);
     when(oauthProviderRegistry.require("google")).thenReturn(provider);
 
     when(apiKeyService.validateActiveKey(null))
@@ -148,7 +148,7 @@ class PublicOAuthControllerTest {
     ApiKey key = new ApiKey();
     key.setProject(project);
 
-    OAuthProvider provider = org.mockito.Mockito.mock(OAuthProvider.class);
+    OAuthProviderPort provider = org.mockito.Mockito.mock(OAuthProviderPort.class);
     OAuthAuthorizeDetails details =
         new OAuthAuthorizeDetails("client-id", "https://provider.example.com/authorize", "openid");
 
@@ -226,7 +226,7 @@ class PublicOAuthControllerTest {
     ApiKey key = new ApiKey();
     key.setProject(project);
 
-    OAuthProvider provider = org.mockito.Mockito.mock(OAuthProvider.class);
+    OAuthProviderPort provider = org.mockito.Mockito.mock(OAuthProviderPort.class);
     OAuthAuthorizeDetails details =
         new OAuthAuthorizeDetails("client-id", "https://provider.example.com/authorize", "openid");
 
@@ -257,7 +257,7 @@ class PublicOAuthControllerTest {
     ApiKey key = new ApiKey();
     key.setProject(project);
 
-    OAuthProvider provider = org.mockito.Mockito.mock(OAuthProvider.class);
+    OAuthProviderPort provider = org.mockito.Mockito.mock(OAuthProviderPort.class);
     when(oauthProviderRegistry.require("google")).thenReturn(provider);
     when(apiKeyService.validateActiveKey("pk_test_123")).thenReturn(key);
     when(tokenService.generateOAuthState()).thenReturn("state-123");
@@ -283,7 +283,7 @@ class PublicOAuthControllerTest {
     ApiKey key = new ApiKey();
     key.setProject(project);
 
-    OAuthProvider provider = org.mockito.Mockito.mock(OAuthProvider.class);
+    OAuthProviderPort provider = org.mockito.Mockito.mock(OAuthProviderPort.class);
     when(oauthProviderRegistry.require("google")).thenReturn(provider);
     when(apiKeyService.validateActiveKey("pk_test_123")).thenReturn(key);
     when(tokenService.generateOAuthState()).thenReturn("state-123");
@@ -312,7 +312,7 @@ class PublicOAuthControllerTest {
     ApiKey key = new ApiKey();
     key.setProject(project);
 
-    OAuthProvider provider = org.mockito.Mockito.mock(OAuthProvider.class);
+    OAuthProviderPort provider = org.mockito.Mockito.mock(OAuthProviderPort.class);
     OAuthAuthorizeDetails details =
         new OAuthAuthorizeDetails("client-id", "https://provider.example.com/authorize", "openid");
 
@@ -399,11 +399,11 @@ class PublicOAuthControllerTest {
     when(tokenService.hashToken("verifier-123")).thenReturn("challenge-123");
     when(projectRepository.findByIdWithSettings(projectId)).thenReturn(Optional.of(project));
 
-    OAuthProvider googleProvider = org.mockito.Mockito.mock(OAuthProvider.class);
-    OAuthProvider githubProvider = org.mockito.Mockito.mock(OAuthProvider.class);
-    OAuthProvider microsoftProvider = org.mockito.Mockito.mock(OAuthProvider.class);
-    OAuthProvider facebookProvider = org.mockito.Mockito.mock(OAuthProvider.class);
-    OAuthProvider appleProvider = org.mockito.Mockito.mock(OAuthProvider.class);
+    OAuthProviderPort googleProvider = org.mockito.Mockito.mock(OAuthProviderPort.class);
+    OAuthProviderPort githubProvider = org.mockito.Mockito.mock(OAuthProviderPort.class);
+    OAuthProviderPort microsoftProvider = org.mockito.Mockito.mock(OAuthProviderPort.class);
+    OAuthProviderPort facebookProvider = org.mockito.Mockito.mock(OAuthProviderPort.class);
+    OAuthProviderPort appleProvider = org.mockito.Mockito.mock(OAuthProviderPort.class);
 
     when(oauthProviderRegistry.require("google")).thenReturn(googleProvider);
     when(oauthProviderRegistry.require("github")).thenReturn(githubProvider);
@@ -460,7 +460,7 @@ class PublicOAuthControllerTest {
   @Test
   @DisplayName("callback: missing code returns 400")
   void callbackMissingCodeReturns400() throws Exception {
-    when(oauthProviderRegistry.require("google")).thenReturn(org.mockito.Mockito.mock(OAuthProvider.class));
+    when(oauthProviderRegistry.require("google")).thenReturn(org.mockito.Mockito.mock(OAuthProviderPort.class));
     when(oauthGoogleCallbackService.handleCallback(
             isNull(), eq("state-123"), any(String.class)))
         .thenThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_code_missing"));
@@ -498,11 +498,11 @@ class PublicOAuthControllerTest {
   @Test
   @DisplayName("callback: delegates to provider callback service (google/github/microsoft/facebook/apple)")
   void callbackDelegatesToProviderCallbackService() throws Exception {
-    when(oauthProviderRegistry.require("google")).thenReturn(org.mockito.Mockito.mock(OAuthProvider.class));
-    when(oauthProviderRegistry.require("github")).thenReturn(org.mockito.Mockito.mock(OAuthProvider.class));
-    when(oauthProviderRegistry.require("microsoft")).thenReturn(org.mockito.Mockito.mock(OAuthProvider.class));
-    when(oauthProviderRegistry.require("facebook")).thenReturn(org.mockito.Mockito.mock(OAuthProvider.class));
-    when(oauthProviderRegistry.require("apple")).thenReturn(org.mockito.Mockito.mock(OAuthProvider.class));
+    when(oauthProviderRegistry.require("google")).thenReturn(org.mockito.Mockito.mock(OAuthProviderPort.class));
+    when(oauthProviderRegistry.require("github")).thenReturn(org.mockito.Mockito.mock(OAuthProviderPort.class));
+    when(oauthProviderRegistry.require("microsoft")).thenReturn(org.mockito.Mockito.mock(OAuthProviderPort.class));
+    when(oauthProviderRegistry.require("facebook")).thenReturn(org.mockito.Mockito.mock(OAuthProviderPort.class));
+    when(oauthProviderRegistry.require("apple")).thenReturn(org.mockito.Mockito.mock(OAuthProviderPort.class));
 
     when(oauthGoogleCallbackService.handleCallback(eq("provider-code"), eq("state"), any(String.class)))
         .thenReturn("https://example.com/google");
@@ -590,7 +590,7 @@ class PublicOAuthControllerTest {
   @Test
   @DisplayName("callback: success returns 302 to app redirect URL")
   void callbackSuccessReturnsRedirect() throws Exception {
-    when(oauthProviderRegistry.require("google")).thenReturn(org.mockito.Mockito.mock(OAuthProvider.class));
+    when(oauthProviderRegistry.require("google")).thenReturn(org.mockito.Mockito.mock(OAuthProviderPort.class));
     when(oauthGoogleCallbackService.handleCallback(
             eq("provider-code"), eq("state-123"), any(String.class)))
         .thenReturn("https://example.com/app/callback?auctoritas_code=abc");

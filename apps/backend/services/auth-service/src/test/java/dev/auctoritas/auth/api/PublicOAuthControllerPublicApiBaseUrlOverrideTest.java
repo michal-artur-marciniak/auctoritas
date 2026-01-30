@@ -21,7 +21,7 @@ import dev.auctoritas.auth.adapters.external.oauth.OAuthGoogleCallbackService;
 import dev.auctoritas.auth.adapters.external.oauth.OAuthMicrosoftAuthorizationService;
 import dev.auctoritas.auth.adapters.external.oauth.OAuthMicrosoftCallbackService;
 import dev.auctoritas.auth.service.TokenService;
-import dev.auctoritas.auth.service.oauth.OAuthProvider;
+import dev.auctoritas.auth.ports.oauth.OAuthProviderPort;
 import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -74,7 +74,8 @@ class PublicOAuthControllerPublicApiBaseUrlOverrideTest {
   @Test
   @DisplayName("callback: auth.public-api-base-url override is used for callback URI")
   void callbackUsesPublicApiBaseUrlOverride() throws Exception {
-    when(oauthProviderRegistry.require("google")).thenReturn(org.mockito.Mockito.mock(OAuthProvider.class));
+    when(oauthProviderRegistry.require("google"))
+        .thenReturn(org.mockito.Mockito.mock(OAuthProviderPort.class));
     when(oauthGoogleCallbackService.handleCallback(eq("provider-code"), eq("state"), any(String.class)))
         .thenReturn("https://example.com/redirect");
 

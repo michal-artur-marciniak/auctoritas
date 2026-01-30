@@ -1,7 +1,11 @@
-package dev.auctoritas.auth.service.oauth;
+package dev.auctoritas.auth.adapters.external.oauth;
 
 import dev.auctoritas.auth.entity.project.ProjectSettings;
-import dev.auctoritas.auth.adapters.external.oauth.GoogleOAuthClient;
+import dev.auctoritas.auth.ports.oauth.OAuthProviderPort;
+import dev.auctoritas.auth.service.oauth.OAuthAuthorizeDetails;
+import dev.auctoritas.auth.service.oauth.OAuthAuthorizeUrlRequest;
+import dev.auctoritas.auth.service.oauth.OAuthTokenExchangeRequest;
+import dev.auctoritas.auth.service.oauth.OAuthUserInfo;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.encrypt.TextEncryptor;
@@ -10,7 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 @Component
-public class GoogleOAuthProvider implements OAuthProvider {
+public class GoogleOAuthProvider implements OAuthProviderPort {
   private static final String PROVIDER = "google";
   private static final String AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth";
   private static final String SCOPE = "openid email profile";

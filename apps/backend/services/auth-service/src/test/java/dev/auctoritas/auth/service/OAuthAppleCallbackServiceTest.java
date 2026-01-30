@@ -16,7 +16,7 @@ import dev.auctoritas.auth.repository.OAuthExchangeCodeRepository;
 import dev.auctoritas.auth.service.oauth.OAuthAccountLinkingService;
 import dev.auctoritas.auth.service.oauth.OAuthAuthorizeDetails;
 import dev.auctoritas.auth.service.oauth.OAuthAuthorizeUrlRequest;
-import dev.auctoritas.auth.service.oauth.OAuthProvider;
+import dev.auctoritas.auth.ports.oauth.OAuthProviderPort;
 import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
 import dev.auctoritas.auth.service.oauth.OAuthTokenExchangeRequest;
 import dev.auctoritas.auth.service.oauth.OAuthUserInfo;
@@ -221,7 +221,7 @@ class OAuthAppleCallbackServiceTest {
   static class TestConfig {
     @Bean
     @Primary
-    OAuthProvider appleOAuthProvider() {
+    OAuthProviderPort appleOAuthProvider() {
       return new StubAppleOAuthProvider();
     }
 
@@ -238,7 +238,7 @@ class OAuthAppleCallbackServiceTest {
     }
   }
 
-  static class StubAppleOAuthProvider implements OAuthProvider {
+  static class StubAppleOAuthProvider implements OAuthProviderPort {
     final AtomicReference<OAuthTokenExchangeRequest> lastExchangeRequest = new AtomicReference<>();
     final AtomicReference<OAuthUserInfo> userInfoRef = new AtomicReference<>();
 

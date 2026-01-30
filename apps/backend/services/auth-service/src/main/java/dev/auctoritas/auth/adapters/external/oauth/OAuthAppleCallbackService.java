@@ -9,7 +9,7 @@ import dev.auctoritas.auth.repository.OAuthAuthorizationRequestRepository;
 import dev.auctoritas.auth.repository.OAuthExchangeCodeRepository;
 import dev.auctoritas.auth.service.TokenService;
 import dev.auctoritas.auth.service.oauth.OAuthAccountLinkingService;
-import dev.auctoritas.auth.service.oauth.OAuthProvider;
+import dev.auctoritas.auth.ports.oauth.OAuthProviderPort;
 import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
 import dev.auctoritas.auth.service.oauth.OAuthTokenExchangeRequest;
 import dev.auctoritas.auth.service.oauth.OAuthUserInfo;
@@ -74,7 +74,7 @@ public class OAuthAppleCallbackService {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "project_settings_missing");
     }
 
-    OAuthProvider provider = oauthProviderRegistry.require(PROVIDER);
+    OAuthProviderPort provider = oauthProviderRegistry.require(PROVIDER);
     OAuthUserInfo userInfo =
         provider.exchangeAuthorizationCode(
             settings,

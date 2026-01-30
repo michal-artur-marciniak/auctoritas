@@ -1,7 +1,13 @@
-package dev.auctoritas.auth.service.oauth;
+package dev.auctoritas.auth.adapters.external.oauth;
 
 import dev.auctoritas.auth.entity.project.ProjectSettings;
-import dev.auctoritas.auth.adapters.external.oauth.AppleOAuthClient;
+import dev.auctoritas.auth.ports.oauth.OAuthProviderPort;
+import dev.auctoritas.auth.service.oauth.AppleClientSecretService;
+import dev.auctoritas.auth.service.oauth.AppleIdTokenValidator;
+import dev.auctoritas.auth.service.oauth.OAuthAuthorizeDetails;
+import dev.auctoritas.auth.service.oauth.OAuthAuthorizeUrlRequest;
+import dev.auctoritas.auth.service.oauth.OAuthTokenExchangeRequest;
+import dev.auctoritas.auth.service.oauth.OAuthUserInfo;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.encrypt.TextEncryptor;
@@ -10,7 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 @Component
-public class AppleOAuthProvider implements OAuthProvider {
+public class AppleOAuthProvider implements OAuthProviderPort {
   private static final String PROVIDER = "apple";
   private static final String AUTHORIZE_URL = "https://appleid.apple.com/auth/authorize";
   private static final String SCOPE = "email";

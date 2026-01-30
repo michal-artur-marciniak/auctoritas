@@ -3,6 +3,7 @@ package dev.auctoritas.auth.service.oauth;
 import dev.auctoritas.auth.entity.project.ApiKey;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
+import dev.auctoritas.auth.ports.oauth.OAuthProviderPort;
 import dev.auctoritas.auth.repository.ProjectRepository;
 import dev.auctoritas.auth.service.ApiKeyService;
 import dev.auctoritas.auth.service.TokenService;
@@ -16,6 +17,9 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import org.springframework.web.util.UriComponentsBuilder;
 
+/**
+ * Application service for public OAuth authorization and callback flows.
+ */
 @Service
 public class PublicOAuthFlowService {
   private final ApiKeyService apiKeyService;
@@ -45,7 +49,7 @@ public class PublicOAuthFlowService {
 
   public URI authorize(String provider, String apiKey, String redirectUri) {
     String providerName = normalizeProvider(provider);
-    OAuthProvider oauthProvider = oauthProviderRegistry.require(providerName);
+    OAuthProviderPort oauthProvider = oauthProviderRegistry.require(providerName);
 
     ApiKey resolvedKey = apiKeyService.validateActiveKey(apiKey);
     UUID projectId = resolvedKey.getProject().getId();

@@ -14,7 +14,7 @@ import dev.auctoritas.auth.repository.EndUserRepository;
 import dev.auctoritas.auth.repository.OAuthAuthorizationRequestRepository;
 import dev.auctoritas.auth.repository.OAuthConnectionRepository;
 import dev.auctoritas.auth.repository.OAuthExchangeCodeRepository;
-import dev.auctoritas.auth.service.oauth.GitHubOAuthProvider;
+import dev.auctoritas.auth.adapters.external.oauth.GitHubOAuthProvider;
 import dev.auctoritas.auth.service.oauth.OAuthAccountLinkingService;
 import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
 import dev.auctoritas.auth.shared.enums.OrganizationStatus;

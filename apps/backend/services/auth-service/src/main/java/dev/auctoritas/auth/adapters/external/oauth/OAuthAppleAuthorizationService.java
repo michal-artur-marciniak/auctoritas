@@ -7,7 +7,7 @@ import dev.auctoritas.auth.repository.OAuthAuthorizationRequestRepository;
 import dev.auctoritas.auth.repository.ProjectRepository;
 import dev.auctoritas.auth.service.TokenService;
 import dev.auctoritas.auth.service.oauth.OAuthAuthorizeDetails;
-import dev.auctoritas.auth.service.oauth.OAuthProvider;
+import dev.auctoritas.auth.ports.oauth.OAuthProviderPort;
 import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -64,7 +64,7 @@ public class OAuthAppleAuthorizationService {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_redirect_uri_not_allowed");
     }
 
-    OAuthProvider provider = oauthProviderRegistry.require(PROVIDER);
+    OAuthProviderPort provider = oauthProviderRegistry.require(PROVIDER);
     OAuthAuthorizeDetails details = provider.getAuthorizeDetails(settings);
 
     String trimmedState = state == null ? null : state.trim();

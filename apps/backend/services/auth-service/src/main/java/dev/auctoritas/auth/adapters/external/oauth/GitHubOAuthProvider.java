@@ -1,7 +1,11 @@
-package dev.auctoritas.auth.service.oauth;
+package dev.auctoritas.auth.adapters.external.oauth;
 
 import dev.auctoritas.auth.entity.project.ProjectSettings;
-import dev.auctoritas.auth.adapters.external.oauth.GitHubOAuthClient;
+import dev.auctoritas.auth.ports.oauth.OAuthProviderPort;
+import dev.auctoritas.auth.service.oauth.OAuthAuthorizeDetails;
+import dev.auctoritas.auth.service.oauth.OAuthAuthorizeUrlRequest;
+import dev.auctoritas.auth.service.oauth.OAuthTokenExchangeRequest;
+import dev.auctoritas.auth.service.oauth.OAuthUserInfo;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -11,7 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 @Component
-public class GitHubOAuthProvider implements OAuthProvider {
+public class GitHubOAuthProvider implements OAuthProviderPort {
   private static final String PROVIDER = "github";
   private static final String AUTHORIZE_URL = "https://github.com/login/oauth/authorize";
   private static final String SCOPE = "read:user user:email";

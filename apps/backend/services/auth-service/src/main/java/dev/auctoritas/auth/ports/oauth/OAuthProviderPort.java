@@ -1,8 +1,15 @@
-package dev.auctoritas.auth.service.oauth;
+package dev.auctoritas.auth.ports.oauth;
 
 import dev.auctoritas.auth.entity.project.ProjectSettings;
+import dev.auctoritas.auth.service.oauth.OAuthAuthorizeDetails;
+import dev.auctoritas.auth.service.oauth.OAuthAuthorizeUrlRequest;
+import dev.auctoritas.auth.service.oauth.OAuthTokenExchangeRequest;
+import dev.auctoritas.auth.service.oauth.OAuthUserInfo;
 
-public interface OAuthProvider {
+/**
+ * Port for OAuth provider interactions used by auth application services.
+ */
+public interface OAuthProviderPort {
   /** Provider key used in requests, persisted connections, and oauth_config. */
   String name();
 
