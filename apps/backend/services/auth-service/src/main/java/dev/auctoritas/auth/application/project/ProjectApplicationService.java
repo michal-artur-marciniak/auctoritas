@@ -86,6 +86,9 @@ public class ProjectApplicationService {
       UUID orgId, UUID projectId, OrgMemberPrincipal principal, ProjectUpdateRequest request) {
     enforceOrgAccess(orgId, principal);
     Project project = loadProject(orgId, projectId);
+    if (project.getStatus() == ProjectStatus.DELETED) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "project_not_found");
+    }
 
     if (request.name() != null) {
       project.setName(requireValue(request.name(), "project_name_required"));
@@ -101,7 +104,11 @@ public class ProjectApplicationService {
     }
 
     if (request.status() != null) {
-      project.setStatus(request.status());
+      ProjectStatus requestedStatus = request.status();
+      if (requestedStatus == ProjectStatus.DELETED) {
+        throw new ResponseStatusException(HttpStatus.CONFLICT, "project_status_invalid");
+      }
+      project.setStatus(requestedStatus);
     }
 
     return toSummary(projectRepository.save(project));
