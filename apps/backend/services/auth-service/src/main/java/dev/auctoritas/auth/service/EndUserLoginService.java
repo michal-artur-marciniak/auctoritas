@@ -9,10 +9,10 @@ import dev.auctoritas.auth.entity.enduser.EndUserSession;
 import dev.auctoritas.auth.entity.project.ApiKey;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
+import dev.auctoritas.auth.ports.identity.EndUserRepositoryPort;
 import dev.auctoritas.auth.ports.security.JwtProviderPort;
 import dev.auctoritas.auth.ports.security.TokenHasherPort;
 import dev.auctoritas.auth.repository.EndUserRefreshTokenRepository;
-import dev.auctoritas.auth.repository.EndUserRepository;
 import dev.auctoritas.auth.repository.EndUserSessionRepository;
 import java.time.Instant;
 import java.util.Comparator;
@@ -34,7 +34,7 @@ public class EndUserLoginService {
   private static final int MIN_WINDOW_SECONDS = 60;
 
   private final ApiKeyService apiKeyService;
-  private final EndUserRepository endUserRepository;
+  private final EndUserRepositoryPort endUserRepository;
   private final EndUserSessionRepository endUserSessionRepository;
   private final EndUserRefreshTokenRepository endUserRefreshTokenRepository;
   private final PasswordEncoder passwordEncoder;
@@ -43,7 +43,7 @@ public class EndUserLoginService {
 
   public EndUserLoginService(
       ApiKeyService apiKeyService,
-      EndUserRepository endUserRepository,
+      EndUserRepositoryPort endUserRepository,
       EndUserSessionRepository endUserSessionRepository,
       EndUserRefreshTokenRepository endUserRefreshTokenRepository,
       PasswordEncoder passwordEncoder,

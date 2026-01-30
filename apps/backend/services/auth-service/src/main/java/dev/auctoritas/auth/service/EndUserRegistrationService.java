@@ -11,11 +11,11 @@ import dev.auctoritas.auth.entity.project.ApiKey;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
 import dev.auctoritas.auth.messaging.UserRegisteredEvent;
+import dev.auctoritas.auth.ports.identity.EndUserRepositoryPort;
 import dev.auctoritas.auth.ports.messaging.DomainEventPublisherPort;
 import dev.auctoritas.auth.ports.security.JwtProviderPort;
 import dev.auctoritas.auth.ports.security.TokenHasherPort;
 import dev.auctoritas.auth.repository.EndUserRefreshTokenRepository;
-import dev.auctoritas.auth.repository.EndUserRepository;
 import dev.auctoritas.auth.repository.EndUserSessionRepository;
 import dev.auctoritas.auth.shared.security.PasswordPolicy;
 import dev.auctoritas.auth.shared.security.PasswordValidator;
@@ -42,7 +42,7 @@ public class EndUserRegistrationService {
   private static final int DEFAULT_MIN_UNIQUE = 4;
 
   private final ApiKeyService apiKeyService;
-  private final EndUserRepository endUserRepository;
+  private final EndUserRepositoryPort endUserRepository;
   private final EndUserSessionRepository endUserSessionRepository;
   private final EndUserRefreshTokenRepository endUserRefreshTokenRepository;
   private final PasswordEncoder passwordEncoder;
@@ -54,7 +54,7 @@ public class EndUserRegistrationService {
 
   public EndUserRegistrationService(
       ApiKeyService apiKeyService,
-      EndUserRepository endUserRepository,
+      EndUserRepositoryPort endUserRepository,
       EndUserSessionRepository endUserSessionRepository,
       EndUserRefreshTokenRepository endUserRefreshTokenRepository,
       PasswordEncoder passwordEncoder,
