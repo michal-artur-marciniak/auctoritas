@@ -1,5 +1,7 @@
 package dev.auctoritas.auth.api;
 
+import dev.auctoritas.auth.application.enduser.EndUserRegistrationCommand;
+import dev.auctoritas.auth.application.enduser.EndUserRegistrationResult;
 import dev.auctoritas.auth.security.EndUserPrincipal;
 import dev.auctoritas.auth.service.EndUserEmailVerificationService;
 import dev.auctoritas.auth.service.EndUserLoginService;
@@ -69,8 +71,12 @@ public class EndUserAuthController {
       HttpServletRequest httpRequest) {
     String ipAddress = resolveIpAddress(httpRequest);
     String userAgent = resolveUserAgent(httpRequest);
+    EndUserRegistrationCommand command =
+        new EndUserRegistrationCommand(request.email(), request.password(), request.name());
+    EndUserRegistrationResult result =
+        endUserRegistrationService.register(apiKey, command, ipAddress, userAgent);
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(endUserRegistrationService.register(apiKey, request, ipAddress, userAgent));
+        .body(toApiResponse(result));
   }
 
   @PostMapping("/login")
@@ -169,5 +175,14 @@ public class EndUserAuthController {
     }
     String trimmed = userAgent.trim();
     return trimmed.isEmpty() ? null : trimmed;
+  }
+
+  private EndUserRegistrationResponse toApiResponse(EndUserRegistrationResult result) {
+    EndUserRegistrationResult.EndUserSummary summary = result.user();
+    return new EndUserRegistrationResponse(
+        new EndUserRegistrationResponse.EndUserSummary(
+            summary.id(), summary.email(), summary.name(), summary.emailVerified()),
+        result.accessToken(),
+        result.refreshToken());
   }
 }

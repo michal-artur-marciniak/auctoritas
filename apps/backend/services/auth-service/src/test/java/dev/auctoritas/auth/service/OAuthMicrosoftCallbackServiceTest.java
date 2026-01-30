@@ -2,6 +2,8 @@ package dev.auctoritas.auth.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.auctoritas.auth.adapters.external.oauth.MicrosoftOAuthClient;
+import dev.auctoritas.auth.adapters.external.oauth.OAuthMicrosoftCallbackService;
 import dev.auctoritas.auth.config.JpaConfig;
 import dev.auctoritas.auth.entity.enduser.EndUser;
 import dev.auctoritas.auth.entity.oauth.OAuthAuthorizationRequest;
@@ -12,11 +14,11 @@ import dev.auctoritas.auth.repository.EndUserRepository;
 import dev.auctoritas.auth.repository.OAuthAuthorizationRequestRepository;
 import dev.auctoritas.auth.repository.OAuthConnectionRepository;
 import dev.auctoritas.auth.repository.OAuthExchangeCodeRepository;
-import dev.auctoritas.auth.service.oauth.MicrosoftOAuthProvider;
+import dev.auctoritas.auth.adapters.external.oauth.MicrosoftOAuthProvider;
 import dev.auctoritas.auth.service.oauth.OAuthAccountLinkingService;
 import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
-import dev.auctoritas.auth.shared.enums.OrganizationStatus;
-import dev.auctoritas.auth.shared.enums.ProjectStatus;
+import dev.auctoritas.auth.domain.organization.OrganizationStatus;
+import dev.auctoritas.auth.domain.project.ProjectStatus;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.HashMap;

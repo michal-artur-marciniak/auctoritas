@@ -2,6 +2,7 @@ package dev.auctoritas.auth.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.auctoritas.auth.adapters.external.oauth.OAuthAppleCallbackService;
 import dev.auctoritas.auth.config.JpaConfig;
 import dev.auctoritas.auth.entity.enduser.EndUser;
 import dev.auctoritas.auth.entity.oauth.OAuthAuthorizationRequest;
@@ -15,12 +16,12 @@ import dev.auctoritas.auth.repository.OAuthExchangeCodeRepository;
 import dev.auctoritas.auth.service.oauth.OAuthAccountLinkingService;
 import dev.auctoritas.auth.service.oauth.OAuthAuthorizeDetails;
 import dev.auctoritas.auth.service.oauth.OAuthAuthorizeUrlRequest;
-import dev.auctoritas.auth.service.oauth.OAuthProvider;
+import dev.auctoritas.auth.ports.oauth.OAuthProviderPort;
 import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
 import dev.auctoritas.auth.service.oauth.OAuthTokenExchangeRequest;
 import dev.auctoritas.auth.service.oauth.OAuthUserInfo;
-import dev.auctoritas.auth.shared.enums.OrganizationStatus;
-import dev.auctoritas.auth.shared.enums.ProjectStatus;
+import dev.auctoritas.auth.domain.organization.OrganizationStatus;
+import dev.auctoritas.auth.domain.project.ProjectStatus;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.HashMap;
@@ -220,7 +221,7 @@ class OAuthAppleCallbackServiceTest {
   static class TestConfig {
     @Bean
     @Primary
-    OAuthProvider appleOAuthProvider() {
+    OAuthProviderPort appleOAuthProvider() {
       return new StubAppleOAuthProvider();
     }
 
@@ -237,7 +238,7 @@ class OAuthAppleCallbackServiceTest {
     }
   }
 
-  static class StubAppleOAuthProvider implements OAuthProvider {
+  static class StubAppleOAuthProvider implements OAuthProviderPort {
     final AtomicReference<OAuthTokenExchangeRequest> lastExchangeRequest = new AtomicReference<>();
     final AtomicReference<OAuthUserInfo> userInfoRef = new AtomicReference<>();
 

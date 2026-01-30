@@ -2,14 +2,17 @@ package dev.auctoritas.auth.service;
 
 import dev.auctoritas.auth.api.EndUserLoginRequest;
 import dev.auctoritas.auth.api.EndUserLoginResponse;
+import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.entity.enduser.EndUser;
 import dev.auctoritas.auth.entity.enduser.EndUserRefreshToken;
 import dev.auctoritas.auth.entity.enduser.EndUserSession;
 import dev.auctoritas.auth.entity.project.ApiKey;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
+import dev.auctoritas.auth.ports.identity.EndUserRepositoryPort;
+import dev.auctoritas.auth.ports.security.JwtProviderPort;
+import dev.auctoritas.auth.ports.security.TokenHasherPort;
 import dev.auctoritas.auth.repository.EndUserRefreshTokenRepository;
-import dev.auctoritas.auth.repository.EndUserRepository;
 import dev.auctoritas.auth.repository.EndUserSessionRepository;
 import java.time.Instant;
 import java.util.Comparator;
@@ -17,12 +20,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Handles EndUser login and session issuance.
+ */
 @Service
 public class EndUserLoginService {
   private static final int DEFAULT_MAX_FAILED_ATTEMPTS = 5;
@@ -30,28 +34,28 @@ public class EndUserLoginService {
   private static final int MIN_WINDOW_SECONDS = 60;
 
   private final ApiKeyService apiKeyService;
-  private final EndUserRepository endUserRepository;
+  private final EndUserRepositoryPort endUserRepository;
   private final EndUserSessionRepository endUserSessionRepository;
   private final EndUserRefreshTokenRepository endUserRefreshTokenRepository;
   private final PasswordEncoder passwordEncoder;
-  private final TokenService tokenService;
-  private final JwtService jwtService;
+  private final TokenHasherPort tokenHasherPort;
+  private final JwtProviderPort jwtProviderPort;
 
   public EndUserLoginService(
       ApiKeyService apiKeyService,
-      EndUserRepository endUserRepository,
+      EndUserRepositoryPort endUserRepository,
       EndUserSessionRepository endUserSessionRepository,
       EndUserRefreshTokenRepository endUserRefreshTokenRepository,
       PasswordEncoder passwordEncoder,
-      TokenService tokenService,
-      JwtService jwtService) {
+      TokenHasherPort tokenHasherPort,
+      JwtProviderPort jwtProviderPort) {
     this.apiKeyService = apiKeyService;
     this.endUserRepository = endUserRepository;
     this.endUserSessionRepository = endUserSessionRepository;
     this.endUserRefreshTokenRepository = endUserRefreshTokenRepository;
     this.passwordEncoder = passwordEncoder;
-    this.tokenService = tokenService;
-    this.jwtService = jwtService;
+    this.tokenHasherPort = tokenHasherPort;
+    this.jwtProviderPort = jwtProviderPort;
   }
 
   @Transactional
@@ -64,7 +68,7 @@ public class EndUserLoginService {
     Project project = resolvedKey.getProject();
     ProjectSettings settings = project.getSettings();
     if (settings == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "project_settings_missing");
+      throw new DomainValidationException("project_settings_missing");
     }
 
     String email = normalizeEmail(requireValue(request.email(), "email_required"));
@@ -74,39 +78,39 @@ public class EndUserLoginService {
         endUserRepository
             .findByEmailAndProjectIdForUpdate(email, project.getId())
             .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid_credentials"));
+                () -> new DomainValidationException("invalid_credentials"));
 
     int windowSeconds = resolveWindowSeconds(settings);
     resetExpiredLockout(user, windowSeconds);
 
     if (isLockedOut(user)) {
       endUserRepository.save(user);
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "account_locked");
+      throw new DomainValidationException("account_locked");
     }
 
     if (!passwordEncoder.matches(password, user.getPasswordHash())) {
       boolean locked = recordFailedAttempt(user, settings, windowSeconds);
       endUserRepository.save(user);
       if (locked) {
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "account_locked");
+        throw new DomainValidationException("account_locked");
       }
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid_credentials");
+      throw new DomainValidationException("invalid_credentials");
     }
 
     clearFailedAttempts(user);
     endUserRepository.save(user);
 
     if (settings.isRequireVerifiedEmailForLogin() && !Boolean.TRUE.equals(user.getEmailVerified())) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "email_not_verified");
+      throw new DomainValidationException("email_not_verified");
     }
 
-    Instant refreshExpiresAt = tokenService.getRefreshTokenExpiry();
-    String rawRefreshToken = tokenService.generateRefreshToken();
+    Instant refreshExpiresAt = tokenHasherPort.getRefreshTokenExpiry();
+    String rawRefreshToken = tokenHasherPort.generateRefreshToken();
     persistRefreshToken(user, rawRefreshToken, refreshExpiresAt, ipAddress, userAgent);
     persistSession(user, refreshExpiresAt, ipAddress, userAgent);
 
     String accessToken =
-        jwtService.generateEndUserAccessToken(
+        jwtProviderPort.generateEndUserAccessToken(
             user.getId(),
             project.getId(),
             user.getEmail(),
@@ -185,7 +189,7 @@ public class EndUserLoginService {
       String userAgent) {
     EndUserRefreshToken token = new EndUserRefreshToken();
     token.setUser(user);
-    token.setTokenHash(tokenService.hashToken(rawToken));
+    token.setTokenHash(tokenHasherPort.hashToken(rawToken));
     token.setExpiresAt(expiresAt);
     token.setRevoked(false);
     token.setIpAddress(trimToNull(ipAddress));
@@ -220,11 +224,11 @@ public class EndUserLoginService {
 
   private String requireValue(String value, String errorCode) {
     if (value == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     String trimmed = value.trim();
     if (trimmed.isEmpty()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     return trimmed;
   }

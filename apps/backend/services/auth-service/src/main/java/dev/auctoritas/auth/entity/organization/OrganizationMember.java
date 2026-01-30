@@ -1,8 +1,8 @@
 package dev.auctoritas.auth.entity.organization;
 
 import dev.auctoritas.auth.shared.persistence.BaseAuditEntity;
-import dev.auctoritas.auth.shared.enums.OrgMemberRole;
-import dev.auctoritas.auth.shared.enums.OrgMemberStatus;
+import dev.auctoritas.auth.domain.organization.OrgMemberRole;
+import dev.auctoritas.auth.domain.organization.OrgMemberStatus;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

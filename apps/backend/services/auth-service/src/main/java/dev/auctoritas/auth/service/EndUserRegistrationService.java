@@ -1,17 +1,21 @@
 package dev.auctoritas.auth.service;
 
-import dev.auctoritas.auth.api.EndUserRegistrationRequest;
-import dev.auctoritas.auth.api.EndUserRegistrationResponse;
+import dev.auctoritas.auth.application.enduser.EndUserRegistrationCommand;
+import dev.auctoritas.auth.application.enduser.EndUserRegistrationResult;
+import dev.auctoritas.auth.domain.exception.DomainConflictException;
+import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.entity.enduser.EndUser;
 import dev.auctoritas.auth.entity.enduser.EndUserRefreshToken;
 import dev.auctoritas.auth.entity.enduser.EndUserSession;
 import dev.auctoritas.auth.entity.project.ApiKey;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
-import dev.auctoritas.auth.messaging.DomainEventPublisher;
 import dev.auctoritas.auth.messaging.UserRegisteredEvent;
+import dev.auctoritas.auth.ports.identity.EndUserRepositoryPort;
+import dev.auctoritas.auth.ports.messaging.DomainEventPublisherPort;
+import dev.auctoritas.auth.ports.security.JwtProviderPort;
+import dev.auctoritas.auth.ports.security.TokenHasherPort;
 import dev.auctoritas.auth.repository.EndUserRefreshTokenRepository;
-import dev.auctoritas.auth.repository.EndUserRepository;
 import dev.auctoritas.auth.repository.EndUserSessionRepository;
 import dev.auctoritas.auth.shared.security.PasswordPolicy;
 import dev.auctoritas.auth.shared.security.PasswordValidator;
@@ -22,14 +26,15 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import static net.logstash.logback.argument.StructuredArguments.kv;
 
+/**
+ * Handles EndUser registration and initial session issuance.
+ */
 @Service
 public class EndUserRegistrationService {
   private static final Logger log = LoggerFactory.getLogger(EndUserRegistrationService.class);
@@ -37,66 +42,82 @@ public class EndUserRegistrationService {
   private static final int DEFAULT_MIN_UNIQUE = 4;
 
   private final ApiKeyService apiKeyService;
-  private final EndUserRepository endUserRepository;
+  private final EndUserRepositoryPort endUserRepository;
   private final EndUserSessionRepository endUserSessionRepository;
   private final EndUserRefreshTokenRepository endUserRefreshTokenRepository;
   private final PasswordEncoder passwordEncoder;
-  private final TokenService tokenService;
-  private final JwtService jwtService;
+  private final TokenHasherPort tokenHasherPort;
+  private final JwtProviderPort jwtProviderPort;
   private final EndUserEmailVerificationService endUserEmailVerificationService;
-  private final DomainEventPublisher domainEventPublisher;
+  private final DomainEventPublisherPort domainEventPublisherPort;
   private final boolean logVerificationChallenge;
 
   public EndUserRegistrationService(
       ApiKeyService apiKeyService,
-      EndUserRepository endUserRepository,
+      EndUserRepositoryPort endUserRepository,
       EndUserSessionRepository endUserSessionRepository,
       EndUserRefreshTokenRepository endUserRefreshTokenRepository,
       PasswordEncoder passwordEncoder,
-      TokenService tokenService,
-      JwtService jwtService,
+      TokenHasherPort tokenHasherPort,
+      JwtProviderPort jwtProviderPort,
       EndUserEmailVerificationService endUserEmailVerificationService,
-      DomainEventPublisher domainEventPublisher,
+      DomainEventPublisherPort domainEventPublisherPort,
       @Value("${auctoritas.auth.email-verification.log-challenge:true}") boolean logVerificationChallenge) {
     this.apiKeyService = apiKeyService;
     this.endUserRepository = endUserRepository;
     this.endUserSessionRepository = endUserSessionRepository;
     this.endUserRefreshTokenRepository = endUserRefreshTokenRepository;
     this.passwordEncoder = passwordEncoder;
-    this.tokenService = tokenService;
-    this.jwtService = jwtService;
+    this.tokenHasherPort = tokenHasherPort;
+    this.jwtProviderPort = jwtProviderPort;
     this.endUserEmailVerificationService = endUserEmailVerificationService;
-    this.domainEventPublisher = domainEventPublisher;
+    this.domainEventPublisherPort = domainEventPublisherPort;
     this.logVerificationChallenge = logVerificationChallenge;
   }
 
   @Transactional
-  public EndUserRegistrationResponse register(
+  public EndUserRegistrationResult register(
       String apiKey,
-      EndUserRegistrationRequest request,
+      EndUserRegistrationCommand command,
+      String ipAddress,
+      String userAgent) {
+    return register(
+        apiKey,
+        command.email(),
+        command.password(),
+        command.name(),
+        ipAddress,
+        userAgent);
+  }
+
+  private EndUserRegistrationResult register(
+      String apiKey,
+      String email,
+      String password,
+      String name,
       String ipAddress,
       String userAgent) {
     ApiKey resolvedKey = apiKeyService.validateActiveKey(apiKey);
     Project project = resolvedKey.getProject();
     ProjectSettings settings = project.getSettings();
     if (settings == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "project_settings_missing");
+      throw new DomainValidationException("project_settings_missing");
     }
 
-    String email = normalizeEmail(requireValue(request.email(), "email_required"));
-    String password = requireValue(request.password(), "password_required");
+    String normalizedEmail = normalizeEmail(requireValue(email, "email_required"));
+    String normalizedPassword = requireValue(password, "password_required");
 
-    if (endUserRepository.existsByEmailAndProjectId(email, project.getId())) {
-      throw new ResponseStatusException(HttpStatus.CONFLICT, "email_taken");
+    if (endUserRepository.existsByEmailAndProjectId(normalizedEmail, project.getId())) {
+      throw new DomainConflictException("email_taken");
     }
 
-    validatePassword(settings, password);
+    validatePassword(settings, normalizedPassword);
 
     EndUser user = new EndUser();
     user.setProject(project);
-    user.setEmail(email);
-    user.setPasswordHash(passwordEncoder.encode(password));
-    user.setName(trimToNull(request.name()));
+    user.setEmail(normalizedEmail);
+    user.setPasswordHash(passwordEncoder.encode(normalizedPassword));
+    user.setName(trimToNull(name));
 
     EndUser savedUser = endUserRepository.save(user);
     EndUserEmailVerificationService.EmailVerificationPayload verificationPayload =
@@ -117,7 +138,7 @@ public class EndUserRegistrationService {
             verificationPayload.tokenId(),
             verificationPayload.expiresAt());
     try {
-      domainEventPublisher.publish(UserRegisteredEvent.EVENT_TYPE, event);
+      domainEventPublisherPort.publish(UserRegisteredEvent.EVENT_TYPE, event);
     } catch (RuntimeException ex) {
       log.warn(
           "user_registered_event_publish_failed {} {}",
@@ -137,22 +158,25 @@ public class EndUserRegistrationService {
           kv("expiresAt", verificationPayload.expiresAt()));
     }
 
-    Instant refreshExpiresAt = tokenService.getRefreshTokenExpiry();
-    String rawRefreshToken = tokenService.generateRefreshToken();
+    Instant refreshExpiresAt = tokenHasherPort.getRefreshTokenExpiry();
+    String rawRefreshToken = tokenHasherPort.generateRefreshToken();
     persistRefreshToken(savedUser, rawRefreshToken, refreshExpiresAt, ipAddress, userAgent);
     persistSession(savedUser, refreshExpiresAt, ipAddress, userAgent);
 
     String accessToken =
-        jwtService.generateEndUserAccessToken(
+        jwtProviderPort.generateEndUserAccessToken(
             savedUser.getId(),
             project.getId(),
             savedUser.getEmail(),
             Boolean.TRUE.equals(savedUser.getEmailVerified()),
             settings.getAccessTokenTtlSeconds());
 
-    return new EndUserRegistrationResponse(
-        new EndUserRegistrationResponse.EndUserSummary(
-            savedUser.getId(), savedUser.getEmail(), savedUser.getName(), Boolean.TRUE.equals(savedUser.getEmailVerified())),
+    return new EndUserRegistrationResult(
+        new EndUserRegistrationResult.EndUserSummary(
+            savedUser.getId(),
+            savedUser.getEmail(),
+            savedUser.getName(),
+            Boolean.TRUE.equals(savedUser.getEmailVerified())),
         accessToken,
         rawRefreshToken);
   }
@@ -171,7 +195,7 @@ public class EndUserRegistrationService {
             minUnique);
     PasswordValidator.ValidationResult result = new PasswordValidator(policy).validate(password);
     if (!result.valid()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "password_policy_failed");
+      throw new DomainValidationException("password_policy_failed");
     }
   }
 
@@ -183,7 +207,7 @@ public class EndUserRegistrationService {
       String userAgent) {
     EndUserRefreshToken token = new EndUserRefreshToken();
     token.setUser(user);
-    token.setTokenHash(tokenService.hashToken(rawToken));
+    token.setTokenHash(tokenHasherPort.hashToken(rawToken));
     token.setExpiresAt(expiresAt);
     token.setRevoked(false);
     token.setIpAddress(trimToNull(ipAddress));
@@ -214,11 +238,11 @@ public class EndUserRegistrationService {
 
   private String requireValue(String value, String errorCode) {
     if (value == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     String trimmed = value.trim();
     if (trimmed.isEmpty()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     return trimmed;
   }

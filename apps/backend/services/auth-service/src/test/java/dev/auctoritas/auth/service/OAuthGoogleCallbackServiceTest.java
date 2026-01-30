@@ -2,6 +2,8 @@ package dev.auctoritas.auth.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.auctoritas.auth.adapters.external.oauth.GoogleOAuthClient;
+import dev.auctoritas.auth.adapters.external.oauth.OAuthGoogleCallbackService;
 import dev.auctoritas.auth.config.JpaConfig;
 import dev.auctoritas.auth.entity.oauth.OAuthAuthorizationRequest;
 import dev.auctoritas.auth.entity.enduser.EndUser;
@@ -12,8 +14,8 @@ import dev.auctoritas.auth.repository.EndUserRepository;
 import dev.auctoritas.auth.repository.OAuthAuthorizationRequestRepository;
 import dev.auctoritas.auth.repository.OAuthConnectionRepository;
 import dev.auctoritas.auth.repository.OAuthExchangeCodeRepository;
-import dev.auctoritas.auth.shared.enums.OrganizationStatus;
-import dev.auctoritas.auth.shared.enums.ProjectStatus;
+import dev.auctoritas.auth.domain.organization.OrganizationStatus;
+import dev.auctoritas.auth.domain.project.ProjectStatus;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.HashMap;
@@ -33,7 +35,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.util.UriComponentsBuilder;
-import dev.auctoritas.auth.service.oauth.GoogleOAuthProvider;
+import dev.auctoritas.auth.adapters.external.oauth.GoogleOAuthProvider;
 import dev.auctoritas.auth.service.oauth.OAuthAccountLinkingService;
 import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
 

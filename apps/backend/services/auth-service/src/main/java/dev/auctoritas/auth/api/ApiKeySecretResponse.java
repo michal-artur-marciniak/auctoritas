@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.api;
 
-import dev.auctoritas.auth.shared.enums.ApiKeyStatus;
+import dev.auctoritas.auth.domain.apikey.ApiKeyStatus;
 import java.time.Instant;
 import java.util.UUID;
 
