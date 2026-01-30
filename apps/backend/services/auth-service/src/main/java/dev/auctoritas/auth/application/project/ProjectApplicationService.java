@@ -17,6 +17,7 @@ import dev.auctoritas.auth.domain.project.ProjectStatus;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -64,12 +65,16 @@ public class ProjectApplicationService {
     settings.setProject(project);
     project.setSettings(settings);
 
-    Project savedProject = projectRepository.save(project);
-    ApiKeySecretResponse apiKeySecret = apiKeyApplicationService.createDefaultKey(savedProject);
+    try {
+      Project savedProject = projectRepository.save(project);
+      ApiKeySecretResponse apiKeySecret = apiKeyApplicationService.createDefaultKey(savedProject);
 
-    return new ProjectCreateResponse(
-        toSummary(savedProject),
-        apiKeySecret);
+      return new ProjectCreateResponse(
+          toSummary(savedProject),
+          apiKeySecret);
+    } catch (DataIntegrityViolationException ex) {
+      throw new ResponseStatusException(HttpStatus.CONFLICT, "project_slug_taken", ex);
+    }
   }
 
   @Transactional(readOnly = true)
