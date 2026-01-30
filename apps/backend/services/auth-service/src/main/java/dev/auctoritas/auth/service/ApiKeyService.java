@@ -2,7 +2,7 @@ package dev.auctoritas.auth.service;
 
 import dev.auctoritas.auth.entity.project.ApiKey;
 import dev.auctoritas.auth.repository.ApiKeyRepository;
-import dev.auctoritas.auth.shared.enums.ApiKeyStatus;
+import dev.auctoritas.auth.domain.apikey.ApiKeyStatus;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;

@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.api;
 
-import dev.auctoritas.auth.shared.enums.ProjectStatus;
+import dev.auctoritas.auth.domain.project.ProjectStatus;
 import java.time.Instant;
 import java.util.UUID;
 

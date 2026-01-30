@@ -10,7 +10,7 @@ import dev.auctoritas.auth.ports.security.TokenHasherPort;
 import dev.auctoritas.auth.repository.ProjectRepository;
 import dev.auctoritas.auth.security.OrgMemberPrincipal;
 import dev.auctoritas.auth.service.ApiKeyService;
-import dev.auctoritas.auth.shared.enums.ApiKeyEnvironment;
+import dev.auctoritas.auth.domain.apikey.ApiKeyEnvironment;
 import dev.auctoritas.auth.shared.enums.OrgMemberRole;
 import java.security.SecureRandom;
 import java.util.Base64;

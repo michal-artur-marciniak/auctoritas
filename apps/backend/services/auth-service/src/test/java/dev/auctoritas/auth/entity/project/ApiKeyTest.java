@@ -3,7 +3,7 @@ package dev.auctoritas.auth.entity.project;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import dev.auctoritas.auth.shared.enums.ApiKeyStatus;
+import dev.auctoritas.auth.domain.apikey.ApiKeyStatus;
 import org.junit.jupiter.api.Test;
 
 class ApiKeyTest {

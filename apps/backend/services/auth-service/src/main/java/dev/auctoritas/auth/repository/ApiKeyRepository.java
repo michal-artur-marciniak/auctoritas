@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.repository;
 
 import dev.auctoritas.auth.entity.project.ApiKey;
-import dev.auctoritas.auth.shared.enums.ApiKeyStatus;
+import dev.auctoritas.auth.domain.apikey.ApiKeyStatus;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
