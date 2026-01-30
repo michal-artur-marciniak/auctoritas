@@ -93,8 +93,13 @@ public class GoogleOAuthProvider implements OAuthProviderPort {
             new GoogleOAuthClient.GoogleTokenExchangeRequest(
                 code, details.clientId(), clientSecret, callbackUri, codeVerifier));
 
+    String accessToken =
+        requireValue(
+            tokenResponse == null ? null : tokenResponse.accessToken(),
+            "oauth_google_exchange_failed");
+
     GoogleOAuthClient.GoogleUserInfo userInfo =
-        googleOAuthClient.fetchUserInfo(tokenResponse.accessToken());
+        googleOAuthClient.fetchUserInfo(accessToken);
 
     String providerUserId = requireValue(userInfo == null ? null : userInfo.sub(), "oauth_google_userinfo_failed");
     String email = requireValue(userInfo == null ? null : userInfo.email(), "oauth_google_userinfo_failed");
