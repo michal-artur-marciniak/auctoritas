@@ -1,23 +1,14 @@
 package dev.auctoritas.auth.domain.model.enduser;
 
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
-import java.util.Objects;
 
 /**
  * Value object representing a validated password.
  * Immutable and validates against project policy at construction.
  */
-public final class Password {
+public record Password(String value, boolean hashed) {
   private static final int MAX_LENGTH = 128;
   private static final int DEFAULT_MIN_UNIQUE = 4;
-
-  private final String value;
-  private final boolean hashed;
-
-  private Password(String value, boolean hashed) {
-    this.value = Objects.requireNonNull(value, "password cannot be null");
-    this.hashed = hashed;
-  }
 
   /**
    * Creates a Password from a raw plain text string with validation.
@@ -87,27 +78,6 @@ public final class Password {
       throw new DomainValidationException("password_hash_required");
     }
     return new Password(hashedPassword, true);
-  }
-
-  public String value() {
-    return value;
-  }
-
-  public boolean isHashed() {
-    return hashed;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    Password password = (Password) o;
-    return hashed == password.hashed && Objects.equals(value, password.value);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(value, hashed);
   }
 
   @Override

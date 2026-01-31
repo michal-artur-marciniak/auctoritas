@@ -99,7 +99,7 @@ public class EndUser extends BaseAuditEntity {
     if (password == null) {
       throw new DomainValidationException("password_required");
     }
-    if (!password.isHashed()) {
+    if (!password.hashed()) {
       throw new DomainValidationException("password_must_be_hashed");
     }
     this.passwordHash = password.value();
