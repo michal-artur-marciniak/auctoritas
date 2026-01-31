@@ -4,7 +4,7 @@ import dev.auctoritas.auth.domain.model.project.ApiKey;
 import dev.auctoritas.auth.domain.model.project.Project;
 import dev.auctoritas.auth.domain.model.project.ProjectSettings;
 import dev.auctoritas.auth.ports.oauth.OAuthProviderPort;
-import dev.auctoritas.auth.ports.project.ProjectRepositoryPort;
+import dev.auctoritas.auth.domain.model.project.ProjectRepositoryPort;
 import dev.auctoritas.auth.service.ApiKeyService;
 import dev.auctoritas.auth.service.TokenService;
 import java.net.URI;

@@ -1,8 +1,8 @@
 package dev.auctoritas.auth.service;
 
 import dev.auctoritas.auth.domain.model.project.ApiKey;
-import dev.auctoritas.auth.ports.identity.EndUserRefreshTokenRepositoryPort;
-import dev.auctoritas.auth.ports.identity.EndUserSessionRepositoryPort;
+import dev.auctoritas.auth.domain.model.enduser.EndUserRefreshTokenRepositoryPort;
+import dev.auctoritas.auth.domain.model.enduser.EndUserSessionRepositoryPort;
 import dev.auctoritas.auth.security.EndUserPrincipal;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;

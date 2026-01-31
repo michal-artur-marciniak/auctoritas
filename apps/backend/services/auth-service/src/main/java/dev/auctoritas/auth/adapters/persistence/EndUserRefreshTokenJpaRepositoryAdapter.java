@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.adapters.persistence;
 
 import dev.auctoritas.auth.domain.model.enduser.EndUserRefreshToken;
-import dev.auctoritas.auth.ports.identity.EndUserRefreshTokenRepositoryPort;
+import dev.auctoritas.auth.domain.model.enduser.EndUserRefreshTokenRepositoryPort;
 import dev.auctoritas.auth.repository.EndUserRefreshTokenRepository;
 import java.util.Optional;
 import java.util.UUID;

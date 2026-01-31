@@ -32,7 +32,7 @@ import dev.auctoritas.auth.service.oauth.OAuthAuthorizeDetails;
 import dev.auctoritas.auth.service.oauth.OAuthAuthorizeUrlRequest;
 import dev.auctoritas.auth.ports.oauth.OAuthProviderPort;
 import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
-import dev.auctoritas.auth.domain.valueobject.Slug;
+import dev.auctoritas.auth.domain.model.project.Slug;
 import java.net.URI;
 import java.util.Optional;
 import java.util.UUID;

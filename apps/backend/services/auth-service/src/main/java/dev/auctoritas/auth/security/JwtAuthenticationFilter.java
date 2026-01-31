@@ -3,7 +3,7 @@ package dev.auctoritas.auth.security;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.auctoritas.auth.service.JwtService;
 import dev.auctoritas.auth.service.JwtService.JwtValidationResult;
-import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
+import dev.auctoritas.auth.domain.model.organization.OrganizationMemberRole;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

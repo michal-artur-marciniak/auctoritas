@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.api;
 
-import dev.auctoritas.auth.domain.project.ProjectStatus;
+import dev.auctoritas.auth.domain.model.project.ProjectStatus;
 import jakarta.validation.constraints.Size;
 
 public record ProjectUpdateRequest(

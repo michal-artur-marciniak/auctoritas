@@ -2,8 +2,8 @@ package dev.auctoritas.auth.domain.model.organization;
 
 import dev.auctoritas.auth.domain.event.DomainEvent;
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
-import dev.auctoritas.auth.domain.organization.OrganizationStatus;
-import dev.auctoritas.auth.domain.valueobject.Slug;
+import dev.auctoritas.auth.domain.model.organization.OrganizationStatus;
+import dev.auctoritas.auth.domain.model.project.Slug;
 import dev.auctoritas.auth.shared.persistence.BaseAuditEntity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;

@@ -2,9 +2,9 @@ package dev.auctoritas.auth.domain.model.organization;
 
 import dev.auctoritas.auth.domain.event.DomainEvent;
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
-import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
-import dev.auctoritas.auth.domain.organization.OrganizationMemberStatus;
-import dev.auctoritas.auth.domain.valueobject.Email;
+import dev.auctoritas.auth.domain.model.organization.OrganizationMemberRole;
+import dev.auctoritas.auth.domain.model.organization.OrganizationMemberStatus;
+import dev.auctoritas.auth.domain.model.enduser.Email;
 import dev.auctoritas.auth.shared.persistence.BaseAuditEntity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;

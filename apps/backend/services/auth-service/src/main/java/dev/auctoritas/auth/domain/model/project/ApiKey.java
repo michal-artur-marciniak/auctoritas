@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.domain.model.project;
 
-import dev.auctoritas.auth.domain.apikey.ApiKeyStatus;
+import dev.auctoritas.auth.domain.model.project.ApiKeyStatus;
 import dev.auctoritas.auth.domain.event.DomainEvent;
 import dev.auctoritas.auth.shared.persistence.BaseAuditEntity;
 import jakarta.persistence.Column;

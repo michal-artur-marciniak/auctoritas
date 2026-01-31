@@ -4,10 +4,10 @@ import dev.auctoritas.auth.config.JpaConfig;
 import dev.auctoritas.auth.domain.model.organization.Organization;
 import dev.auctoritas.auth.domain.model.organization.OrganizationMember;
 import dev.auctoritas.auth.domain.model.organization.OrganizationInvitation;
-import dev.auctoritas.auth.domain.organization.OrgMemberRole;
-import dev.auctoritas.auth.domain.organization.OrgMemberStatus;
-import dev.auctoritas.auth.domain.valueobject.Email;
-import dev.auctoritas.auth.domain.valueobject.Slug;
+import dev.auctoritas.auth.domain.model.organization.OrganizationMemberRole;
+import dev.auctoritas.auth.domain.model.organization.OrganizationMemberStatus;
+import dev.auctoritas.auth.domain.model.enduser.Email;
+import dev.auctoritas.auth.domain.model.project.Slug;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -44,7 +44,7 @@ class OrganizationMemberRepositoryTest {
         Email.of("member@test.com"),
         "hashedpassword123",
         "Test Member",
-        OrgMemberRole.MEMBER,
+        OrganizationMemberRole.MEMBER,
         true);
     testOrg.addMember(testMember);
     entityManager.persist(testMember);
@@ -88,7 +88,7 @@ class OrganizationMemberRepositoryTest {
   @Test
   @DisplayName("Should find members by status")
   void shouldFindByStatus() {
-    List<OrganizationMember> activeMembers = memberRepository.findByStatus(OrgMemberStatus.ACTIVE);
+    List<OrganizationMember> activeMembers = memberRepository.findByStatus(OrganizationMemberStatus.ACTIVE);
     assertThat(activeMembers).isNotEmpty();
   }
 }

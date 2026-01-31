@@ -5,8 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.model.organization.Organization;
-import dev.auctoritas.auth.domain.organization.OrgMemberRole;
-import dev.auctoritas.auth.domain.valueobject.Slug;
+import dev.auctoritas.auth.domain.model.organization.OrganizationMemberRole;
+import dev.auctoritas.auth.domain.model.project.Slug;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -44,7 +44,7 @@ class OrganizationRegistrationDomainServiceTest {
     assertThat(ownerSpec.email().value()).isEqualTo("owner@acme.com");
     assertThat(ownerSpec.plainPassword()).isEqualTo("SecurePass123!");
     assertThat(ownerSpec.name()).isEqualTo("John Doe");
-    assertThat(ownerSpec.role()).isEqualTo(OrgMemberRole.OWNER);
+    assertThat(ownerSpec.role()).isEqualTo(OrganizationMemberRole.OWNER);
   }
 
   @Test
@@ -230,7 +230,7 @@ class OrganizationRegistrationDomainServiceTest {
             dev.auctoritas.auth.domain.valueobject.Email.of("test@test.com"),
             "password",
             null,
-            OrgMemberRole.ADMIN))
+            OrganizationMemberRole.ADMIN))
         .isInstanceOf(DomainValidationException.class)
         .hasMessageContaining("initial_member_must_be_owner");
   }
@@ -241,13 +241,13 @@ class OrganizationRegistrationDomainServiceTest {
 
     assertThatThrownBy(() ->
         new OrganizationRegistrationDomainService.OwnerSpec(
-            null, "password", null, OrgMemberRole.OWNER))
+            null, "password", null, OrganizationMemberRole.OWNER))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("email cannot be null");
 
     assertThatThrownBy(() ->
         new OrganizationRegistrationDomainService.OwnerSpec(
-            email, null, null, OrgMemberRole.OWNER))
+            email, null, null, OrganizationMemberRole.OWNER))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("plainPassword cannot be null");
 
@@ -265,7 +265,7 @@ class OrganizationRegistrationDomainServiceTest {
         dev.auctoritas.auth.domain.valueobject.Email.of("test@test.com"),
         "password",
         null,
-        OrgMemberRole.OWNER);
+        OrganizationMemberRole.OWNER);
 
     assertThatThrownBy(() ->
         new OrganizationRegistrationDomainService.RegistrationResult(null, ownerSpec))

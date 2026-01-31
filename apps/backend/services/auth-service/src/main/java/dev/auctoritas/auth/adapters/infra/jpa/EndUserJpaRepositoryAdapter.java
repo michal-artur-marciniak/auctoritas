@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.adapters.infra.jpa;
 
 import dev.auctoritas.auth.domain.model.enduser.EndUser;
-import dev.auctoritas.auth.ports.identity.EndUserRepositoryPort;
+import dev.auctoritas.auth.domain.model.enduser.EndUserRepositoryPort;
 import dev.auctoritas.auth.repository.EndUserRepository;
 import java.util.Optional;
 import java.util.UUID;

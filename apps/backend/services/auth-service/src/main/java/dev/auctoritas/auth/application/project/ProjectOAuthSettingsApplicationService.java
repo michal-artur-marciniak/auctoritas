@@ -1,13 +1,13 @@
 package dev.auctoritas.auth.application.project;
 
 import dev.auctoritas.auth.api.ProjectOAuthSettingsRequest;
-import dev.auctoritas.auth.domain.project.ProjectOAuthSettingsUpdate;
-import dev.auctoritas.auth.domain.project.ProjectOAuthSettingsUpdate.SecretUpdate;
-import dev.auctoritas.auth.domain.project.ProjectOAuthSettingsValidator;
+import dev.auctoritas.auth.domain.model.project.ProjectOAuthSettingsUpdate;
+import dev.auctoritas.auth.domain.model.project.ProjectOAuthSettingsUpdate.SecretUpdate;
+import dev.auctoritas.auth.domain.model.project.ProjectOAuthSettingsValidator;
 import dev.auctoritas.auth.domain.model.project.Project;
 import dev.auctoritas.auth.domain.model.project.ProjectSettings;
-import dev.auctoritas.auth.ports.project.ProjectRepositoryPort;
-import dev.auctoritas.auth.ports.project.ProjectSettingsRepositoryPort;
+import dev.auctoritas.auth.domain.model.project.ProjectRepositoryPort;
+import dev.auctoritas.auth.domain.model.project.ProjectSettingsRepositoryPort;
 import dev.auctoritas.auth.security.OrganizationMemberPrincipal;
 import java.util.UUID;
 import java.util.function.Consumer;

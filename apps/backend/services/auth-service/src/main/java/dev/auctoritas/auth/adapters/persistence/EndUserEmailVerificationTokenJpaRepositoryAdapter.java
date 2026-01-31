@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.adapters.persistence;
 
 import dev.auctoritas.auth.domain.model.enduser.EndUserEmailVerificationToken;
-import dev.auctoritas.auth.ports.identity.EndUserEmailVerificationTokenRepositoryPort;
+import dev.auctoritas.auth.domain.model.enduser.EndUserEmailVerificationTokenRepositoryPort;
 import dev.auctoritas.auth.repository.EndUserEmailVerificationTokenRepository;
 import java.time.Instant;
 import java.util.Optional;

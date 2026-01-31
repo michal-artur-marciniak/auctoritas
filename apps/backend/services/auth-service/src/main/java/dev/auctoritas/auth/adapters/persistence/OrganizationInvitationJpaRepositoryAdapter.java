@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.adapters.persistence;
 
 import dev.auctoritas.auth.domain.model.organization.OrganizationInvitation;
-import dev.auctoritas.auth.ports.organization.OrganizationInvitationRepositoryPort;
+import dev.auctoritas.auth.domain.model.organization.OrganizationInvitationRepositoryPort;
 import dev.auctoritas.auth.repository.OrganizationInvitationRepository;
 import java.time.Instant;
 import java.util.List;

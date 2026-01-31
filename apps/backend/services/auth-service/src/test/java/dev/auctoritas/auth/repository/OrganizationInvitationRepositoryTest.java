@@ -3,8 +3,8 @@ package dev.auctoritas.auth.repository;
 import dev.auctoritas.auth.config.JpaConfig;
 import dev.auctoritas.auth.domain.model.organization.Organization;
 import dev.auctoritas.auth.domain.model.organization.OrganizationInvitation;
-import dev.auctoritas.auth.domain.organization.OrgMemberRole;
-import dev.auctoritas.auth.domain.valueobject.Slug;
+import dev.auctoritas.auth.domain.model.organization.OrganizationMemberRole;
+import dev.auctoritas.auth.domain.model.project.Slug;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -39,7 +39,7 @@ class OrganizationInvitationRepositoryTest {
 
     testInvitation = new OrganizationInvitation();
     testInvitation.setEmail("invitee@test.com");
-    testInvitation.setRole(OrgMemberRole.MEMBER);
+    testInvitation.setRole(OrganizationMemberRole.MEMBER);
     testInvitation.setToken("test-invite-token-123");
     testInvitation.setOrganization(testOrg);
     testInvitation.setExpiresAt(Instant.now().plus(7, ChronoUnit.DAYS));
@@ -68,7 +68,7 @@ class OrganizationInvitationRepositoryTest {
     Optional<OrganizationInvitation> found = invitationRepository.findByEmailAndOrganizationId(
         "invitee@test.com", testOrg.getId());
     assertThat(found).isPresent();
-    assertThat(found.get().getRole()).isEqualTo(OrgMemberRole.MEMBER);
+    assertThat(found.get().getRole()).isEqualTo(OrganizationMemberRole.MEMBER);
   }
 
   @Test
@@ -76,7 +76,7 @@ class OrganizationInvitationRepositoryTest {
   void shouldFindExpiredInvitations() {
     OrganizationInvitation expired = new OrganizationInvitation();
     expired.setEmail("expired@test.com");
-    expired.setRole(OrgMemberRole.MEMBER);
+    expired.setRole(OrganizationMemberRole.MEMBER);
     expired.setToken("expired-token-123");
     expired.setOrganization(testOrg);
     expired.setExpiresAt(Instant.now().minus(1, ChronoUnit.DAYS));

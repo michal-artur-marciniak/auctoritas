@@ -7,9 +7,9 @@ import dev.auctoritas.auth.api.ProjectOAuthSettingsRequest;
 import dev.auctoritas.auth.domain.model.organization.Organization;
 import dev.auctoritas.auth.domain.model.project.Project;
 import dev.auctoritas.auth.domain.model.project.ProjectSettings;
-import dev.auctoritas.auth.security.OrgMemberPrincipal;
-import dev.auctoritas.auth.domain.organization.OrgMemberRole;
-import dev.auctoritas.auth.domain.valueobject.Slug;
+import dev.auctoritas.auth.security.OrganizationMemberPrincipal;
+import dev.auctoritas.auth.domain.model.organization.OrganizationMemberRole;
+import dev.auctoritas.auth.domain.model.project.Slug;
 import jakarta.persistence.EntityManager;
 import java.util.HashMap;
 import java.util.List;
@@ -32,7 +32,7 @@ class ProjectServiceOAuthSettingsTest {
 
   private Organization org;
   private Project project;
-  private OrgMemberPrincipal principal;
+  private OrganizationMemberPrincipal principal;
 
   @BeforeEach
   void setUp() {
@@ -46,7 +46,7 @@ class ProjectServiceOAuthSettingsTest {
     entityManager.clear();
 
     principal =
-        new OrgMemberPrincipal(UUID.randomUUID(), org.getId(), "admin@example.com", OrgMemberRole.ADMIN);
+        new OrganizationMemberPrincipal(UUID.randomUUID(), org.getId(), "admin@example.com", OrganizationMemberRole.ADMIN);
   }
 
   @Test

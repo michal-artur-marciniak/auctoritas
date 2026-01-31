@@ -8,9 +8,9 @@ import dev.auctoritas.auth.domain.model.organization.OrganizationMemberRefreshTo
 import dev.auctoritas.auth.domain.model.organization.Organization;
 import dev.auctoritas.auth.domain.model.organization.OrganizationMember;
 import dev.auctoritas.auth.ports.messaging.DomainEventPublisherPort;
-import dev.auctoritas.auth.ports.organization.OrganizationMemberRefreshTokenRepositoryPort;
-import dev.auctoritas.auth.ports.organization.OrganizationMemberRepositoryPort;
-import dev.auctoritas.auth.ports.organization.OrganizationRepositoryPort;
+import dev.auctoritas.auth.domain.model.organization.OrganizationMemberRefreshTokenRepositoryPort;
+import dev.auctoritas.auth.domain.model.organization.OrganizationMemberRepositoryPort;
+import dev.auctoritas.auth.domain.model.organization.OrganizationRepositoryPort;
 import jakarta.persistence.LockTimeoutException;
 import jakarta.persistence.PessimisticLockException;
 import java.time.Duration;

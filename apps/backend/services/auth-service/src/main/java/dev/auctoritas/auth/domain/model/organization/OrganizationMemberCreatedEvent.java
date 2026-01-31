@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.domain.model.organization;
 
 import dev.auctoritas.auth.domain.event.DomainEvent;
-import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
+import dev.auctoritas.auth.domain.model.organization.OrganizationMemberRole;
 import java.time.Instant;
 import java.util.UUID;
 

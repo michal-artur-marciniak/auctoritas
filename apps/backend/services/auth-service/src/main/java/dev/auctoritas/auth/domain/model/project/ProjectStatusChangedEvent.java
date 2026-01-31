@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.domain.model.project;
 
 import dev.auctoritas.auth.domain.event.DomainEvent;
-import dev.auctoritas.auth.domain.project.ProjectStatus;
+import dev.auctoritas.auth.domain.model.project.ProjectStatus;
 import java.time.Instant;
 import java.util.UUID;
 

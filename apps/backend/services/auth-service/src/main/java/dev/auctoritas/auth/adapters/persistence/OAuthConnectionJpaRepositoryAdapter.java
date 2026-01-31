@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.adapters.persistence;
 
 import dev.auctoritas.auth.domain.model.oauth.OAuthConnection;
-import dev.auctoritas.auth.ports.oauth.OAuthConnectionRepositoryPort;
+import dev.auctoritas.auth.domain.model.oauth.OAuthConnectionRepositoryPort;
 import dev.auctoritas.auth.repository.OAuthConnectionRepository;
 import java.util.Optional;
 import java.util.UUID;
