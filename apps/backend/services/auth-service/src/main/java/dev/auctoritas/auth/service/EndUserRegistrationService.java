@@ -3,15 +3,16 @@ package dev.auctoritas.auth.service;
 import dev.auctoritas.auth.application.enduser.EndUserRegistrationCommand;
 import dev.auctoritas.auth.application.enduser.EndUserRegistrationResult;
 import dev.auctoritas.auth.domain.exception.DomainConflictException;
-import dev.auctoritas.auth.domain.exception.DomainValidationException;
-import dev.auctoritas.auth.domain.valueobject.Email;
-import dev.auctoritas.auth.domain.valueobject.Password;
 import dev.auctoritas.auth.domain.model.enduser.EndUser;
 import dev.auctoritas.auth.domain.model.enduser.EndUserRefreshToken;
 import dev.auctoritas.auth.domain.model.enduser.EndUserSession;
+import dev.auctoritas.auth.domain.model.enduser.service.EndUserRegistrationDomainService;
+import dev.auctoritas.auth.domain.model.enduser.service.RegistrationAttempt;
 import dev.auctoritas.auth.domain.model.project.ApiKey;
 import dev.auctoritas.auth.domain.model.project.Project;
 import dev.auctoritas.auth.domain.model.project.ProjectSettings;
+import dev.auctoritas.auth.domain.valueobject.Email;
+import dev.auctoritas.auth.domain.valueobject.Password;
 import dev.auctoritas.auth.messaging.UserRegisteredEvent;
 import dev.auctoritas.auth.ports.identity.EndUserRepositoryPort;
 import dev.auctoritas.auth.ports.messaging.DomainEventPublisherPort;
@@ -48,6 +49,7 @@ public class EndUserRegistrationService {
   private final JwtProviderPort jwtProviderPort;
   private final EndUserEmailVerificationService endUserEmailVerificationService;
   private final DomainEventPublisherPort domainEventPublisherPort;
+  private final EndUserRegistrationDomainService registrationDomainService;
   private final boolean logVerificationChallenge;
 
   public EndUserRegistrationService(
@@ -60,6 +62,7 @@ public class EndUserRegistrationService {
       JwtProviderPort jwtProviderPort,
       EndUserEmailVerificationService endUserEmailVerificationService,
       DomainEventPublisherPort domainEventPublisherPort,
+      EndUserRegistrationDomainService registrationDomainService,
       @Value("${auctoritas.auth.email-verification.log-challenge:true}") boolean logVerificationChallenge) {
     this.apiKeyService = apiKeyService;
     this.endUserRepository = endUserRepository;
@@ -70,6 +73,7 @@ public class EndUserRegistrationService {
     this.jwtProviderPort = jwtProviderPort;
     this.endUserEmailVerificationService = endUserEmailVerificationService;
     this.domainEventPublisherPort = domainEventPublisherPort;
+    this.registrationDomainService = registrationDomainService;
     this.logVerificationChallenge = logVerificationChallenge;
   }
 
@@ -99,9 +103,6 @@ public class EndUserRegistrationService {
     ApiKey resolvedKey = apiKeyService.validateActiveKey(apiKey);
     Project project = resolvedKey.getProject();
     ProjectSettings settings = project.getSettings();
-    if (settings == null) {
-      throw new DomainValidationException("project_settings_missing");
-    }
 
     Email validatedEmail = Email.of(email);
 
@@ -109,21 +110,18 @@ public class EndUserRegistrationService {
       throw new DomainConflictException("email_taken");
     }
 
-    Password validatedPassword = Password.create(
-        password,
-        settings.getMinLength(),
-        settings.isRequireUppercase(),
-        settings.isRequireLowercase(),
-        settings.isRequireNumbers(),
-        settings.isRequireSpecialChars());
+    // Delegate to domain service for business logic validation
+    RegistrationAttempt attempt = registrationDomainService.prepareRegistration(
+        project, settings, validatedEmail, password, name);
 
-    String hashedPassword = passwordEncoder.encode(validatedPassword.value());
+    // Application layer handles infrastructure concerns (password hashing)
+    String hashedPassword = passwordEncoder.encode(attempt.validatedPassword().value());
 
     EndUser user = EndUser.create(
-        project,
-        validatedEmail,
+        attempt.project(),
+        attempt.email(),
         Password.fromHash(hashedPassword),
-        name);
+        attempt.name());
 
     EndUser savedUser = endUserRepository.save(user);
 
