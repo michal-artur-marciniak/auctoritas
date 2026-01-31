@@ -160,7 +160,18 @@ public class OrganizationMember extends BaseAuditEntity {
    */
   public void verifyEmail() {
     ensureActive();
+    if (Boolean.TRUE.equals(this.emailVerified)) {
+      return;
+    }
     this.emailVerified = true;
+
+    registerEvent(new OrganizationMemberEmailVerifiedEvent(
+        UUID.randomUUID(),
+        getId(),
+        organization.getId(),
+        this.email,
+        Instant.now()
+    ));
   }
 
   /**
@@ -171,7 +182,20 @@ public class OrganizationMember extends BaseAuditEntity {
     if (newRole == null) {
       throw new DomainValidationException("role_required");
     }
+    if (newRole == this.role) {
+      return;
+    }
+    OrganizationMemberRole previousRole = this.role;
     this.role = newRole;
+
+    registerEvent(new OrganizationMemberRoleChangedEvent(
+        UUID.randomUUID(),
+        getId(),
+        organization.getId(),
+        previousRole,
+        this.role,
+        Instant.now()
+    ));
   }
 
   /**
@@ -192,7 +216,17 @@ public class OrganizationMember extends BaseAuditEntity {
     if (this.status == OrganizationMemberStatus.SUSPENDED) {
       throw new DomainValidationException("member_already_suspended");
     }
+    OrganizationMemberStatus previousStatus = this.status;
     this.status = OrganizationMemberStatus.SUSPENDED;
+
+    registerEvent(new OrganizationMemberStatusChangedEvent(
+        UUID.randomUUID(),
+        getId(),
+        organization.getId(),
+        previousStatus,
+        this.status,
+        Instant.now()
+    ));
   }
 
   /**
@@ -202,7 +236,17 @@ public class OrganizationMember extends BaseAuditEntity {
     if (this.status != OrganizationMemberStatus.SUSPENDED) {
       throw new DomainValidationException("member_not_suspended");
     }
+    OrganizationMemberStatus previousStatus = this.status;
     this.status = OrganizationMemberStatus.ACTIVE;
+
+    registerEvent(new OrganizationMemberStatusChangedEvent(
+        UUID.randomUUID(),
+        getId(),
+        organization.getId(),
+        previousStatus,
+        this.status,
+        Instant.now()
+    ));
   }
 
   /**

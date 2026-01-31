@@ -86,7 +86,16 @@ public class Organization extends BaseAuditEntity {
    */
   public void rename(String newName) {
     ensureNotDeleted();
+    String oldName = this.name;
     setName(newName);
+
+    registerEvent(new OrganizationRenamedEvent(
+        UUID.randomUUID(),
+        getId(),
+        oldName,
+        this.name,
+        Instant.now()
+    ));
   }
 
   /**
@@ -105,7 +114,16 @@ public class Organization extends BaseAuditEntity {
     if (this.status == OrganizationStatus.SUSPENDED) {
       throw new DomainValidationException("organization_already_suspended");
     }
+    OrganizationStatus previousStatus = this.status;
     this.status = OrganizationStatus.SUSPENDED;
+
+    registerEvent(new OrganizationStatusChangedEvent(
+        UUID.randomUUID(),
+        getId(),
+        previousStatus,
+        this.status,
+        Instant.now()
+    ));
   }
 
   /**
@@ -116,7 +134,16 @@ public class Organization extends BaseAuditEntity {
     if (this.status != OrganizationStatus.SUSPENDED) {
       throw new DomainValidationException("organization_not_suspended");
     }
+    OrganizationStatus previousStatus = this.status;
     this.status = OrganizationStatus.ACTIVE;
+
+    registerEvent(new OrganizationStatusChangedEvent(
+        UUID.randomUUID(),
+        getId(),
+        previousStatus,
+        this.status,
+        Instant.now()
+    ));
   }
 
   /**
@@ -127,6 +154,12 @@ public class Organization extends BaseAuditEntity {
       throw new DomainValidationException("organization_already_deleted");
     }
     this.status = OrganizationStatus.DELETE;
+
+    registerEvent(new OrganizationDeletedEvent(
+        UUID.randomUUID(),
+        getId(),
+        Instant.now()
+    ));
   }
 
   /**
