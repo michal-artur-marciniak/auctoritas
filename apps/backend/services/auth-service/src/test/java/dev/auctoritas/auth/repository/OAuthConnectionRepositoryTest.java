@@ -51,12 +51,12 @@ class OAuthConnectionRepositoryTest {
   @Test
   @DisplayName("Should find oauth connection by project/provider/provider user id")
   void shouldFindByProjectProviderAndProviderUserId() {
-    OAuthConnection conn = new OAuthConnection();
-    conn.setProject(testProject);
-    conn.setUser(testUser);
-    conn.setProvider("google");
-    conn.setProviderUserId("google-user-123");
-    conn.setEmail("user@example.com");
+    OAuthConnection conn = OAuthConnection.establish(
+        testProject,
+        testUser,
+        "google",
+        "google-user-123",
+        "user@example.com");
     entityManager.persist(conn);
     entityManager.flush();
 
@@ -70,12 +70,12 @@ class OAuthConnectionRepositoryTest {
   @Test
   @DisplayName("Should enforce unique provider+providerUserId per project")
   void shouldEnforceUniqueProviderAndProviderUserIdPerProject() {
-    OAuthConnection first = new OAuthConnection();
-    first.setProject(testProject);
-    first.setUser(testUser);
-    first.setProvider("google");
-    first.setProviderUserId("google-user-123");
-    first.setEmail("user@example.com");
+    OAuthConnection first = OAuthConnection.establish(
+        testProject,
+        testUser,
+        "google",
+        "google-user-123",
+        "user@example.com");
     entityManager.persist(first);
     entityManager.flush();
 
@@ -83,12 +83,12 @@ class OAuthConnectionRepositoryTest {
     entityManager.persist(otherUser);
     entityManager.flush();
 
-    OAuthConnection second = new OAuthConnection();
-    second.setProject(testProject);
-    second.setUser(otherUser);
-    second.setProvider("google");
-    second.setProviderUserId("google-user-123");
-    second.setEmail("other@example.com");
+    OAuthConnection second = OAuthConnection.establish(
+        testProject,
+        otherUser,
+        "google",
+        "google-user-123",
+        "other@example.com");
     entityManager.persist(second);
 
     assertThatThrownBy(entityManager::flush)

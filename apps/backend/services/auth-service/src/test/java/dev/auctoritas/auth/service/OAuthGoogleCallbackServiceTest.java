@@ -10,6 +10,7 @@ import dev.auctoritas.auth.adapters.persistence.OAuthConnectionJpaRepositoryAdap
 import dev.auctoritas.auth.adapters.persistence.OAuthExchangeCodeJpaRepositoryAdapter;
 import dev.auctoritas.auth.config.JpaConfig;
 import dev.auctoritas.auth.domain.model.oauth.OAuthAuthorizationRequest;
+import dev.auctoritas.auth.domain.model.oauth.OAuthConnection;
 import dev.auctoritas.auth.domain.model.enduser.EndUser;
 import dev.auctoritas.auth.domain.model.organization.Organization;
 import dev.auctoritas.auth.domain.model.project.Project;
@@ -21,6 +22,7 @@ import dev.auctoritas.auth.domain.model.oauth.OAuthExchangeCodeRepositoryPort;
 import dev.auctoritas.auth.domain.model.enduser.Email;
 import dev.auctoritas.auth.domain.model.enduser.Password;
 import dev.auctoritas.auth.domain.model.project.Slug;
+import dev.auctoritas.auth.ports.messaging.DomainEventPublisherPort;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.HashMap;
@@ -201,13 +203,12 @@ class OAuthGoogleCallbackServiceTest {
     EndUser existing = EndUser.create(project, Email.of("user@example.com"), Password.fromHash("hash"), null);
     entityManager.persist(existing);
 
-    dev.auctoritas.auth.domain.model.oauth.OAuthConnection conn =
-        new dev.auctoritas.auth.domain.model.oauth.OAuthConnection();
-    conn.setProject(project);
-    conn.setUser(existing);
-    conn.setProvider("google");
-    conn.setProviderUserId("google-sub-conn");
-    conn.setEmail("user@example.com");
+    OAuthConnection conn = OAuthConnection.establish(
+        project,
+        existing,
+        "google",
+        "google-sub-conn",
+        "user@example.com");
     entityManager.persist(conn);
     entityManager.flush();
 
@@ -304,6 +305,12 @@ class OAuthGoogleCallbackServiceTest {
     @Primary
     TextEncryptor oauthClientSecretEncryptor() {
       return Encryptors.noOpText();
+    }
+
+    @Bean
+    @Primary
+    DomainEventPublisherPort domainEventPublisherPort() {
+      return (eventType, payload) -> {};
     }
   }
 

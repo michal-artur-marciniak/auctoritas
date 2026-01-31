@@ -33,6 +33,7 @@ import dev.auctoritas.auth.service.oauth.OAuthAuthorizeUrlRequest;
 import dev.auctoritas.auth.ports.oauth.OAuthProviderPort;
 import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
 import dev.auctoritas.auth.domain.model.project.Slug;
+import dev.auctoritas.auth.shared.persistence.BaseEntity;
 import java.net.URI;
 import java.util.Optional;
 import java.util.UUID;
@@ -143,11 +144,10 @@ class PublicOAuthControllerTest {
 
     Organization organization = Organization.create("Test", Slug.of("test"));
     Project project = Project.create(organization, "Test", Slug.of("test"));
-    project.setId(projectId);
+    setEntityId(project, projectId);
     ProjectSettings settings = project.getSettings();
 
-    ApiKey key = new ApiKey();
-    key.setProject(project);
+    ApiKey key = ApiKey.create(project, "Test Key", "pk_test_", "hash");
 
     OAuthProviderPort provider = org.mockito.Mockito.mock(OAuthProviderPort.class);
     OAuthAuthorizeDetails details =
@@ -220,11 +220,10 @@ class PublicOAuthControllerTest {
 
     Organization organization = Organization.create("Test", Slug.of("test"));
     Project project = Project.create(organization, "Test", Slug.of("test"));
-    project.setId(projectId);
+    setEntityId(project, projectId);
     ProjectSettings settings = project.getSettings();
 
-    ApiKey key = new ApiKey();
-    key.setProject(project);
+    ApiKey key = ApiKey.create(project, "Test Key", "pk_test_", "hash");
 
     OAuthProviderPort provider = org.mockito.Mockito.mock(OAuthProviderPort.class);
     OAuthAuthorizeDetails details =
@@ -254,9 +253,8 @@ class PublicOAuthControllerTest {
 
     Organization organization = Organization.create("Test", Slug.of("test"));
     Project project = Project.create(organization, "Test", Slug.of("test"));
-    project.setId(projectId);
-    ApiKey key = new ApiKey();
-    key.setProject(project);
+    setEntityId(project, projectId);
+    ApiKey key = ApiKey.create(project, "Test Key", "pk_test_", "hash");
 
     OAuthProviderPort provider = org.mockito.Mockito.mock(OAuthProviderPort.class);
     when(oauthProviderRegistry.require("google")).thenReturn(provider);
@@ -280,10 +278,9 @@ class PublicOAuthControllerTest {
 
     Organization organization = Organization.create("Test", Slug.of("test"));
     Project project = Project.create(organization, "Test", Slug.of("test"));
-    project.setId(projectId);
-    // Simulate null settings by reflection or just leave as-is for this test
-    ApiKey key = new ApiKey();
-    key.setProject(project);
+    setEntityId(project, projectId);
+    clearProjectSettings(project);
+    ApiKey key = ApiKey.create(project, "Test Key", "pk_test_", "hash");
 
     OAuthProviderPort provider = org.mockito.Mockito.mock(OAuthProviderPort.class);
     when(oauthProviderRegistry.require("google")).thenReturn(provider);
@@ -307,11 +304,10 @@ class PublicOAuthControllerTest {
 
     Organization organization = Organization.create("Test", Slug.of("test"));
     Project project = Project.create(organization, "Test", Slug.of("test"));
-    project.setId(projectId);
+    setEntityId(project, projectId);
     ProjectSettings settings = project.getSettings();
 
-    ApiKey key = new ApiKey();
-    key.setProject(project);
+    ApiKey key = ApiKey.create(project, "Test Key", "pk_test_", "hash");
 
     OAuthProviderPort provider = org.mockito.Mockito.mock(OAuthProviderPort.class);
     OAuthAuthorizeDetails details =
@@ -384,11 +380,10 @@ class PublicOAuthControllerTest {
 
     Organization organization = Organization.create("Test", Slug.of("test"));
     Project project = Project.create(organization, "Test", Slug.of("test"));
-    project.setId(projectId);
+    setEntityId(project, projectId);
     ProjectSettings settings = project.getSettings();
 
-    ApiKey key = new ApiKey();
-    key.setProject(project);
+    ApiKey key = ApiKey.create(project, "Test Key", "pk_test_", "hash");
 
     OAuthAuthorizeDetails details =
         new OAuthAuthorizeDetails("client-id", "https://provider.example.com/authorize", "openid");
@@ -607,5 +602,25 @@ class PublicOAuthControllerTest {
 
     assertThat(result.getResponse().getHeader(HttpHeaders.LOCATION))
         .isEqualTo("https://example.com/app/callback?auctoritas_code=abc");
+  }
+
+  private void setEntityId(BaseEntity entity, UUID id) {
+    try {
+      var setId = BaseEntity.class.getDeclaredMethod("setId", UUID.class);
+      setId.setAccessible(true);
+      setId.invoke(entity, id);
+    } catch (ReflectiveOperationException ex) {
+      throw new IllegalStateException("Failed to set entity id", ex);
+    }
+  }
+
+  private void clearProjectSettings(Project project) {
+    try {
+      var field = Project.class.getDeclaredField("settings");
+      field.setAccessible(true);
+      field.set(project, null);
+    } catch (ReflectiveOperationException ex) {
+      throw new IllegalStateException("Failed to clear project settings", ex);
+    }
   }
 }

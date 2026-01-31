@@ -17,11 +17,12 @@ import dev.auctoritas.auth.repository.EndUserPasswordHistoryRepository;
 import dev.auctoritas.auth.repository.EndUserRefreshTokenRepository;
 import dev.auctoritas.auth.repository.EndUserSessionRepository;
 import dev.auctoritas.auth.security.EndUserPrincipal;
-import dev.auctoritas.auth.domain.model.project.ApiKeyStatus;
 import dev.auctoritas.auth.domain.model.enduser.Email;
 import dev.auctoritas.auth.domain.model.enduser.Password;
 import dev.auctoritas.auth.domain.model.project.Slug;
+import dev.auctoritas.auth.shared.persistence.BaseEntity;
 import jakarta.persistence.EntityManager;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -59,12 +60,11 @@ class EndUserPasswordChangeServiceTest {
     project = Project.create(org, "Test Project", Slug.of("test-project-password-change"));
     entityManager.persist(project);
 
-    ApiKey apiKey = new ApiKey();
-    apiKey.setProject(project);
-    apiKey.setName("Test Key");
-    apiKey.setPrefix("pk_live_");
-    apiKey.setKeyHash(tokenService.hashToken(RAW_API_KEY));
-    apiKey.setStatus(ApiKeyStatus.ACTIVE);
+    ApiKey apiKey = ApiKey.create(
+        project,
+        "Test Key",
+        "pk_live_",
+        tokenService.hashToken(RAW_API_KEY));
     entityManager.persist(apiKey);
 
     user = EndUser.create(project, Email.of("user@example.com"), Password.fromHash(passwordEncoder.encode("UserPass123!")), null);
@@ -81,36 +81,38 @@ class EndUserPasswordChangeServiceTest {
 
     EndUser managedUser = entityManager.find(EndUser.class, userId);
 
-    EndUserSession oldSession = new EndUserSession();
-    oldSession.setUser(managedUser);
-    oldSession.setDeviceInfo(Map.of("userAgent", "old"));
-    oldSession.setIpAddress("1.2.3.4");
-    oldSession.setExpiresAt(now.plusSeconds(3600));
-    oldSession.setCreatedAt(now.minusSeconds(200));
+    EndUserSession oldSession = EndUserSession.create(
+        managedUser,
+        "1.2.3.4",
+        Map.of("userAgent", "old"),
+        Duration.ofHours(1));
+    setCreatedAt(oldSession, now.minusSeconds(200));
     entityManager.persist(oldSession);
 
-    EndUserSession currentSession = new EndUserSession();
-    currentSession.setUser(managedUser);
-    currentSession.setDeviceInfo(Map.of("userAgent", "current"));
-    currentSession.setIpAddress("1.2.3.4");
-    currentSession.setExpiresAt(now.plusSeconds(3600));
-    currentSession.setCreatedAt(now.minusSeconds(10));
+    EndUserSession currentSession = EndUserSession.create(
+        managedUser,
+        "1.2.3.4",
+        Map.of("userAgent", "current"),
+        Duration.ofHours(1));
+    setCreatedAt(currentSession, now.minusSeconds(10));
     entityManager.persist(currentSession);
 
-    EndUserRefreshToken oldToken = new EndUserRefreshToken();
-    oldToken.setUser(managedUser);
-    oldToken.setTokenHash(tokenService.hashToken("refresh-old"));
-    oldToken.setExpiresAt(now.plusSeconds(3600));
-    oldToken.setRevoked(false);
-    oldToken.setCreatedAt(now.minusSeconds(300));
+    EndUserRefreshToken oldToken = EndUserRefreshToken.create(
+        managedUser,
+        tokenService.hashToken("refresh-old"),
+        Duration.ofHours(1),
+        null,
+        null);
+    setCreatedAt(oldToken, now.minusSeconds(300));
     entityManager.persist(oldToken);
 
-    EndUserRefreshToken currentToken = new EndUserRefreshToken();
-    currentToken.setUser(managedUser);
-    currentToken.setTokenHash(tokenService.hashToken("refresh-current"));
-    currentToken.setExpiresAt(now.plusSeconds(3600));
-    currentToken.setRevoked(false);
-    currentToken.setCreatedAt(now.minusSeconds(5));
+    EndUserRefreshToken currentToken = EndUserRefreshToken.create(
+        managedUser,
+        tokenService.hashToken("refresh-current"),
+        Duration.ofHours(1),
+        null,
+        null);
+    setCreatedAt(currentToken, now.minusSeconds(5));
     entityManager.persist(currentToken);
 
     entityManager.flush();
@@ -186,5 +188,15 @@ class EndUserPasswordChangeServiceTest {
                     null,
                     new EndUserPasswordChangeRequest("UserPass123!", "OldPass123!")))
         .hasMessageContaining("password_reuse_not_allowed");
+  }
+
+  private void setCreatedAt(BaseEntity entity, Instant createdAt) {
+    try {
+      var setCreatedAt = BaseEntity.class.getDeclaredMethod("setCreatedAt", Instant.class);
+      setCreatedAt.setAccessible(true);
+      setCreatedAt.invoke(entity, createdAt);
+    } catch (ReflectiveOperationException ex) {
+      throw new IllegalStateException("Failed to set createdAt", ex);
+    }
   }
 }

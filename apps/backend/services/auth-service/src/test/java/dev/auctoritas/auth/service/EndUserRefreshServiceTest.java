@@ -12,12 +12,11 @@ import dev.auctoritas.auth.domain.model.project.ApiKey;
 import dev.auctoritas.auth.domain.model.project.Project;
 import dev.auctoritas.auth.domain.model.project.ProjectSettings;
 import dev.auctoritas.auth.repository.EndUserRefreshTokenRepository;
-import dev.auctoritas.auth.domain.model.project.ApiKeyStatus;
 import dev.auctoritas.auth.domain.model.enduser.Email;
 import dev.auctoritas.auth.domain.model.enduser.Password;
 import dev.auctoritas.auth.domain.model.project.Slug;
 import jakarta.persistence.EntityManager;
-import java.time.Instant;
+import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,12 +47,11 @@ class EndUserRefreshServiceTest {
     project = Project.create(org, "Test Project", Slug.of("test-project-refresh"));
     entityManager.persist(project);
 
-    ApiKey apiKey = new ApiKey();
-    apiKey.setProject(project);
-    apiKey.setName("Test Key");
-    apiKey.setPrefix("pk_live_");
-    apiKey.setKeyHash(tokenService.hashToken(RAW_API_KEY));
-    apiKey.setStatus(ApiKeyStatus.ACTIVE);
+    ApiKey apiKey = ApiKey.create(
+        project,
+        "Test Key",
+        "pk_live_",
+        tokenService.hashToken(RAW_API_KEY));
     entityManager.persist(apiKey);
 
     entityManager.flush();
@@ -71,11 +69,12 @@ class EndUserRefreshServiceTest {
     entityManager.persist(user);
 
     String rawRefreshToken = "refresh-raw";
-    EndUserRefreshToken token = new EndUserRefreshToken();
-    token.setUser(user);
-    token.setTokenHash(tokenService.hashToken(rawRefreshToken));
-    token.setExpiresAt(Instant.now().plusSeconds(3600));
-    token.setRevoked(false);
+    EndUserRefreshToken token = EndUserRefreshToken.create(
+        user,
+        tokenService.hashToken(rawRefreshToken),
+        Duration.ofHours(1),
+        null,
+        null);
     entityManager.persist(token);
 
     entityManager.flush();
@@ -122,11 +121,12 @@ class EndUserRefreshServiceTest {
     entityManager.persist(user);
 
     String rawRefreshToken = "refresh-raw-2";
-    EndUserRefreshToken token = new EndUserRefreshToken();
-    token.setUser(user);
-    token.setTokenHash(tokenService.hashToken(rawRefreshToken));
-    token.setExpiresAt(Instant.now().plusSeconds(3600));
-    token.setRevoked(false);
+    EndUserRefreshToken token = EndUserRefreshToken.create(
+        user,
+        tokenService.hashToken(rawRefreshToken),
+        Duration.ofHours(1),
+        null,
+        null);
     entityManager.persist(token);
 
     entityManager.flush();

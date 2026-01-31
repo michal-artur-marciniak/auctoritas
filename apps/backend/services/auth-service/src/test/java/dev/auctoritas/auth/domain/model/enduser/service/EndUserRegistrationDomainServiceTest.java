@@ -4,7 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
-import dev.auctoritas.auth.domain.model.enduser.EndUser;
+import dev.auctoritas.auth.domain.model.enduser.EndUserRegistrationDomainService;
+import dev.auctoritas.auth.domain.model.enduser.RegistrationAttempt;
 import dev.auctoritas.auth.domain.model.organization.Organization;
 import dev.auctoritas.auth.domain.model.project.Project;
 import dev.auctoritas.auth.domain.model.project.ProjectSettings;
@@ -47,7 +48,7 @@ class EndUserRegistrationDomainServiceTest {
     assertThat(attempt.project()).isEqualTo(project);
     assertThat(attempt.email().value()).isEqualTo("user@example.com");
     assertThat(attempt.validatedPassword().value()).isEqualTo("ValidPass123");
-    assertThat(attempt.validatedPassword().isHashed()).isFalse();
+    assertThat(attempt.validatedPassword().hashed()).isFalse();
     assertThat(attempt.name()).isEqualTo("Test User");
     assertThat(attempt.settings()).isEqualTo(settings);
   }

@@ -4,8 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
+import dev.auctoritas.auth.domain.model.enduser.Email;
 import dev.auctoritas.auth.domain.model.organization.Organization;
 import dev.auctoritas.auth.domain.model.organization.OrganizationMemberRole;
+import dev.auctoritas.auth.domain.model.organization.OrganizationRegistrationDomainService;
 import dev.auctoritas.auth.domain.model.project.Slug;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -227,7 +229,7 @@ class OrganizationRegistrationDomainServiceTest {
   void ownerSpecValidatesRoleMustBeOwner() {
     assertThatThrownBy(() ->
         new OrganizationRegistrationDomainService.OwnerSpec(
-            dev.auctoritas.auth.domain.valueobject.Email.of("test@test.com"),
+            Email.of("test@test.com"),
             "password",
             null,
             OrganizationMemberRole.ADMIN))
@@ -237,7 +239,7 @@ class OrganizationRegistrationDomainServiceTest {
 
   @Test
   void ownerSpecValidatesNonNullFields() {
-    var email = dev.auctoritas.auth.domain.valueobject.Email.of("test@test.com");
+    var email = Email.of("test@test.com");
 
     assertThatThrownBy(() ->
         new OrganizationRegistrationDomainService.OwnerSpec(
@@ -262,7 +264,7 @@ class OrganizationRegistrationDomainServiceTest {
   void registrationResultValidatesNonNullFields() {
     Organization org = Organization.create("Test", Slug.of("test"));
     var ownerSpec = new OrganizationRegistrationDomainService.OwnerSpec(
-        dev.auctoritas.auth.domain.valueobject.Email.of("test@test.com"),
+        Email.of("test@test.com"),
         "password",
         null,
         OrganizationMemberRole.OWNER);

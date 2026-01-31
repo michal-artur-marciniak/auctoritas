@@ -3,10 +3,9 @@ package dev.auctoritas.auth.service.oauth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 
 class OAuthAuthorizationRequestPersisterRegistryTest {
 
@@ -15,12 +14,9 @@ class OAuthAuthorizationRequestPersisterRegistryTest {
     OAuthAuthorizationRequestPersisterRegistry registry =
         new OAuthAuthorizationRequestPersisterRegistry(List.of(testPersister("google")));
 
-    ResponseStatusException ex =
-        org.assertj.core.api.Assertions.catchThrowableOfType(
-            () -> registry.require("unknown"), ResponseStatusException.class);
-
-    assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-    assertThat(ex.getReason()).isEqualTo("oauth_provider_invalid");
+    assertThatThrownBy(() -> registry.require("unknown"))
+        .isInstanceOf(DomainValidationException.class)
+        .hasMessageContaining("oauth_provider_invalid");
   }
 
   @Test

@@ -9,6 +9,7 @@ import dev.auctoritas.auth.domain.exception.DomainNotFoundException;
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.model.project.ApiKey;
 import dev.auctoritas.auth.domain.model.project.ApiKeyRepositoryPort;
+import dev.auctoritas.auth.domain.model.project.Project;
 import dev.auctoritas.auth.ports.messaging.DomainEventPublisherPort;
 import dev.auctoritas.auth.domain.model.project.ProjectRepositoryPort;
 import dev.auctoritas.auth.ports.security.TokenHasherPort;

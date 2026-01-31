@@ -11,11 +11,9 @@ import dev.auctoritas.auth.domain.model.enduser.EndUserEmailVerificationToken;
 import dev.auctoritas.auth.domain.model.organization.Organization;
 import dev.auctoritas.auth.domain.model.project.ApiKey;
 import dev.auctoritas.auth.domain.model.project.Project;
-import dev.auctoritas.auth.domain.model.project.ProjectSettings;
 import dev.auctoritas.auth.messaging.DomainEventPublisher;
 import dev.auctoritas.auth.messaging.EmailVerificationResentEvent;
 import dev.auctoritas.auth.repository.EndUserEmailVerificationTokenRepository;
-import dev.auctoritas.auth.domain.model.project.ApiKeyStatus;
 import dev.auctoritas.auth.domain.model.enduser.Email;
 import dev.auctoritas.auth.domain.model.enduser.Password;
 import dev.auctoritas.auth.domain.model.project.Slug;
@@ -57,12 +55,11 @@ class EndUserEmailVerificationServiceTest {
     project = Project.create(org, "Test Project", Slug.of("test-project-email-verification"));
     entityManager.persist(project);
 
-    ApiKey apiKey = new ApiKey();
-    apiKey.setProject(project);
-    apiKey.setName("Test Key");
-    apiKey.setPrefix("pk_live_");
-    apiKey.setKeyHash(tokenService.hashToken(RAW_API_KEY));
-    apiKey.setStatus(ApiKeyStatus.ACTIVE);
+    ApiKey apiKey = ApiKey.create(
+        project,
+        "Test Key",
+        "pk_live_",
+        tokenService.hashToken(RAW_API_KEY));
     entityManager.persist(apiKey);
 
     user = EndUser.create(project, Email.of("user@example.com"), Password.fromHash("hash"), null);
@@ -177,7 +174,9 @@ class EndUserEmailVerificationServiceTest {
             RAW_API_KEY, new EndUserResendVerificationRequest("missing@example.com"));
     assertThat(response.message()).contains("verification instructions");
     assertThat(verificationTokenRepository.findAll()).isEmpty();
-    assertThat(domainEventPublisher.events()).isEmpty();
+    assertThat(domainEventPublisher.events().stream()
+        .anyMatch(event -> EmailVerificationResentEvent.EVENT_TYPE.equals(event.eventType())))
+        .isFalse();
   }
 
   @Test
@@ -201,8 +200,10 @@ class EndUserEmailVerificationServiceTest {
     assertThat(tokens.stream().filter(t -> t.getUsedAt() == null).count()).isEqualTo(1);
     assertThat(tokens.stream().filter(t -> t.getUsedAt() != null).count()).isEqualTo(1);
 
-    assertThat(domainEventPublisher.events()).hasSize(1);
-    CapturingDomainEventPublisher.PublishedEvent published = domainEventPublisher.events().getFirst();
+    CapturingDomainEventPublisher.PublishedEvent published = domainEventPublisher.events().stream()
+        .filter(event -> EmailVerificationResentEvent.EVENT_TYPE.equals(event.eventType()))
+        .findFirst()
+        .orElseThrow();
     assertThat(published.eventType()).isEqualTo(EmailVerificationResentEvent.EVENT_TYPE);
     assertThat(published.payload()).isInstanceOf(EmailVerificationResentEvent.class);
     EmailVerificationResentEvent event = (EmailVerificationResentEvent) published.payload();
@@ -232,7 +233,9 @@ class EndUserEmailVerificationServiceTest {
     List<EndUserEmailVerificationToken> tokens = verificationTokenRepository.findAll();
     assertThat(tokens).hasSize(3);
     assertThat(tokens.stream().filter(t -> t.getUsedAt() == null).count()).isEqualTo(1);
-    assertThat(domainEventPublisher.events()).isEmpty();
+    assertThat(domainEventPublisher.events().stream()
+        .anyMatch(event -> EmailVerificationResentEvent.EVENT_TYPE.equals(event.eventType())))
+        .isFalse();
   }
 
   static class CapturingDomainEventPublisher implements DomainEventPublisher {

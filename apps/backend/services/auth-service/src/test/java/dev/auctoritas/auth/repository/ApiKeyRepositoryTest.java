@@ -15,7 +15,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
-import java.time.LocalDateTime;
 import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -43,13 +42,8 @@ class ApiKeyRepositoryTest {
     entityManager.persist(testProject);
     entityManager.flush();
 
-    testApiKey = new ApiKey();
-    testApiKey.setProject(testProject);
-    testApiKey.setName("Production Key");
-    testApiKey.setPrefix("pk_live_");
-    testApiKey.setKeyHash("abc123def456hash789");
-    testApiKey.setStatus(ApiKeyStatus.ACTIVE);
-    testApiKey.setLastUsedAt(LocalDateTime.now());
+    testApiKey = ApiKey.create(testProject, "Production Key", "pk_live_", "abc123def456hash789");
+    testApiKey.recordUsage();
     entityManager.persist(testApiKey);
     entityManager.flush();
   }
@@ -88,13 +82,8 @@ class ApiKeyRepositoryTest {
   @Test
   @DisplayName("Should not find key with different status")
   void shouldNotFindWithDifferentStatus() {
-    ApiKey revokedKey = new ApiKey();
-    revokedKey.setProject(testProject);
-    revokedKey.setName("Revoked Key");
-    revokedKey.setPrefix("pk_test_");
-    revokedKey.setKeyHash("revokedhash123");
-    revokedKey.setStatus(ApiKeyStatus.REVOKED);
-    revokedKey.setLastUsedAt(LocalDateTime.now());
+    ApiKey revokedKey = ApiKey.create(testProject, "Revoked Key", "pk_test_", "revokedhash123");
+    revokedKey.revoke("test");
     entityManager.persist(revokedKey);
     entityManager.flush();
 

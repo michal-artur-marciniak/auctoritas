@@ -14,7 +14,6 @@ import dev.auctoritas.auth.messaging.DomainEventPublisher;
 import dev.auctoritas.auth.messaging.UserRegisteredEvent;
 import dev.auctoritas.auth.domain.model.enduser.EndUserEmailVerificationTokenRepositoryPort;
 import dev.auctoritas.auth.domain.model.enduser.EndUserRepositoryPort;
-import dev.auctoritas.auth.domain.model.project.ApiKeyStatus;
 import dev.auctoritas.auth.domain.model.project.Slug;
 import jakarta.persistence.EntityManager;
 import java.util.List;
@@ -78,12 +77,11 @@ class EndUserRegistrationServiceTest {
     project = Project.create(org, "Test Project", Slug.of("test-project-registration"));
     entityManager.persist(project);
 
-    ApiKey apiKey = new ApiKey();
-    apiKey.setProject(project);
-    apiKey.setName("Test Key");
-    apiKey.setPrefix("pk_live_");
-    apiKey.setKeyHash(tokenService.hashToken(RAW_API_KEY));
-    apiKey.setStatus(ApiKeyStatus.ACTIVE);
+    ApiKey apiKey = ApiKey.create(
+        project,
+        "Test Key",
+        "pk_live_",
+        tokenService.hashToken(RAW_API_KEY));
     entityManager.persist(apiKey);
 
     entityManager.flush();

@@ -10,7 +10,6 @@ import dev.auctoritas.auth.domain.model.organization.Organization;
 import dev.auctoritas.auth.domain.model.project.ApiKey;
 import dev.auctoritas.auth.domain.model.project.Project;
 import dev.auctoritas.auth.domain.model.project.ProjectSettings;
-import dev.auctoritas.auth.domain.model.project.ApiKeyStatus;
 import dev.auctoritas.auth.domain.model.enduser.Email;
 import dev.auctoritas.auth.domain.model.enduser.Password;
 import dev.auctoritas.auth.domain.model.project.Slug;
@@ -45,12 +44,11 @@ class EndUserLoginServiceTest {
     project = Project.create(org, "Test Project", Slug.of("test-project-login"));
     entityManager.persist(project);
 
-    ApiKey apiKey = new ApiKey();
-    apiKey.setProject(project);
-    apiKey.setName("Test Key");
-    apiKey.setPrefix("pk_live_");
-    apiKey.setKeyHash(tokenService.hashToken(RAW_API_KEY));
-    apiKey.setStatus(ApiKeyStatus.ACTIVE);
+    ApiKey apiKey = ApiKey.create(
+        project,
+        "Test Key",
+        "pk_live_",
+        tokenService.hashToken(RAW_API_KEY));
     entityManager.persist(apiKey);
 
     entityManager.flush();

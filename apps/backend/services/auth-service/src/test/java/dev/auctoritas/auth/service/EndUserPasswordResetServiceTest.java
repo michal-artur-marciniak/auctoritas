@@ -21,11 +21,11 @@ import dev.auctoritas.auth.repository.EndUserPasswordHistoryRepository;
 import dev.auctoritas.auth.repository.EndUserPasswordResetTokenRepository;
 import dev.auctoritas.auth.repository.EndUserRefreshTokenRepository;
 import dev.auctoritas.auth.repository.EndUserSessionRepository;
-import dev.auctoritas.auth.domain.model.project.ApiKeyStatus;
 import dev.auctoritas.auth.domain.model.enduser.Email;
 import dev.auctoritas.auth.domain.model.enduser.Password;
 import dev.auctoritas.auth.domain.model.project.Slug;
 import jakarta.persistence.EntityManager;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -95,12 +95,11 @@ class EndUserPasswordResetServiceTest {
     project = Project.create(org, "Test Project", Slug.of("test-project-password-reset"));
     entityManager.persist(project);
 
-    ApiKey apiKey = new ApiKey();
-    apiKey.setProject(project);
-    apiKey.setName("Test Key");
-    apiKey.setPrefix("pk_live_");
-    apiKey.setKeyHash(tokenService.hashToken(RAW_API_KEY));
-    apiKey.setStatus(ApiKeyStatus.ACTIVE);
+    ApiKey apiKey = ApiKey.create(
+        project,
+        "Test Key",
+        "pk_live_",
+        tokenService.hashToken(RAW_API_KEY));
     entityManager.persist(apiKey);
 
     user = EndUser.create(project, Email.of("user@example.com"), Password.fromHash(passwordEncoder.encode("UserPass123!")), null);
@@ -132,9 +131,10 @@ class EndUserPasswordResetServiceTest {
     assertThat(token.getIpAddress()).isEqualTo("1.2.3.4");
     assertThat(token.getUserAgent()).isEqualTo("test-agent");
 
-    assertThat(domainEventPublisher.events()).hasSize(1);
-    InMemoryDomainEventPublisher.PublishedEvent published = domainEventPublisher.events().getFirst();
-    assertThat(published.type()).isEqualTo(PasswordResetRequestedEvent.EVENT_TYPE);
+    InMemoryDomainEventPublisher.PublishedEvent published = domainEventPublisher.events().stream()
+        .filter(event -> PasswordResetRequestedEvent.EVENT_TYPE.equals(event.type()))
+        .findFirst()
+        .orElseThrow();
     assertThat(published.payload()).isInstanceOf(PasswordResetRequestedEvent.class);
     PasswordResetRequestedEvent event = (PasswordResetRequestedEvent) published.payload();
     assertThat(event.projectId()).isEqualTo(project.getId());
@@ -164,7 +164,10 @@ class EndUserPasswordResetServiceTest {
     assertThat(tokens.stream().filter(t -> t.getUsedAt() == null)).hasSize(1);
     assertThat(tokens.stream().filter(t -> t.getUsedAt() != null)).hasSize(1);
 
-    assertThat(domainEventPublisher.events()).hasSize(2);
+    long eventCount = domainEventPublisher.events().stream()
+        .filter(event -> PasswordResetRequestedEvent.EVENT_TYPE.equals(event.type()))
+        .count();
+    assertThat(eventCount).isEqualTo(2);
   }
 
   @Test
@@ -176,7 +179,9 @@ class EndUserPasswordResetServiceTest {
     assertThat(response.message()).contains("If an account exists");
     assertThat(response.resetToken()).isNull();
     assertThat(resetTokenRepository.findAll()).isEmpty();
-    assertThat(domainEventPublisher.events()).isEmpty();
+    assertThat(domainEventPublisher.events().stream()
+        .anyMatch(event -> PasswordResetRequestedEvent.EVENT_TYPE.equals(event.type())))
+        .isFalse();
   }
 
   @Test
@@ -194,18 +199,19 @@ class EndUserPasswordResetServiceTest {
     token.setExpiresAt(Instant.now().plusSeconds(3600));
     entityManager.persist(token);
 
-    EndUserRefreshToken refreshToken = new EndUserRefreshToken();
-    refreshToken.setUser(managedUser);
-    refreshToken.setTokenHash(tokenService.hashToken("refresh-token-1"));
-    refreshToken.setExpiresAt(Instant.now().plusSeconds(3600));
-    refreshToken.setRevoked(false);
+    EndUserRefreshToken refreshToken = EndUserRefreshToken.create(
+        managedUser,
+        tokenService.hashToken("refresh-token-1"),
+        Duration.ofHours(1),
+        null,
+        null);
     entityManager.persist(refreshToken);
 
-    EndUserSession session = new EndUserSession();
-    session.setUser(managedUser);
-    session.setDeviceInfo(Map.of("userAgent", "test"));
-    session.setIpAddress("1.2.3.4");
-    session.setExpiresAt(Instant.now().plusSeconds(3600));
+    EndUserSession session = EndUserSession.create(
+        managedUser,
+        "1.2.3.4",
+        Map.of("userAgent", "test"),
+        Duration.ofHours(1));
     entityManager.persist(session);
 
     entityManager.flush();

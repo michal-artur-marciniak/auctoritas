@@ -8,6 +8,7 @@ import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.model.organization.OrganizationMemberRefreshToken;
 import dev.auctoritas.auth.domain.model.organization.Organization;
 import dev.auctoritas.auth.domain.model.organization.OrganizationMember;
+import dev.auctoritas.auth.domain.model.organization.OrganizationMemberRole;
 import dev.auctoritas.auth.ports.messaging.DomainEventPublisherPort;
 import dev.auctoritas.auth.domain.model.organization.OrganizationMemberRefreshTokenRepositoryPort;
 import dev.auctoritas.auth.domain.model.organization.OrganizationMemberRepositoryPort;
