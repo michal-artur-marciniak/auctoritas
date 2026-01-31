@@ -6,6 +6,7 @@ import dev.auctoritas.auth.api.ApiKeySummaryResponse;
 import dev.auctoritas.auth.domain.model.project.ApiKey;
 import dev.auctoritas.auth.domain.model.project.Project;
 import dev.auctoritas.auth.ports.apikey.ApiKeyRepositoryPort;
+import dev.auctoritas.auth.ports.messaging.DomainEventPublisherPort;
 import dev.auctoritas.auth.ports.project.ProjectRepositoryPort;
 import dev.auctoritas.auth.ports.security.TokenHasherPort;
 import dev.auctoritas.auth.security.OrgMemberPrincipal;
@@ -34,6 +35,7 @@ public class ApiKeyApplicationService {
   private final ProjectRepositoryPort projectRepository;
   private final ApiKeyService apiKeyService;
   private final TokenHasherPort tokenHasherPort;
+  private final DomainEventPublisherPort domainEventPublisherPort;
   private final SecureRandom secureRandom = new SecureRandom();
   private final Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();
 
@@ -41,11 +43,13 @@ public class ApiKeyApplicationService {
       ApiKeyRepositoryPort apiKeyRepository,
       ProjectRepositoryPort projectRepository,
       ApiKeyService apiKeyService,
-      TokenHasherPort tokenHasherPort) {
+      TokenHasherPort tokenHasherPort,
+      DomainEventPublisherPort domainEventPublisherPort) {
     this.apiKeyRepository = apiKeyRepository;
     this.projectRepository = projectRepository;
     this.apiKeyService = apiKeyService;
     this.tokenHasherPort = tokenHasherPort;
+    this.domainEventPublisherPort = domainEventPublisherPort;
   }
 
   /** Creates the default API key for a newly created project. */
@@ -101,6 +105,11 @@ public class ApiKeyApplicationService {
 
     try {
       ApiKey savedKey = apiKeyRepository.save(apiKey);
+
+      // Publish and clear domain events
+      apiKey.getDomainEvents().forEach(event -> domainEventPublisherPort.publish(event.eventType(), event));
+      apiKey.clearDomainEvents();
+
       return toSecretResponse(savedKey, rawKey);
     } catch (DataIntegrityViolationException ex) {
       throw new ResponseStatusException(HttpStatus.CONFLICT, "api_key_name_taken", ex);
