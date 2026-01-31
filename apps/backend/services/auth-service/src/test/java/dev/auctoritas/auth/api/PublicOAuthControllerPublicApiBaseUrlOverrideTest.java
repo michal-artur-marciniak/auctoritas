@@ -21,7 +21,7 @@ import dev.auctoritas.auth.adapters.external.oauth.OAuthGoogleCallbackService;
 import dev.auctoritas.auth.adapters.external.oauth.OAuthMicrosoftAuthorizationService;
 import dev.auctoritas.auth.adapters.external.oauth.OAuthMicrosoftCallbackService;
 import dev.auctoritas.auth.service.TokenService;
-import dev.auctoritas.auth.ports.oauth.OAuthProviderPort;
+import dev.auctoritas.auth.application.port.out.oauth.OAuthProviderPort;
 import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

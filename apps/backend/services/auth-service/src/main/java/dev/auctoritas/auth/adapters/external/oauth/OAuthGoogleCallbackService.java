@@ -11,7 +11,7 @@ import dev.auctoritas.auth.domain.oauth.OAuthAuthorizationRequestRepositoryPort;
 import dev.auctoritas.auth.domain.oauth.OAuthExchangeCodeRepositoryPort;
 import dev.auctoritas.auth.service.TokenService;
 import dev.auctoritas.auth.service.oauth.OAuthAccountLinkingService;
-import dev.auctoritas.auth.ports.oauth.OAuthProviderPort;
+import dev.auctoritas.auth.application.port.out.oauth.OAuthProviderPort;
 import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
 import dev.auctoritas.auth.service.oauth.OAuthTokenExchangeRequest;
 import dev.auctoritas.auth.service.oauth.OAuthUserInfo;

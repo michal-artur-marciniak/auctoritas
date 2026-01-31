@@ -2,7 +2,7 @@ package dev.auctoritas.auth.adapters.external.oauth;
 
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.project.ProjectSettings;
-import dev.auctoritas.auth.ports.oauth.OAuthProviderPort;
+import dev.auctoritas.auth.application.port.out.oauth.OAuthProviderPort;
 import dev.auctoritas.auth.service.oauth.AppleClientSecretService;
 import dev.auctoritas.auth.service.oauth.AppleIdTokenValidator;
 import dev.auctoritas.auth.service.oauth.OAuthAuthorizeDetails;

@@ -22,7 +22,7 @@ import dev.auctoritas.auth.domain.oauth.OAuthExchangeCodeRepositoryPort;
 import dev.auctoritas.auth.domain.enduser.Email;
 import dev.auctoritas.auth.domain.enduser.Password;
 import dev.auctoritas.auth.domain.project.Slug;
-import dev.auctoritas.auth.ports.messaging.DomainEventPublisherPort;
+import dev.auctoritas.auth.application.port.out.messaging.DomainEventPublisherPort;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.HashMap;

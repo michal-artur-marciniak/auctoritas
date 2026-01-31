@@ -1,4 +1,4 @@
-package dev.auctoritas.auth.ports.messaging;
+package dev.auctoritas.auth.application.port.out.messaging;
 
 /**
  * Port for publishing domain events from the auth domain.

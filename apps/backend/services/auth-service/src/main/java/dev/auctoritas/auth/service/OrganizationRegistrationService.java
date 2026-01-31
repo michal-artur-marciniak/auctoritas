@@ -10,7 +10,7 @@ import dev.auctoritas.auth.domain.organization.OrganizationRegistrationDomainSer
 import dev.auctoritas.auth.domain.organization.OrganizationRegistrationDomainService.OwnerSpec;
 import dev.auctoritas.auth.domain.organization.OrganizationRegistrationDomainService.RegistrationResult;
 import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
-import dev.auctoritas.auth.ports.messaging.DomainEventPublisherPort;
+import dev.auctoritas.auth.application.port.out.messaging.DomainEventPublisherPort;
 import dev.auctoritas.auth.domain.organization.OrganizationMemberRefreshTokenRepositoryPort;
 import dev.auctoritas.auth.domain.organization.OrganizationMemberRepositoryPort;
 import dev.auctoritas.auth.domain.organization.OrganizationRepositoryPort;

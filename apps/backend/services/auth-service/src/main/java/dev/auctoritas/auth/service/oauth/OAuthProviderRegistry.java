@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.service.oauth;
 
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
-import dev.auctoritas.auth.ports.oauth.OAuthProviderPort;
+import dev.auctoritas.auth.application.port.out.oauth.OAuthProviderPort;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;

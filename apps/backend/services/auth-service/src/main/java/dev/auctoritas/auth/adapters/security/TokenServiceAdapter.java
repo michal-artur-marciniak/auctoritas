@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.adapters.security;
 
-import dev.auctoritas.auth.ports.security.TokenHasherPort;
+import dev.auctoritas.auth.application.port.out.security.TokenHasherPort;
 import dev.auctoritas.auth.service.TokenService;
 import java.time.Instant;
 import org.springframework.stereotype.Component;

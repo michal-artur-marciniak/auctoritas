@@ -12,7 +12,7 @@ import dev.auctoritas.auth.domain.project.Project;
 import dev.auctoritas.auth.domain.project.ProjectSettings;
 import dev.auctoritas.auth.domain.enduser.EndUserRefreshTokenRepositoryPort;
 import dev.auctoritas.auth.domain.enduser.EndUserSessionRepositoryPort;
-import dev.auctoritas.auth.ports.messaging.DomainEventPublisherPort;
+import dev.auctoritas.auth.application.port.out.messaging.DomainEventPublisherPort;
 import jakarta.persistence.LockTimeoutException;
 import jakarta.persistence.PessimisticLockException;
 import java.time.Duration;

@@ -1,4 +1,4 @@
-package dev.auctoritas.auth.ports.security;
+package dev.auctoritas.auth.application.port.out.security;
 
 import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
 import io.jsonwebtoken.Claims;

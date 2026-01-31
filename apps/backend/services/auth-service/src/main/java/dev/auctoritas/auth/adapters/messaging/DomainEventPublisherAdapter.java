@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.adapters.messaging;
 
 import dev.auctoritas.auth.messaging.DomainEventPublisher;
-import dev.auctoritas.auth.ports.messaging.DomainEventPublisherPort;
+import dev.auctoritas.auth.application.port.out.messaging.DomainEventPublisherPort;
 import org.springframework.stereotype.Component;
 
 /**

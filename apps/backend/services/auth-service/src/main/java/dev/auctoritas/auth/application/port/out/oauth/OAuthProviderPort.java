@@ -1,4 +1,4 @@
-package dev.auctoritas.auth.ports.oauth;
+package dev.auctoritas.auth.application.port.out.oauth;
 
 import dev.auctoritas.auth.domain.project.ProjectSettings;
 import dev.auctoritas.auth.service.oauth.OAuthAuthorizeDetails;

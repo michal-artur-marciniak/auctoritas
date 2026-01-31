@@ -9,7 +9,7 @@ import dev.auctoritas.auth.domain.organization.OrganizationMemberRefreshToken;
 import dev.auctoritas.auth.domain.organization.Organization;
 import dev.auctoritas.auth.domain.organization.OrganizationMember;
 import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
-import dev.auctoritas.auth.ports.messaging.DomainEventPublisherPort;
+import dev.auctoritas.auth.application.port.out.messaging.DomainEventPublisherPort;
 import dev.auctoritas.auth.domain.organization.OrganizationMemberRefreshTokenRepositoryPort;
 import dev.auctoritas.auth.domain.organization.OrganizationMemberRepositoryPort;
 import dev.auctoritas.auth.domain.organization.OrganizationRepositoryPort;
