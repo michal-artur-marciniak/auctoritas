@@ -4,6 +4,7 @@ import dev.auctoritas.auth.api.OrgLoginRequest;
 import dev.auctoritas.auth.api.OrgLoginResponse;
 import dev.auctoritas.auth.api.OrgRefreshRequest;
 import dev.auctoritas.auth.api.OrgRefreshResponse;
+import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.model.organization.OrganizationMemberRefreshToken;
 import dev.auctoritas.auth.domain.model.organization.Organization;
 import dev.auctoritas.auth.domain.model.organization.OrganizationMember;
@@ -16,11 +17,9 @@ import jakarta.persistence.PessimisticLockException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Locale;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class OrgAuthService {
@@ -59,20 +58,20 @@ public class OrgAuthService {
         organizationRepository
             .findBySlug(slug)
             .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid_credentials"));
+                () -> new DomainValidationException("invalid_credentials"));
 
     OrganizationMember member =
         organizationMemberRepository
             .findByEmailAndOrganizationId(email, organization.getId())
             .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid_credentials"));
+                () -> new DomainValidationException("invalid_credentials"));
 
     if (!passwordEncoder.matches(password, member.getPasswordHash())) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid_credentials");
+      throw new DomainValidationException("invalid_credentials");
     }
 
     if (!Boolean.TRUE.equals(member.getEmailVerified())) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "email_not_verified");
+      throw new DomainValidationException("email_not_verified");
     }
 
     String rawRefreshToken = tokenService.generateRefreshToken();
@@ -101,18 +100,18 @@ public class OrgAuthService {
           refreshTokenRepository
               .findByTokenHash(tokenHash)
               .orElseThrow(
-                  () -> new ResponseStatusException(
-                      HttpStatus.BAD_REQUEST, "invalid_refresh_token"));
+                  () -> new DomainValidationException(
+                      "invalid_refresh_token"));
     } catch (PessimisticLockException | LockTimeoutException ex) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid_refresh_token");
+      throw new DomainValidationException("invalid_refresh_token");
     }
 
     if (existingToken.isRevoked()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "refresh_token_revoked");
+      throw new DomainValidationException("refresh_token_revoked");
     }
 
     if (existingToken.getExpiresAt().isBefore(Instant.now())) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "refresh_token_expired");
+      throw new DomainValidationException("refresh_token_expired");
     }
 
     // Use rich domain model's rotate method
@@ -172,11 +171,11 @@ public class OrgAuthService {
 
   private String requireValue(String value, String errorCode) {
     if (value == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     String trimmed = value.trim();
     if (trimmed.isEmpty()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     return trimmed;
   }

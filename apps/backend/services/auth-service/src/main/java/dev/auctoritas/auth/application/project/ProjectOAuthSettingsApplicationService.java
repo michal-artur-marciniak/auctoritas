@@ -1,6 +1,8 @@
 package dev.auctoritas.auth.application.project;
 
 import dev.auctoritas.auth.api.ProjectOAuthSettingsRequest;
+import dev.auctoritas.auth.domain.exception.DomainForbiddenException;
+import dev.auctoritas.auth.domain.exception.DomainNotFoundException;
 import dev.auctoritas.auth.domain.model.project.ProjectOAuthSettingsUpdate;
 import dev.auctoritas.auth.domain.model.project.ProjectOAuthSettingsUpdate.SecretUpdate;
 import dev.auctoritas.auth.domain.model.project.ProjectOAuthSettingsValidator;
@@ -11,11 +13,9 @@ import dev.auctoritas.auth.domain.model.project.ProjectSettingsRepositoryPort;
 import dev.auctoritas.auth.security.OrganizationMemberPrincipal;
 import java.util.UUID;
 import java.util.function.Consumer;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.encrypt.TextEncryptor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 /** Application service that owns Project OAuth settings updates. */
 @Service
@@ -64,7 +64,7 @@ public class ProjectOAuthSettingsApplicationService {
       throw new IllegalStateException("Authenticated org member principal is required.");
     }
     if (!orgId.equals(principal.orgId())) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "org_access_denied");
+      throw new DomainForbiddenException("org_access_denied");
     }
   }
 
@@ -72,9 +72,9 @@ public class ProjectOAuthSettingsApplicationService {
     Project project =
         projectRepository
             .findById(projectId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "project_not_found"));
+            .orElseThrow(() -> new DomainNotFoundException("project_not_found"));
     if (!orgId.equals(project.getOrganization().getId())) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "project_not_found");
+      throw new DomainNotFoundException("project_not_found");
     }
     return project;
   }

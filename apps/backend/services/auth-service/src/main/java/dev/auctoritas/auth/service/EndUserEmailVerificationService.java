@@ -3,6 +3,8 @@ package dev.auctoritas.auth.service;
 import dev.auctoritas.auth.api.EndUserEmailVerificationRequest;
 import dev.auctoritas.auth.api.EndUserEmailVerificationResponse;
 import dev.auctoritas.auth.api.EndUserResendVerificationRequest;
+import dev.auctoritas.auth.domain.exception.DomainUnauthorizedException;
+import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.model.enduser.EndUser;
 import dev.auctoritas.auth.domain.model.enduser.EndUserEmailVerificationToken;
 import dev.auctoritas.auth.domain.model.project.ApiKey;
@@ -20,10 +22,8 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import static net.logstash.logback.argument.StructuredArguments.kv;
 
@@ -72,25 +72,25 @@ public class EndUserEmailVerificationService {
           verificationTokenRepository
               .findByTokenHash(tokenService.hashToken(rawToken))
               .orElseThrow(
-                  () -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid_verification_token"));
+                  () -> new DomainValidationException("invalid_verification_token"));
     } catch (PessimisticLockException | LockTimeoutException ex) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid_verification_token");
+      throw new DomainValidationException("invalid_verification_token");
     }
 
     if (!token.getProject().getId().equals(project.getId())) {
-      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api_key_invalid");
+      throw new DomainUnauthorizedException("api_key_invalid");
     }
 
     if (token.getUsedAt() != null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "verification_token_used");
+      throw new DomainValidationException("verification_token_used");
     }
 
     if (token.getExpiresAt().isBefore(Instant.now())) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "verification_token_expired");
+      throw new DomainValidationException("verification_token_expired");
     }
 
     if (!tokenService.hashToken(rawCode).equals(token.getCodeHash())) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "verification_code_invalid");
+      throw new DomainValidationException("verification_code_invalid");
     }
 
     EndUser user = token.getUser();
@@ -217,11 +217,11 @@ public class EndUserEmailVerificationService {
 
   private String requireValue(String value, String errorCode) {
     if (value == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     String trimmed = value.trim();
     if (trimmed.isEmpty()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     return trimmed;
   }

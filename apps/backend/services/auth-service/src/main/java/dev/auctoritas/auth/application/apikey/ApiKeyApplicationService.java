@@ -3,8 +3,11 @@ package dev.auctoritas.auth.application.apikey;
 import dev.auctoritas.auth.api.ApiKeyCreateRequest;
 import dev.auctoritas.auth.api.ApiKeySecretResponse;
 import dev.auctoritas.auth.api.ApiKeySummaryResponse;
+import dev.auctoritas.auth.domain.exception.DomainConflictException;
+import dev.auctoritas.auth.domain.exception.DomainForbiddenException;
+import dev.auctoritas.auth.domain.exception.DomainNotFoundException;
+import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.model.project.ApiKey;
-import dev.auctoritas.auth.domain.model.project.Project;
 import dev.auctoritas.auth.domain.model.project.ApiKeyRepositoryPort;
 import dev.auctoritas.auth.ports.messaging.DomainEventPublisherPort;
 import dev.auctoritas.auth.domain.model.project.ProjectRepositoryPort;
@@ -18,10 +21,8 @@ import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 /** Application service that owns API key lifecycle operations. */
 @Service
@@ -95,7 +96,7 @@ public class ApiKeyApplicationService {
   private ApiKeySecretResponse createKeyResponse(
       Project project, String name, ApiKeyEnvironment environment) {
     if (apiKeyRepository.existsByProjectIdAndName(project.getId(), name)) {
-      throw new ResponseStatusException(HttpStatus.CONFLICT, "api_key_name_taken");
+      throw new DomainConflictException("api_key_name_taken");
     }
 
     String prefix = resolvePrefix(environment);
@@ -112,7 +113,7 @@ public class ApiKeyApplicationService {
 
       return toSecretResponse(savedKey, rawKey);
     } catch (DataIntegrityViolationException ex) {
-      throw new ResponseStatusException(HttpStatus.CONFLICT, "api_key_name_taken", ex);
+      throw new DomainConflictException("api_key_name_taken", ex);
     }
   }
 
@@ -152,14 +153,14 @@ public class ApiKeyApplicationService {
       throw new IllegalStateException("Authenticated org member principal is required.");
     }
     if (!orgId.equals(principal.orgId())) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "org_access_denied");
+      throw new DomainForbiddenException("org_access_denied");
     }
   }
 
   private void enforceAdminAccess(OrganizationMemberPrincipal principal) {
     OrganizationMemberRole role = principal.role();
     if (role != OrganizationMemberRole.OWNER && role != OrganizationMemberRole.ADMIN) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "insufficient_role");
+      throw new DomainForbiddenException("insufficient_role");
     }
   }
 
@@ -167,20 +168,20 @@ public class ApiKeyApplicationService {
     Project project =
         projectRepository
             .findById(projectId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "project_not_found"));
+            .orElseThrow(() -> new DomainNotFoundException("project_not_found"));
     if (!orgId.equals(project.getOrganization().getId())) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "project_not_found");
+      throw new DomainNotFoundException("project_not_found");
     }
     return project;
   }
 
   private String requireValue(String value, String errorCode) {
     if (value == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     String trimmed = value.trim();
     if (trimmed.isEmpty()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     return trimmed;
   }

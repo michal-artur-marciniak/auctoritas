@@ -2,6 +2,8 @@ package dev.auctoritas.auth.service;
 
 import dev.auctoritas.auth.api.EndUserPasswordChangeRequest;
 import dev.auctoritas.auth.api.EndUserPasswordChangeResponse;
+import dev.auctoritas.auth.domain.exception.DomainUnauthorizedException;
+import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.model.enduser.Password;
 import dev.auctoritas.auth.domain.model.enduser.EndUser;
 import dev.auctoritas.auth.domain.model.enduser.EndUserPasswordHistory;
@@ -18,11 +20,9 @@ import dev.auctoritas.auth.shared.security.PasswordPolicy;
 import dev.auctoritas.auth.shared.security.PasswordValidator;
 import java.util.UUID;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class EndUserPasswordChangeService {
@@ -59,17 +59,17 @@ public class EndUserPasswordChangeService {
       UUID currentSessionId,
       EndUserPasswordChangeRequest request) {
     if (principal == null) {
-      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "unauthorized");
+      throw new DomainUnauthorizedException("unauthorized");
     }
 
     ApiKey resolvedKey = apiKeyService.validateActiveKey(apiKey);
     Project project = resolvedKey.getProject();
     if (!project.getId().equals(principal.projectId())) {
-      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api_key_invalid");
+      throw new DomainUnauthorizedException("api_key_invalid");
     }
     ProjectSettings settings = project.getSettings();
     if (settings == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "project_settings_missing");
+      throw new DomainValidationException("project_settings_missing");
     }
 
     String currentPassword = requireValue(request.currentPassword(), "current_password_required");
@@ -78,10 +78,10 @@ public class EndUserPasswordChangeService {
     EndUser user =
         endUserRepository
             .findByIdAndProjectIdForUpdate(principal.endUserId(), project.getId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "unauthorized"));
+            .orElseThrow(() -> new DomainUnauthorizedException("unauthorized"));
 
     if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid_current_password");
+      throw new DomainValidationException("invalid_current_password");
     }
 
     validatePassword(settings, newPassword);
@@ -139,13 +139,13 @@ public class EndUserPasswordChangeService {
     int historyCount = resolvePasswordHistoryCount(settings);
     if (historyCount <= 1) {
       if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "password_reuse_not_allowed");
+        throw new DomainValidationException("password_reuse_not_allowed");
       }
       return;
     }
 
     if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "password_reuse_not_allowed");
+      throw new DomainValidationException("password_reuse_not_allowed");
     }
 
     passwordHistoryRepository
@@ -153,8 +153,7 @@ public class EndUserPasswordChangeService {
         .forEach(
             entry -> {
               if (passwordEncoder.matches(newPassword, entry.getPasswordHash())) {
-                throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "password_reuse_not_allowed");
+                throw new DomainValidationException("password_reuse_not_allowed");
               }
             });
   }
@@ -178,17 +177,17 @@ public class EndUserPasswordChangeService {
             minUnique);
     PasswordValidator.ValidationResult result = new PasswordValidator(policy).validate(password);
     if (!result.valid()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "password_policy_failed");
+      throw new DomainValidationException("password_policy_failed");
     }
   }
 
   private String requireValue(String value, String errorCode) {
     if (value == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     String trimmed = value.trim();
     if (trimmed.isEmpty()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     return trimmed;
   }

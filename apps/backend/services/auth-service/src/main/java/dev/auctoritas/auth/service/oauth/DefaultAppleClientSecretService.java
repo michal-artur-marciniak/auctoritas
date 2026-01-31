@@ -1,5 +1,6 @@
 package dev.auctoritas.auth.service.oauth;
 
+import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import io.jsonwebtoken.Jwts;
 import java.security.KeyFactory;
 import java.security.PrivateKey;
@@ -8,9 +9,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Date;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
-import org.springframework.web.server.ResponseStatusException;
 
 @Component
 public class DefaultAppleClientSecretService implements AppleClientSecretService {
@@ -43,7 +42,7 @@ public class DefaultAppleClientSecretService implements AppleClientSecretService
           .signWith(privateKey, Jwts.SIG.ES256)
           .compact();
     } catch (Exception ex) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_apple_not_configured", ex);
+      throw new DomainValidationException("oauth_apple_not_configured", ex);
     }
   }
 
@@ -52,12 +51,7 @@ public class DefaultAppleClientSecretService implements AppleClientSecretService
       String normalized = normalizeKey(pem);
 
       if (normalized.contains("-----BEGIN EC PRIVATE KEY-----")) {
-        throw new ResponseStatusException(
-            HttpStatus.BAD_REQUEST,
-            "oauth_apple_private_key_pkcs8_required",
-            new IllegalArgumentException(
-                "SEC1 EC private keys are not supported; provide a PKCS#8 key (-----BEGIN PRIVATE KEY-----). "
-                    + "Convert with: openssl pkcs8 -topk8 -nocrypt -in key.sec1 -out key.pkcs8"));
+        throw new DomainValidationException("oauth_apple_private_key_pkcs8_required");
       }
 
       String privateKeyPEM =
@@ -69,10 +63,10 @@ public class DefaultAppleClientSecretService implements AppleClientSecretService
       PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
       KeyFactory keyFactory = KeyFactory.getInstance("EC");
       return keyFactory.generatePrivate(spec);
-    } catch (ResponseStatusException ex) {
+    } catch (DomainValidationException ex) {
       throw ex;
     } catch (Exception e) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_apple_not_configured", e);
+      throw new DomainValidationException("oauth_apple_not_configured", e);
     }
   }
 
@@ -82,11 +76,11 @@ public class DefaultAppleClientSecretService implements AppleClientSecretService
 
   private static String requireValue(String value, String errorCode) {
     if (value == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     String trimmed = value.trim();
     if (trimmed.isEmpty()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     return trimmed;
   }

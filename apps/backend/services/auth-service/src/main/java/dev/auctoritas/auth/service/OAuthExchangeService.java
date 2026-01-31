@@ -2,6 +2,8 @@ package dev.auctoritas.auth.service;
 
 import dev.auctoritas.auth.api.EndUserLoginResponse;
 import dev.auctoritas.auth.api.OAuthExchangeRequest;
+import dev.auctoritas.auth.domain.exception.DomainUnauthorizedException;
+import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.model.enduser.EndUser;
 import dev.auctoritas.auth.domain.model.enduser.EndUserRefreshToken;
 import dev.auctoritas.auth.domain.model.enduser.EndUserSession;
@@ -19,10 +21,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class OAuthExchangeService {
@@ -58,7 +58,7 @@ public class OAuthExchangeService {
     Project project = resolvedKey.getProject();
     ProjectSettings settings = project.getSettings();
     if (settings == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "project_settings_missing");
+      throw new DomainValidationException("project_settings_missing");
     }
 
     String rawCode = requireValue(request.code(), "oauth_code_required");
@@ -70,23 +70,23 @@ public class OAuthExchangeService {
           oauthExchangeCodeRepository
               .findByCodeHash(codeHash)
               .orElseThrow(
-                  () -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid_oauth_code"));
+                  () -> new DomainValidationException("invalid_oauth_code"));
     } catch (PessimisticLockException | LockTimeoutException ex) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid_oauth_code");
+      throw new DomainValidationException("invalid_oauth_code");
     }
 
     if (!code.getProject().getId().equals(project.getId())) {
-      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api_key_invalid");
+      throw new DomainUnauthorizedException("api_key_invalid");
     }
 
     Instant now = Instant.now();
     if (code.getUsedAt() != null || code.getExpiresAt().isBefore(now)) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid_oauth_code");
+      throw new DomainValidationException("invalid_oauth_code");
     }
 
     EndUser user = code.getUser();
     if (settings.isRequireVerifiedEmailForLogin() && !user.isEmailVerified()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "email_not_verified");
+      throw new DomainValidationException("email_not_verified");
     }
 
     code.setUsedAt(now);
@@ -153,11 +153,11 @@ public class OAuthExchangeService {
 
   private String requireValue(String value, String errorCode) {
     if (value == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     String trimmed = value.trim();
     if (trimmed.isEmpty()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     return trimmed;
   }

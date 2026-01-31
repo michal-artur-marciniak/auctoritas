@@ -1,13 +1,12 @@
 package dev.auctoritas.auth.service;
 
+import dev.auctoritas.auth.domain.exception.DomainUnauthorizedException;
 import dev.auctoritas.auth.domain.model.project.ApiKey;
 import dev.auctoritas.auth.domain.model.enduser.EndUserRefreshTokenRepositoryPort;
 import dev.auctoritas.auth.domain.model.enduser.EndUserSessionRepositoryPort;
 import dev.auctoritas.auth.security.EndUserPrincipal;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class EndUserLogoutService {
@@ -27,12 +26,12 @@ public class EndUserLogoutService {
   @Transactional
   public void logout(String apiKey, EndUserPrincipal principal) {
     if (principal == null) {
-      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "unauthorized");
+      throw new DomainUnauthorizedException("unauthorized");
     }
 
     ApiKey resolvedKey = apiKeyService.validateActiveKey(apiKey);
     if (!resolvedKey.getProject().getId().equals(principal.projectId())) {
-      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api_key_invalid");
+      throw new DomainUnauthorizedException("api_key_invalid");
     }
 
     endUserSessionRepository.deleteByUserId(principal.endUserId());

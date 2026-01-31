@@ -1,5 +1,7 @@
 package dev.auctoritas.auth.service.oauth;
 
+import dev.auctoritas.auth.domain.exception.DomainNotFoundException;
+import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.model.project.ApiKey;
 import dev.auctoritas.auth.domain.model.project.Project;
 import dev.auctoritas.auth.domain.model.project.ProjectSettings;
@@ -11,9 +13,7 @@ import java.net.URI;
 import java.util.Locale;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -64,10 +64,10 @@ public class PublicOAuthFlowService {
     Project project =
         projectRepository
             .findByIdWithSettings(projectId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "project_not_found"));
+            .orElseThrow(() -> new DomainNotFoundException("project_not_found"));
     ProjectSettings settings = project.getSettings();
     if (settings == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "project_settings_missing");
+      throw new DomainValidationException("project_settings_missing");
     }
 
     OAuthAuthorizeDetails details = oauthProvider.getAuthorizeDetails(settings);
@@ -109,11 +109,11 @@ public class PublicOAuthFlowService {
 
   private static String normalizeProvider(String provider) {
     if (provider == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_provider_invalid");
+      throw new DomainValidationException("oauth_provider_invalid");
     }
     String trimmed = provider.trim();
     if (trimmed.isEmpty()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_provider_invalid");
+      throw new DomainValidationException("oauth_provider_invalid");
     }
     return trimmed.toLowerCase(Locale.ROOT);
   }

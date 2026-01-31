@@ -3,6 +3,7 @@ package dev.auctoritas.auth.service.oauth;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.auctoritas.auth.domain.exception.DomainExternalServiceException;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -18,11 +19,9 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
-import org.springframework.web.server.ResponseStatusException;
 
 @Component
 public class AppleIdTokenValidator {
@@ -57,16 +56,16 @@ public class AppleIdTokenValidator {
               .parseSignedClaims(token)
               .getPayload();
     } catch (ExpiredJwtException e) {
-      throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "oauth_apple_userinfo_failed", e);
+      throw new DomainExternalServiceException("oauth_apple_userinfo_failed", e);
     } catch (JwtException e) {
-      throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "oauth_apple_userinfo_failed", e);
+      throw new DomainExternalServiceException("oauth_apple_userinfo_failed", e);
     }
 
     // Apple sets aud=serviceId (client_id).
     // Depending on JJWT version, getAudience() may return a Set.
     var aud = claims.getAudience();
     if (aud == null || !aud.contains(audience)) {
-      throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "oauth_apple_userinfo_failed");
+      throw new DomainExternalServiceException("oauth_apple_userinfo_failed");
     }
 
     String providerUserId = claims.getSubject();
@@ -94,7 +93,7 @@ public class AppleIdTokenValidator {
       cachedKeys = refreshed;
       RSAPublicKey resolved = refreshed.byKid.get(kid);
       if (resolved == null) {
-        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "oauth_apple_userinfo_failed");
+        throw new DomainExternalServiceException("oauth_apple_userinfo_failed");
       }
       return resolved;
     }
@@ -105,7 +104,7 @@ public class AppleIdTokenValidator {
       AppleJwksResponse response =
           restClient.get().uri(APPLE_JWKS_URL).retrieve().body(AppleJwksResponse.class);
       if (response == null || response.keys() == null || response.keys().isEmpty()) {
-        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "oauth_apple_userinfo_failed");
+        throw new DomainExternalServiceException("oauth_apple_userinfo_failed");
       }
 
       Map<String, RSAPublicKey> byKid = new HashMap<>();
@@ -120,7 +119,7 @@ public class AppleIdTokenValidator {
       }
       return new CachedKeys(Map.copyOf(byKid), Instant.now().plus(JWKS_CACHE_TTL));
     } catch (RestClientException ex) {
-      throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "oauth_apple_userinfo_failed", ex);
+      throw new DomainExternalServiceException("oauth_apple_userinfo_failed", ex);
     }
   }
 
@@ -151,14 +150,14 @@ public class AppleIdTokenValidator {
     try {
       String[] parts = jwt.split("\\.");
       if (parts.length < 2) {
-        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "oauth_apple_userinfo_failed");
+        throw new DomainExternalServiceException("oauth_apple_userinfo_failed");
       }
       byte[] headerBytes = Base64.getUrlDecoder().decode(parts[0]);
       JsonNode header = objectMapper.readTree(headerBytes);
       String kid = header == null ? null : header.path("kid").asText(null);
       return requireValue(kid, "oauth_apple_userinfo_failed");
     } catch (Exception ex) {
-      throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "oauth_apple_userinfo_failed", ex);
+      throw new DomainExternalServiceException("oauth_apple_userinfo_failed", ex);
     }
   }
 
@@ -180,11 +179,11 @@ public class AppleIdTokenValidator {
 
   private static String requireValue(String value, String errorCode) {
     if (value == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, errorCode);
+      throw new DomainExternalServiceException(errorCode);
     }
     String trimmed = value.trim();
     if (trimmed.isEmpty()) {
-      throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, errorCode);
+      throw new DomainExternalServiceException(errorCode);
     }
     return trimmed;
   }

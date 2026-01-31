@@ -1,15 +1,15 @@
 package dev.auctoritas.auth.service;
 
+import dev.auctoritas.auth.domain.exception.DomainNotFoundException;
+import dev.auctoritas.auth.domain.exception.DomainUnauthorizedException;
 import dev.auctoritas.auth.domain.model.project.ApiKeyStatus;
 import dev.auctoritas.auth.domain.model.project.ApiKey;
 import dev.auctoritas.auth.domain.model.project.ApiKeyRepositoryPort;
 import dev.auctoritas.auth.ports.messaging.DomainEventPublisherPort;
 import java.util.List;
 import java.util.UUID;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class ApiKeyService {
@@ -29,13 +29,13 @@ public class ApiKeyService {
   @Transactional
   public ApiKey validateActiveKey(String rawKey) {
     if (rawKey == null || rawKey.isBlank()) {
-      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api_key_invalid");
+      throw new DomainUnauthorizedException("api_key_invalid");
     }
     String keyHash = tokenService.hashToken(rawKey);
     ApiKey apiKey =
         apiKeyRepository
             .findByKeyHashAndStatus(keyHash, ApiKeyStatus.ACTIVE)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api_key_invalid"));
+            .orElseThrow(() -> new DomainUnauthorizedException("api_key_invalid"));
 
     // Use rich domain method to record usage
     apiKey.recordUsage();
@@ -58,7 +58,7 @@ public class ApiKeyService {
     ApiKey apiKey =
         apiKeyRepository
             .findByIdAndProjectId(keyId, projectId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api_key_not_found"));
+            .orElseThrow(() -> new DomainNotFoundException("api_key_not_found"));
 
     // Use rich domain method to revoke
     apiKey.revoke("manual_revocation");

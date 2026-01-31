@@ -6,6 +6,10 @@ import dev.auctoritas.auth.api.ProjectCreateResponse;
 import dev.auctoritas.auth.api.ProjectSummaryResponse;
 import dev.auctoritas.auth.api.ProjectUpdateRequest;
 import dev.auctoritas.auth.application.apikey.ApiKeyApplicationService;
+import dev.auctoritas.auth.domain.exception.DomainConflictException;
+import dev.auctoritas.auth.domain.exception.DomainForbiddenException;
+import dev.auctoritas.auth.domain.exception.DomainNotFoundException;
+import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.model.project.ProjectStatus;
 import dev.auctoritas.auth.domain.model.project.Slug;
 import dev.auctoritas.auth.domain.model.organization.Organization;
@@ -17,10 +21,8 @@ import dev.auctoritas.auth.domain.model.organization.OrganizationMemberRole;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Application service that owns Project CRUD operations.
@@ -50,13 +52,13 @@ public class ProjectApplicationService {
     Slug slug = Slug.of(request.slug());
 
     if (projectRepository.existsBySlugAndOrganizationId(slug.value(), orgId)) {
-      throw new ResponseStatusException(HttpStatus.CONFLICT, "project_slug_taken");
+      throw new DomainConflictException("project_slug_taken");
     }
 
     Organization organization =
         organizationRepository
             .findById(orgId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "org_not_found"));
+            .orElseThrow(() -> new DomainNotFoundException("org_not_found"));
 
     try {
       Project project = Project.create(organization, name, slug);
@@ -65,7 +67,7 @@ public class ProjectApplicationService {
 
       return new ProjectCreateResponse(toSummary(savedProject), apiKeySecret);
     } catch (DataIntegrityViolationException ex) {
-      throw new ResponseStatusException(HttpStatus.CONFLICT, "project_slug_taken", ex);
+      throw new DomainConflictException("project_slug_taken", ex);
     }
   }
 
@@ -92,7 +94,7 @@ public class ProjectApplicationService {
       Slug newSlug = Slug.of(request.slug());
       if (!newSlug.value().equals(project.getSlug())
           && projectRepository.existsBySlugAndOrganizationId(newSlug.value(), orgId)) {
-        throw new ResponseStatusException(HttpStatus.CONFLICT, "project_slug_taken");
+        throw new DomainConflictException("project_slug_taken");
       }
       project.changeSlug(newSlug);
     }
@@ -109,7 +111,7 @@ public class ProjectApplicationService {
       case ACTIVE -> project.reactivate();
       case ARCHIVED -> project.archive();
       case SUSPENDED -> project.suspend();
-      case DELETED -> throw new ResponseStatusException(HttpStatus.CONFLICT, "project_status_invalid");
+      case DELETED -> throw new DomainConflictException("project_status_invalid");
     }
   }
 
@@ -138,14 +140,14 @@ public class ProjectApplicationService {
       throw new IllegalStateException("Authenticated org member principal is required.");
     }
     if (!orgId.equals(principal.orgId())) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "org_access_denied");
+      throw new DomainForbiddenException("org_access_denied");
     }
   }
 
   private void enforceAdminAccess(OrganizationMemberPrincipal principal) {
     OrganizationMemberRole role = principal.role();
     if (role != OrganizationMemberRole.OWNER && role != OrganizationMemberRole.ADMIN) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "insufficient_role");
+      throw new DomainForbiddenException("insufficient_role");
     }
   }
 
@@ -153,20 +155,20 @@ public class ProjectApplicationService {
     Project project =
         projectRepository
             .findById(projectId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "project_not_found"));
+            .orElseThrow(() -> new DomainNotFoundException("project_not_found"));
     if (!orgId.equals(project.getOrganization().getId())) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "project_not_found");
+      throw new DomainNotFoundException("project_not_found");
     }
     return project;
   }
 
   private String requireValue(String value, String errorCode) {
     if (value == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     String trimmed = value.trim();
     if (trimmed.isEmpty()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     return trimmed;
   }

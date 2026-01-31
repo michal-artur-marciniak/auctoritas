@@ -2,6 +2,8 @@ package dev.auctoritas.auth.service;
 
 import dev.auctoritas.auth.api.EndUserRefreshRequest;
 import dev.auctoritas.auth.api.EndUserRefreshResponse;
+import dev.auctoritas.auth.domain.exception.DomainUnauthorizedException;
+import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.model.enduser.EndUser;
 import dev.auctoritas.auth.domain.model.enduser.EndUserRefreshToken;
 import dev.auctoritas.auth.domain.model.enduser.EndUserSession;
@@ -17,10 +19,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class EndUserRefreshService {
@@ -56,7 +56,7 @@ public class EndUserRefreshService {
     Project project = resolvedKey.getProject();
     ProjectSettings settings = project.getSettings();
     if (settings == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "project_settings_missing");
+      throw new DomainValidationException("project_settings_missing");
     }
 
     String rawToken = requireValue(request.refreshToken(), "refresh_token_required");
@@ -69,27 +69,27 @@ public class EndUserRefreshService {
               .findByTokenHash(tokenHash)
               .orElseThrow(
                   () ->
-                      new ResponseStatusException(
-                          HttpStatus.BAD_REQUEST, "invalid_refresh_token"));
+                      new DomainValidationException(
+                          "invalid_refresh_token"));
     } catch (PessimisticLockException | LockTimeoutException ex) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid_refresh_token");
+      throw new DomainValidationException("invalid_refresh_token");
     }
 
     if (!existingToken.getUser().getProject().getId().equals(project.getId())) {
-      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api_key_invalid");
+      throw new DomainUnauthorizedException("api_key_invalid");
     }
 
     if (existingToken.isRevoked()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "refresh_token_revoked");
+      throw new DomainValidationException("refresh_token_revoked");
     }
 
     if (existingToken.getExpiresAt().isBefore(Instant.now())) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "refresh_token_expired");
+      throw new DomainValidationException("refresh_token_expired");
     }
 
     EndUser user = existingToken.getUser();
     if (settings.isRequireVerifiedEmailForLogin() && !user.isEmailVerified()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "email_not_verified");
+      throw new DomainValidationException("email_not_verified");
     }
 
     Instant refreshExpiresAt = tokenService.getRefreshTokenExpiry();
@@ -146,11 +146,11 @@ public class EndUserRefreshService {
 
   private String requireValue(String value, String errorCode) {
     if (value == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     String trimmed = value.trim();
     if (trimmed.isEmpty()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     return trimmed;
   }

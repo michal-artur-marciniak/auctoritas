@@ -18,6 +18,8 @@ import dev.auctoritas.auth.application.project.ProjectOAuthSettingsApplicationSe
 import dev.auctoritas.auth.domain.model.project.Slug;
 import dev.auctoritas.auth.domain.model.project.Project;
 import dev.auctoritas.auth.domain.model.project.ProjectSettings;
+import dev.auctoritas.auth.domain.exception.DomainForbiddenException;
+import dev.auctoritas.auth.domain.exception.DomainNotFoundException;
 import dev.auctoritas.auth.domain.model.project.ProjectRepositoryPort;
 import dev.auctoritas.auth.domain.model.project.ProjectSettingsRepositoryPort;
 import dev.auctoritas.auth.security.OrganizationMemberPrincipal;
@@ -25,10 +27,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Facade service coordinating Project operations.
@@ -292,7 +292,7 @@ public class ProjectService {
       throw new IllegalStateException("Authenticated org member principal is required.");
     }
     if (!orgId.equals(principal.orgId())) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "org_access_denied");
+      throw new DomainForbiddenException("org_access_denied");
     }
   }
 
@@ -300,9 +300,9 @@ public class ProjectService {
     Project project =
         projectRepository
             .findById(projectId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "project_not_found"));
+            .orElseThrow(() -> new DomainNotFoundException("project_not_found"));
     if (!orgId.equals(project.getOrganization().getId())) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "project_not_found");
+      throw new DomainNotFoundException("project_not_found");
     }
     return project;
   }

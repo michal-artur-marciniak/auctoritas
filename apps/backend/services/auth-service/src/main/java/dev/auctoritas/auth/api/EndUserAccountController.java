@@ -1,5 +1,6 @@
 package dev.auctoritas.auth.api;
 
+import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.security.EndUserPrincipal;
 import dev.auctoritas.auth.service.EndUserPasswordChangeService;
 import jakarta.validation.Valid;
@@ -11,8 +12,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
-import org.springframework.http.HttpStatus;
 
 @RestController
 @RequestMapping("/api/v1/users/me")
@@ -48,7 +47,7 @@ public class EndUserAccountController {
     try {
       return UUID.fromString(sessionId.trim());
     } catch (IllegalArgumentException ex) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "session_id_invalid");
+      throw new DomainValidationException("session_id_invalid");
     }
   }
 }

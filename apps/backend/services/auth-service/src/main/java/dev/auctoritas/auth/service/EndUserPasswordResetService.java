@@ -3,6 +3,9 @@ package dev.auctoritas.auth.service;
 import dev.auctoritas.auth.api.EndUserPasswordForgotRequest;
 import dev.auctoritas.auth.api.EndUserPasswordResetRequest;
 import dev.auctoritas.auth.api.EndUserPasswordResetResponse;
+import dev.auctoritas.auth.domain.exception.DomainException;
+import dev.auctoritas.auth.domain.exception.DomainUnauthorizedException;
+import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.model.enduser.Password;
 import dev.auctoritas.auth.domain.model.enduser.EndUser;
 import dev.auctoritas.auth.domain.model.enduser.EndUserPasswordHistory;
@@ -26,12 +29,10 @@ import java.util.Locale;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.web.server.ResponseStatusException;
 
 import static net.logstash.logback.argument.StructuredArguments.kv;
 
@@ -85,7 +86,7 @@ public class EndUserPasswordResetService {
     Project project = resolvedKey.getProject();
     ProjectSettings settings = project.getSettings();
     if (settings == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "project_settings_missing");
+      throw new DomainValidationException("project_settings_missing");
     }
 
     String email = normalizeEmail(requireValue(request.email(), "email_required"));
@@ -162,7 +163,7 @@ public class EndUserPasswordResetService {
     Project project = resolvedKey.getProject();
     ProjectSettings settings = project.getSettings();
     if (settings == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "project_settings_missing");
+      throw new DomainValidationException("project_settings_missing");
     }
 
     String rawToken = request.token();
@@ -184,25 +185,25 @@ public class EndUserPasswordResetService {
             resetTokenRepository
                 .findByTokenHash(tokenHash)
                 .orElseThrow(
-                    () -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid_reset_token"));
+                    () -> new DomainValidationException("invalid_reset_token"));
       } catch (PessimisticLockException | LockTimeoutException ex) {
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid_reset_token");
+        throw new DomainValidationException("invalid_reset_token");
       }
 
       if (!resetToken.getUser().getProject().getId().equals(project.getId())) {
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api_key_invalid");
+        throw new DomainUnauthorizedException("api_key_invalid");
       }
 
       if (!resetToken.getProject().getId().equals(project.getId())) {
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api_key_invalid");
+        throw new DomainUnauthorizedException("api_key_invalid");
       }
 
       if (resetToken.getUsedAt() != null) {
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reset_token_used");
+        throw new DomainValidationException("reset_token_used");
       }
 
       if (resetToken.getExpiresAt().isBefore(Instant.now())) {
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reset_token_expired");
+        throw new DomainValidationException("reset_token_expired");
       }
 
       validatePassword(settings, newPassword);
@@ -233,8 +234,8 @@ public class EndUserPasswordResetService {
           kv("outcome", "success"));
 
       return new EndUserPasswordResetResponse("Password reset", null);
-    } catch (ResponseStatusException ex) {
-      String reason = ex.getReason() != null ? ex.getReason() : "unknown";
+    } catch (DomainException ex) {
+      String reason = ex.getErrorCode() != null ? ex.getErrorCode() : "unknown";
       log.warn(
           "password_reset_failed {} {} {} {}",
           kv("projectId", project.getId()),
@@ -250,13 +251,13 @@ public class EndUserPasswordResetService {
     int historyCount = resolvePasswordHistoryCount(settings);
     if (historyCount <= 1) {
       if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "password_reuse_not_allowed");
+        throw new DomainValidationException("password_reuse_not_allowed");
       }
       return;
     }
 
     if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "password_reuse_not_allowed");
+      throw new DomainValidationException("password_reuse_not_allowed");
     }
 
     passwordHistoryRepository
@@ -264,8 +265,7 @@ public class EndUserPasswordResetService {
         .forEach(
             entry -> {
               if (passwordEncoder.matches(newPassword, entry.getPasswordHash())) {
-                throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "password_reuse_not_allowed");
+                throw new DomainValidationException("password_reuse_not_allowed");
               }
             });
   }
@@ -300,7 +300,7 @@ public class EndUserPasswordResetService {
             minUnique);
     PasswordValidator.ValidationResult result = new PasswordValidator(policy).validate(password);
     if (!result.valid()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "password_policy_failed");
+      throw new DomainValidationException("password_policy_failed");
     }
   }
 
@@ -310,11 +310,11 @@ public class EndUserPasswordResetService {
 
   private String requireValue(String value, String errorCode) {
     if (value == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     String trimmed = value.trim();
     if (trimmed.isEmpty()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     return trimmed;
   }

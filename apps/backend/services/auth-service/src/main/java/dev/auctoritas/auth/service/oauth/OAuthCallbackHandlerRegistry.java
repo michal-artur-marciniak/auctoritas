@@ -1,13 +1,12 @@
 package dev.auctoritas.auth.service.oauth;
 
+import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
-import org.springframework.web.server.ResponseStatusException;
 
 @Component
 public class OAuthCallbackHandlerRegistry {
@@ -47,6 +46,6 @@ public class OAuthCallbackHandlerRegistry {
   public OAuthCallbackHandler require(String provider) {
     return find(provider)
         .orElseThrow(
-            () -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "oauth_provider_invalid"));
+            () -> new DomainValidationException("oauth_provider_invalid"));
   }
 }
