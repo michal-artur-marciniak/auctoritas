@@ -4,16 +4,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.auctoritas.auth.adapters.external.oauth.MicrosoftOAuthClient;
 import dev.auctoritas.auth.adapters.external.oauth.OAuthMicrosoftCallbackService;
+import dev.auctoritas.auth.adapters.infra.jpa.EndUserJpaRepositoryAdapter;
+import dev.auctoritas.auth.adapters.persistence.OAuthAuthorizationRequestJpaRepositoryAdapter;
+import dev.auctoritas.auth.adapters.persistence.OAuthConnectionJpaRepositoryAdapter;
+import dev.auctoritas.auth.adapters.persistence.OAuthExchangeCodeJpaRepositoryAdapter;
 import dev.auctoritas.auth.config.JpaConfig;
 import dev.auctoritas.auth.entity.enduser.EndUser;
 import dev.auctoritas.auth.entity.oauth.OAuthAuthorizationRequest;
 import dev.auctoritas.auth.entity.organization.Organization;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
-import dev.auctoritas.auth.repository.EndUserRepository;
-import dev.auctoritas.auth.repository.OAuthAuthorizationRequestRepository;
-import dev.auctoritas.auth.repository.OAuthConnectionRepository;
-import dev.auctoritas.auth.repository.OAuthExchangeCodeRepository;
+import dev.auctoritas.auth.ports.identity.EndUserRepositoryPort;
+import dev.auctoritas.auth.ports.oauth.OAuthAuthorizationRequestRepositoryPort;
+import dev.auctoritas.auth.ports.oauth.OAuthConnectionRepositoryPort;
+import dev.auctoritas.auth.ports.oauth.OAuthExchangeCodeRepositoryPort;
 import dev.auctoritas.auth.adapters.external.oauth.MicrosoftOAuthProvider;
 import dev.auctoritas.auth.service.oauth.OAuthAccountLinkingService;
 import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
@@ -48,6 +52,10 @@ import org.springframework.web.util.UriComponentsBuilder;
   MicrosoftOAuthProvider.class,
   OAuthAccountLinkingService.class,
   OAuthMicrosoftCallbackService.class,
+  EndUserJpaRepositoryAdapter.class,
+  OAuthAuthorizationRequestJpaRepositoryAdapter.class,
+  OAuthConnectionJpaRepositoryAdapter.class,
+  OAuthExchangeCodeJpaRepositoryAdapter.class,
   OAuthMicrosoftCallbackServiceTest.TestConfig.class
 })
 class OAuthMicrosoftCallbackServiceTest {
@@ -57,11 +65,11 @@ class OAuthMicrosoftCallbackServiceTest {
   @org.springframework.beans.factory.annotation.Autowired private OAuthMicrosoftCallbackService callbackService;
 
   @org.springframework.beans.factory.annotation.Autowired
-  private OAuthAuthorizationRequestRepository oauthAuthorizationRequestRepository;
+  private OAuthAuthorizationRequestRepositoryPort oauthAuthorizationRequestRepository;
 
-  @org.springframework.beans.factory.annotation.Autowired private EndUserRepository endUserRepository;
-  @org.springframework.beans.factory.annotation.Autowired private OAuthConnectionRepository oauthConnectionRepository;
-  @org.springframework.beans.factory.annotation.Autowired private OAuthExchangeCodeRepository oauthExchangeCodeRepository;
+  @org.springframework.beans.factory.annotation.Autowired private EndUserRepositoryPort endUserRepository;
+  @org.springframework.beans.factory.annotation.Autowired private OAuthConnectionRepositoryPort oauthConnectionRepository;
+  @org.springframework.beans.factory.annotation.Autowired private OAuthExchangeCodeRepositoryPort oauthExchangeCodeRepository;
   @org.springframework.beans.factory.annotation.Autowired private StubMicrosoftOAuthClient stubMicrosoftOAuthClient;
 
   private Project project;
@@ -199,7 +207,7 @@ class OAuthMicrosoftCallbackServiceTest {
     callbackService.handleCallback(
         "provider-code", state, "https://gateway.example.com/api/v1/auth/oauth/microsoft/callback");
 
-    assertThat(endUserRepository.findAll()).hasSize(1);
+    assertThat(entityManager.createQuery("SELECT u FROM EndUser u", EndUser.class).getResultList()).hasSize(1);
     assertThat(endUserRepository.findByEmailAndProjectId("user@example.com", project.getId()))
         .isPresent()
         .get()

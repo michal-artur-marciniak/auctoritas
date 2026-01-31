@@ -4,16 +4,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.auctoritas.auth.adapters.external.oauth.GoogleOAuthClient;
 import dev.auctoritas.auth.adapters.external.oauth.OAuthGoogleCallbackService;
+import dev.auctoritas.auth.adapters.infra.jpa.EndUserJpaRepositoryAdapter;
+import dev.auctoritas.auth.adapters.persistence.OAuthAuthorizationRequestJpaRepositoryAdapter;
+import dev.auctoritas.auth.adapters.persistence.OAuthConnectionJpaRepositoryAdapter;
+import dev.auctoritas.auth.adapters.persistence.OAuthExchangeCodeJpaRepositoryAdapter;
 import dev.auctoritas.auth.config.JpaConfig;
 import dev.auctoritas.auth.entity.oauth.OAuthAuthorizationRequest;
 import dev.auctoritas.auth.entity.enduser.EndUser;
 import dev.auctoritas.auth.entity.organization.Organization;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
-import dev.auctoritas.auth.repository.EndUserRepository;
-import dev.auctoritas.auth.repository.OAuthAuthorizationRequestRepository;
-import dev.auctoritas.auth.repository.OAuthConnectionRepository;
-import dev.auctoritas.auth.repository.OAuthExchangeCodeRepository;
+import dev.auctoritas.auth.ports.identity.EndUserRepositoryPort;
+import dev.auctoritas.auth.ports.oauth.OAuthAuthorizationRequestRepositoryPort;
+import dev.auctoritas.auth.ports.oauth.OAuthConnectionRepositoryPort;
+import dev.auctoritas.auth.ports.oauth.OAuthExchangeCodeRepositoryPort;
 import dev.auctoritas.auth.domain.organization.OrganizationStatus;
 import dev.auctoritas.auth.domain.project.ProjectStatus;
 import jakarta.persistence.EntityManager;
@@ -48,6 +52,10 @@ import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
   GoogleOAuthProvider.class,
   OAuthAccountLinkingService.class,
   OAuthGoogleCallbackService.class,
+  EndUserJpaRepositoryAdapter.class,
+  OAuthConnectionJpaRepositoryAdapter.class,
+  OAuthAuthorizationRequestJpaRepositoryAdapter.class,
+  OAuthExchangeCodeJpaRepositoryAdapter.class,
   OAuthGoogleCallbackServiceTest.TestConfig.class
 })
 class OAuthGoogleCallbackServiceTest {
@@ -55,10 +63,10 @@ class OAuthGoogleCallbackServiceTest {
   @org.springframework.beans.factory.annotation.Autowired private EntityManager entityManager;
   @org.springframework.beans.factory.annotation.Autowired private TokenService tokenService;
   @org.springframework.beans.factory.annotation.Autowired private OAuthGoogleCallbackService callbackService;
-  @org.springframework.beans.factory.annotation.Autowired private OAuthAuthorizationRequestRepository oauthAuthorizationRequestRepository;
-  @org.springframework.beans.factory.annotation.Autowired private EndUserRepository endUserRepository;
-  @org.springframework.beans.factory.annotation.Autowired private OAuthConnectionRepository oauthConnectionRepository;
-  @org.springframework.beans.factory.annotation.Autowired private OAuthExchangeCodeRepository oauthExchangeCodeRepository;
+  @org.springframework.beans.factory.annotation.Autowired private OAuthAuthorizationRequestRepositoryPort oauthAuthorizationRequestRepository;
+  @org.springframework.beans.factory.annotation.Autowired private EndUserRepositoryPort endUserRepository;
+  @org.springframework.beans.factory.annotation.Autowired private OAuthConnectionRepositoryPort oauthConnectionRepository;
+  @org.springframework.beans.factory.annotation.Autowired private OAuthExchangeCodeRepositoryPort oauthExchangeCodeRepository;
   @org.springframework.beans.factory.annotation.Autowired private StubGoogleOAuthClient stubGoogleOAuthClient;
 
   private Project project;
@@ -241,7 +249,7 @@ class OAuthGoogleCallbackServiceTest {
         state,
         "https://gateway.example.com/api/v1/auth/oauth/google/callback");
 
-    assertThat(endUserRepository.findAll()).hasSize(1);
+    assertThat(entityManager.createQuery("SELECT u FROM EndUser u", EndUser.class).getResultList()).hasSize(1);
     assertThat(endUserRepository.findByEmailAndProjectId("user@example.com", project.getId()))
         .isPresent()
         .get()

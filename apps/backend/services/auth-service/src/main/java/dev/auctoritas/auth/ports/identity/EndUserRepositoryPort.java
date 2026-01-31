@@ -10,7 +10,11 @@ import java.util.UUID;
 public interface EndUserRepositoryPort {
   boolean existsByEmailAndProjectId(String email, UUID projectId);
 
+  Optional<EndUser> findByEmailAndProjectId(String email, UUID projectId);
+
   Optional<EndUser> findByEmailAndProjectIdForUpdate(String email, UUID projectId);
+
+  Optional<EndUser> findByIdAndProjectIdForUpdate(UUID userId, UUID projectId);
 
   EndUser save(EndUser user);
 }

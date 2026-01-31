@@ -7,8 +7,8 @@ import dev.auctoritas.auth.entity.oauth.OAuthAuthorizationRequest;
 import dev.auctoritas.auth.entity.oauth.OAuthExchangeCode;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
-import dev.auctoritas.auth.repository.OAuthAuthorizationRequestRepository;
-import dev.auctoritas.auth.repository.OAuthExchangeCodeRepository;
+import dev.auctoritas.auth.ports.oauth.OAuthAuthorizationRequestRepositoryPort;
+import dev.auctoritas.auth.ports.oauth.OAuthExchangeCodeRepositoryPort;
 import dev.auctoritas.auth.service.TokenService;
 import dev.auctoritas.auth.service.oauth.OAuthAccountLinkingService;
 import dev.auctoritas.auth.ports.oauth.OAuthProviderPort;
@@ -24,15 +24,15 @@ import org.springframework.web.util.UriComponentsBuilder;
 public class OAuthGoogleCallbackService {
   private static final String PROVIDER = "google";
 
-  private final OAuthAuthorizationRequestRepository oauthAuthorizationRequestRepository;
-  private final OAuthExchangeCodeRepository oauthExchangeCodeRepository;
+  private final OAuthAuthorizationRequestRepositoryPort oauthAuthorizationRequestRepository;
+  private final OAuthExchangeCodeRepositoryPort oauthExchangeCodeRepository;
   private final TokenService tokenService;
   private final OAuthProviderRegistry oauthProviderRegistry;
   private final OAuthAccountLinkingService oauthAccountLinkingService;
 
   public OAuthGoogleCallbackService(
-      OAuthAuthorizationRequestRepository oauthAuthorizationRequestRepository,
-      OAuthExchangeCodeRepository oauthExchangeCodeRepository,
+      OAuthAuthorizationRequestRepositoryPort oauthAuthorizationRequestRepository,
+      OAuthExchangeCodeRepositoryPort oauthExchangeCodeRepository,
       TokenService tokenService,
       OAuthProviderRegistry oauthProviderRegistry,
       OAuthAccountLinkingService oauthAccountLinkingService) {

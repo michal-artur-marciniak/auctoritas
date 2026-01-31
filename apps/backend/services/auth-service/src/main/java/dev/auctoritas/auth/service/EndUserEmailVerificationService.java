@@ -9,8 +9,8 @@ import dev.auctoritas.auth.entity.project.ApiKey;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.messaging.DomainEventPublisher;
 import dev.auctoritas.auth.messaging.EmailVerificationResentEvent;
-import dev.auctoritas.auth.repository.EndUserEmailVerificationTokenRepository;
-import dev.auctoritas.auth.repository.EndUserRepository;
+import dev.auctoritas.auth.ports.identity.EndUserEmailVerificationTokenRepositoryPort;
+import dev.auctoritas.auth.ports.identity.EndUserRepositoryPort;
 import jakarta.persistence.LockTimeoutException;
 import jakarta.persistence.PessimisticLockException;
 import java.time.Duration;
@@ -36,16 +36,16 @@ public class EndUserEmailVerificationService {
   private static final Duration RESEND_WINDOW = Duration.ofHours(1);
 
   private final ApiKeyService apiKeyService;
-  private final EndUserRepository endUserRepository;
-  private final EndUserEmailVerificationTokenRepository verificationTokenRepository;
+  private final EndUserRepositoryPort endUserRepository;
+  private final EndUserEmailVerificationTokenRepositoryPort verificationTokenRepository;
   private final TokenService tokenService;
   private final DomainEventPublisher domainEventPublisher;
   private final boolean logVerificationChallenge;
 
   public EndUserEmailVerificationService(
       ApiKeyService apiKeyService,
-      EndUserRepository endUserRepository,
-      EndUserEmailVerificationTokenRepository verificationTokenRepository,
+      EndUserRepositoryPort endUserRepository,
+      EndUserEmailVerificationTokenRepositoryPort verificationTokenRepository,
       TokenService tokenService,
       DomainEventPublisher domainEventPublisher,
       @Value("${auctoritas.auth.email-verification.log-challenge:true}") boolean logVerificationChallenge) {

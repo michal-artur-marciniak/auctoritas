@@ -6,8 +6,8 @@ import dev.auctoritas.auth.api.ApiKeySummaryResponse;
 import dev.auctoritas.auth.entity.project.ApiKey;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.ports.apikey.ApiKeyRepositoryPort;
+import dev.auctoritas.auth.ports.project.ProjectRepositoryPort;
 import dev.auctoritas.auth.ports.security.TokenHasherPort;
-import dev.auctoritas.auth.repository.ProjectRepository;
 import dev.auctoritas.auth.security.OrgMemberPrincipal;
 import dev.auctoritas.auth.service.ApiKeyService;
 import dev.auctoritas.auth.domain.apikey.ApiKeyEnvironment;
@@ -31,7 +31,7 @@ public class ApiKeyApplicationService {
   private static final String TEST_KEY_PREFIX = "pk_test_";
 
   private final ApiKeyRepositoryPort apiKeyRepository;
-  private final ProjectRepository projectRepository;
+  private final ProjectRepositoryPort projectRepository;
   private final ApiKeyService apiKeyService;
   private final TokenHasherPort tokenHasherPort;
   private final SecureRandom secureRandom = new SecureRandom();
@@ -39,7 +39,7 @@ public class ApiKeyApplicationService {
 
   public ApiKeyApplicationService(
       ApiKeyRepositoryPort apiKeyRepository,
-      ProjectRepository projectRepository,
+      ProjectRepositoryPort projectRepository,
       ApiKeyService apiKeyService,
       TokenHasherPort tokenHasherPort) {
     this.apiKeyRepository = apiKeyRepository;

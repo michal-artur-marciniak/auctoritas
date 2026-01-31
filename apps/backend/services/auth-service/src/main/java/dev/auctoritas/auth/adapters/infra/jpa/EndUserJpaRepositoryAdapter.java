@@ -29,6 +29,16 @@ public class EndUserJpaRepositoryAdapter implements EndUserRepositoryPort {
   }
 
   @Override
+  public Optional<EndUser> findByEmailAndProjectId(String email, UUID projectId) {
+    return endUserRepository.findByEmailAndProjectId(email, projectId);
+  }
+
+  @Override
+  public Optional<EndUser> findByIdAndProjectIdForUpdate(UUID userId, UUID projectId) {
+    return endUserRepository.findByIdAndProjectIdForUpdate(userId, projectId);
+  }
+
+  @Override
   public EndUser save(EndUser user) {
     return endUserRepository.save(user);
   }

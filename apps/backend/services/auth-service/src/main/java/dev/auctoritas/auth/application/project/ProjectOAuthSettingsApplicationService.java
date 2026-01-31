@@ -6,8 +6,8 @@ import dev.auctoritas.auth.domain.project.ProjectOAuthSettingsUpdate.SecretUpdat
 import dev.auctoritas.auth.domain.project.ProjectOAuthSettingsValidator;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
-import dev.auctoritas.auth.repository.ProjectRepository;
-import dev.auctoritas.auth.repository.ProjectSettingsRepository;
+import dev.auctoritas.auth.ports.project.ProjectRepositoryPort;
+import dev.auctoritas.auth.ports.project.ProjectSettingsRepositoryPort;
 import dev.auctoritas.auth.security.OrgMemberPrincipal;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -20,14 +20,14 @@ import org.springframework.web.server.ResponseStatusException;
 /** Application service that owns Project OAuth settings updates. */
 @Service
 public class ProjectOAuthSettingsApplicationService {
-  private final ProjectRepository projectRepository;
-  private final ProjectSettingsRepository projectSettingsRepository;
+  private final ProjectRepositoryPort projectRepository;
+  private final ProjectSettingsRepositoryPort projectSettingsRepository;
   private final TextEncryptor oauthClientSecretEncryptor;
   private final ProjectOAuthSettingsValidator oauthSettingsValidator = new ProjectOAuthSettingsValidator();
 
   public ProjectOAuthSettingsApplicationService(
-      ProjectRepository projectRepository,
-      ProjectSettingsRepository projectSettingsRepository,
+      ProjectRepositoryPort projectRepository,
+      ProjectSettingsRepositoryPort projectSettingsRepository,
       TextEncryptor oauthClientSecretEncryptor) {
     this.projectRepository = projectRepository;
     this.projectSettingsRepository = projectSettingsRepository;

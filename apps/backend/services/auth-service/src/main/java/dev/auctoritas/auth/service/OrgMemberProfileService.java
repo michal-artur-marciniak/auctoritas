@@ -2,7 +2,7 @@ package dev.auctoritas.auth.service;
 
 import dev.auctoritas.auth.api.OrgMemberProfileResponse;
 import dev.auctoritas.auth.entity.organization.OrganizationMember;
-import dev.auctoritas.auth.repository.OrganizationMemberRepository;
+import dev.auctoritas.auth.ports.organization.OrganizationMemberRepositoryPort;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -13,9 +13,9 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class OrgMemberProfileService {
-  private final OrganizationMemberRepository memberRepository;
+  private final OrganizationMemberRepositoryPort memberRepository;
 
-  public OrgMemberProfileService(OrganizationMemberRepository memberRepository) {
+  public OrgMemberProfileService(OrganizationMemberRepositoryPort memberRepository) {
     this.memberRepository = memberRepository;
   }
 

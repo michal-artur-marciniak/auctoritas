@@ -1,8 +1,8 @@
 package dev.auctoritas.auth.service;
 
 import dev.auctoritas.auth.entity.project.ApiKey;
-import dev.auctoritas.auth.repository.EndUserRefreshTokenRepository;
-import dev.auctoritas.auth.repository.EndUserSessionRepository;
+import dev.auctoritas.auth.ports.identity.EndUserRefreshTokenRepositoryPort;
+import dev.auctoritas.auth.ports.identity.EndUserSessionRepositoryPort;
 import dev.auctoritas.auth.security.EndUserPrincipal;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -12,13 +12,13 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class EndUserLogoutService {
   private final ApiKeyService apiKeyService;
-  private final EndUserSessionRepository endUserSessionRepository;
-  private final EndUserRefreshTokenRepository endUserRefreshTokenRepository;
+  private final EndUserSessionRepositoryPort endUserSessionRepository;
+  private final EndUserRefreshTokenRepositoryPort endUserRefreshTokenRepository;
 
   public EndUserLogoutService(
       ApiKeyService apiKeyService,
-      EndUserSessionRepository endUserSessionRepository,
-      EndUserRefreshTokenRepository endUserRefreshTokenRepository) {
+      EndUserSessionRepositoryPort endUserSessionRepository,
+      EndUserRefreshTokenRepositoryPort endUserRefreshTokenRepository) {
     this.apiKeyService = apiKeyService;
     this.endUserSessionRepository = endUserSessionRepository;
     this.endUserRefreshTokenRepository = endUserRefreshTokenRepository;

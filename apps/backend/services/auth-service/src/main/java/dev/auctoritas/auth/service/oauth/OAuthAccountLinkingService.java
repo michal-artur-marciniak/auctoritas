@@ -3,8 +3,8 @@ package dev.auctoritas.auth.service.oauth;
 import dev.auctoritas.auth.entity.enduser.EndUser;
 import dev.auctoritas.auth.entity.oauth.OAuthConnection;
 import dev.auctoritas.auth.entity.project.Project;
-import dev.auctoritas.auth.repository.EndUserRepository;
-import dev.auctoritas.auth.repository.OAuthConnectionRepository;
+import dev.auctoritas.auth.ports.identity.EndUserRepositoryPort;
+import dev.auctoritas.auth.ports.oauth.OAuthConnectionRepositoryPort;
 import dev.auctoritas.auth.service.TokenService;
 import java.util.Locale;
 import java.util.Optional;
@@ -18,14 +18,14 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class OAuthAccountLinkingService {
-  private final EndUserRepository endUserRepository;
-  private final OAuthConnectionRepository oauthConnectionRepository;
+  private final EndUserRepositoryPort endUserRepository;
+  private final OAuthConnectionRepositoryPort oauthConnectionRepository;
   private final PasswordEncoder passwordEncoder;
   private final TokenService tokenService;
 
   public OAuthAccountLinkingService(
-      EndUserRepository endUserRepository,
-      OAuthConnectionRepository oauthConnectionRepository,
+      EndUserRepositoryPort endUserRepository,
+      OAuthConnectionRepositoryPort oauthConnectionRepository,
       PasswordEncoder passwordEncoder,
       TokenService tokenService) {
     this.endUserRepository = endUserRepository;

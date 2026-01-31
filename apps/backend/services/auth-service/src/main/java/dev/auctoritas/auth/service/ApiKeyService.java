@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.service;
 
 import dev.auctoritas.auth.entity.project.ApiKey;
-import dev.auctoritas.auth.repository.ApiKeyRepository;
+import dev.auctoritas.auth.ports.apikey.ApiKeyRepositoryPort;
 import dev.auctoritas.auth.domain.apikey.ApiKeyStatus;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -13,10 +13,10 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class ApiKeyService {
-  private final ApiKeyRepository apiKeyRepository;
+  private final ApiKeyRepositoryPort apiKeyRepository;
   private final TokenService tokenService;
 
-  public ApiKeyService(ApiKeyRepository apiKeyRepository, TokenService tokenService) {
+  public ApiKeyService(ApiKeyRepositoryPort apiKeyRepository, TokenService tokenService) {
     this.apiKeyRepository = apiKeyRepository;
     this.tokenService = tokenService;
   }

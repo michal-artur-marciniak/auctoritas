@@ -5,9 +5,9 @@ import dev.auctoritas.auth.api.OrgRegistrationResponse;
 import dev.auctoritas.auth.entity.organization.OrgMemberRefreshToken;
 import dev.auctoritas.auth.entity.organization.Organization;
 import dev.auctoritas.auth.entity.organization.OrganizationMember;
-import dev.auctoritas.auth.repository.OrgMemberRefreshTokenRepository;
-import dev.auctoritas.auth.repository.OrganizationMemberRepository;
-import dev.auctoritas.auth.repository.OrganizationRepository;
+import dev.auctoritas.auth.ports.organization.OrgMemberRefreshTokenRepositoryPort;
+import dev.auctoritas.auth.ports.organization.OrganizationMemberRepositoryPort;
+import dev.auctoritas.auth.ports.organization.OrganizationRepositoryPort;
 import dev.auctoritas.auth.domain.organization.OrgMemberRole;
 import java.util.Locale;
 import org.springframework.http.HttpStatus;
@@ -18,17 +18,17 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class OrganizationRegistrationService {
-  private final OrganizationRepository organizationRepository;
-  private final OrganizationMemberRepository organizationMemberRepository;
-  private final OrgMemberRefreshTokenRepository refreshTokenRepository;
+  private final OrganizationRepositoryPort organizationRepository;
+  private final OrganizationMemberRepositoryPort organizationMemberRepository;
+  private final OrgMemberRefreshTokenRepositoryPort refreshTokenRepository;
   private final PasswordEncoder passwordEncoder;
   private final TokenService tokenService;
   private final JwtService jwtService;
 
   public OrganizationRegistrationService(
-      OrganizationRepository organizationRepository,
-      OrganizationMemberRepository organizationMemberRepository,
-      OrgMemberRefreshTokenRepository refreshTokenRepository,
+      OrganizationRepositoryPort organizationRepository,
+      OrganizationMemberRepositoryPort organizationMemberRepository,
+      OrgMemberRefreshTokenRepositoryPort refreshTokenRepository,
       PasswordEncoder passwordEncoder,
       TokenService tokenService,
       JwtService jwtService) {

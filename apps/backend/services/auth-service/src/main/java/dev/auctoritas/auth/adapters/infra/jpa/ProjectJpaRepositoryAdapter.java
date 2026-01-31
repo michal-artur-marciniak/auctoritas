@@ -38,4 +38,9 @@ public class ProjectJpaRepositoryAdapter implements ProjectRepositoryPort {
   public Optional<Project> findById(UUID projectId) {
     return projectRepository.findById(projectId);
   }
+
+  @Override
+  public Optional<Project> findByIdWithSettings(UUID projectId) {
+    return projectRepository.findByIdWithSettings(projectId);
+  }
 }

@@ -8,8 +8,8 @@ import dev.auctoritas.auth.entity.enduser.EndUserSession;
 import dev.auctoritas.auth.entity.project.ApiKey;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
-import dev.auctoritas.auth.repository.EndUserRefreshTokenRepository;
-import dev.auctoritas.auth.repository.EndUserSessionRepository;
+import dev.auctoritas.auth.ports.identity.EndUserRefreshTokenRepositoryPort;
+import dev.auctoritas.auth.ports.identity.EndUserSessionRepositoryPort;
 import jakarta.persistence.LockTimeoutException;
 import jakarta.persistence.PessimisticLockException;
 import java.time.Instant;
@@ -25,15 +25,15 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class EndUserRefreshService {
   private final ApiKeyService apiKeyService;
-  private final EndUserRefreshTokenRepository refreshTokenRepository;
-  private final EndUserSessionRepository endUserSessionRepository;
+  private final EndUserRefreshTokenRepositoryPort refreshTokenRepository;
+  private final EndUserSessionRepositoryPort endUserSessionRepository;
   private final TokenService tokenService;
   private final JwtService jwtService;
 
   public EndUserRefreshService(
       ApiKeyService apiKeyService,
-      EndUserRefreshTokenRepository refreshTokenRepository,
-      EndUserSessionRepository endUserSessionRepository,
+      EndUserRefreshTokenRepositoryPort refreshTokenRepository,
+      EndUserSessionRepositoryPort endUserSessionRepository,
       TokenService tokenService,
       JwtService jwtService) {
     this.apiKeyService = apiKeyService;

@@ -5,8 +5,8 @@ import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.entity.oauth.OAuthAuthorizationRequest;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
-import dev.auctoritas.auth.repository.OAuthAuthorizationRequestRepository;
-import dev.auctoritas.auth.repository.ProjectRepository;
+import dev.auctoritas.auth.ports.oauth.OAuthAuthorizationRequestRepositoryPort;
+import dev.auctoritas.auth.ports.project.ProjectRepositoryPort;
 import dev.auctoritas.auth.service.TokenService;
 import dev.auctoritas.auth.service.oauth.OAuthAuthorizeDetails;
 import dev.auctoritas.auth.ports.oauth.OAuthProviderPort;
@@ -26,14 +26,14 @@ public class OAuthGoogleAuthorizationService {
   private static final Duration AUTH_REQUEST_TTL = Duration.ofMinutes(10);
   private static final String PROVIDER = "google";
 
-  private final ProjectRepository projectRepository;
-  private final OAuthAuthorizationRequestRepository oauthAuthorizationRequestRepository;
+  private final ProjectRepositoryPort projectRepository;
+  private final OAuthAuthorizationRequestRepositoryPort oauthAuthorizationRequestRepository;
   private final TokenService tokenService;
   private final OAuthProviderRegistry oauthProviderRegistry;
 
   public OAuthGoogleAuthorizationService(
-      ProjectRepository projectRepository,
-      OAuthAuthorizationRequestRepository oauthAuthorizationRequestRepository,
+      ProjectRepositoryPort projectRepository,
+      OAuthAuthorizationRequestRepositoryPort oauthAuthorizationRequestRepository,
       TokenService tokenService,
       OAuthProviderRegistry oauthProviderRegistry) {
     this.projectRepository = projectRepository;

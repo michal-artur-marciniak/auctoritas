@@ -8,15 +8,15 @@ import dev.auctoritas.auth.entity.enduser.EndUserRefreshToken;
 import dev.auctoritas.auth.entity.project.ApiKey;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
-import dev.auctoritas.auth.repository.EndUserPasswordHistoryRepository;
-import dev.auctoritas.auth.repository.EndUserRefreshTokenRepository;
-import dev.auctoritas.auth.repository.EndUserRepository;
-import dev.auctoritas.auth.repository.EndUserSessionRepository;
+import dev.auctoritas.auth.ports.identity.EndUserPasswordHistoryRepositoryPort;
+import dev.auctoritas.auth.ports.identity.EndUserRefreshTokenRepositoryPort;
+import dev.auctoritas.auth.ports.identity.EndUserRepositoryPort;
+import dev.auctoritas.auth.ports.identity.EndUserSessionRepositoryPort;
 import dev.auctoritas.auth.security.EndUserPrincipal;
 import dev.auctoritas.auth.shared.security.PasswordPolicy;
 import dev.auctoritas.auth.shared.security.PasswordValidator;
 import java.util.UUID;
-import org.springframework.data.domain.PageRequest;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -30,18 +30,18 @@ public class EndUserPasswordChangeService {
   private static final int DEFAULT_PASSWORD_HISTORY_COUNT = 5;
 
   private final ApiKeyService apiKeyService;
-  private final EndUserRepository endUserRepository;
-  private final EndUserPasswordHistoryRepository passwordHistoryRepository;
-  private final EndUserSessionRepository sessionRepository;
-  private final EndUserRefreshTokenRepository refreshTokenRepository;
+  private final EndUserRepositoryPort endUserRepository;
+  private final EndUserPasswordHistoryRepositoryPort passwordHistoryRepository;
+  private final EndUserSessionRepositoryPort sessionRepository;
+  private final EndUserRefreshTokenRepositoryPort refreshTokenRepository;
   private final PasswordEncoder passwordEncoder;
 
   public EndUserPasswordChangeService(
       ApiKeyService apiKeyService,
-      EndUserRepository endUserRepository,
-      EndUserPasswordHistoryRepository passwordHistoryRepository,
-      EndUserSessionRepository sessionRepository,
-      EndUserRefreshTokenRepository refreshTokenRepository,
+      EndUserRepositoryPort endUserRepository,
+      EndUserPasswordHistoryRepositoryPort passwordHistoryRepository,
+      EndUserSessionRepositoryPort sessionRepository,
+      EndUserRefreshTokenRepositoryPort refreshTokenRepository,
       PasswordEncoder passwordEncoder) {
     this.apiKeyService = apiKeyService;
     this.endUserRepository = endUserRepository;
@@ -148,7 +148,7 @@ public class EndUserPasswordChangeService {
     }
 
     passwordHistoryRepository
-        .findRecent(projectId, user.getId(), PageRequest.of(0, historyCount - 1))
+        .findRecent(projectId, user.getId(), historyCount - 1)
         .forEach(
             entry -> {
               if (passwordEncoder.matches(newPassword, entry.getPasswordHash())) {

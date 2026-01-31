@@ -9,9 +9,9 @@ import dev.auctoritas.auth.entity.oauth.OAuthExchangeCode;
 import dev.auctoritas.auth.entity.project.ApiKey;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
-import dev.auctoritas.auth.repository.EndUserRefreshTokenRepository;
-import dev.auctoritas.auth.repository.EndUserSessionRepository;
-import dev.auctoritas.auth.repository.OAuthExchangeCodeRepository;
+import dev.auctoritas.auth.ports.identity.EndUserRefreshTokenRepositoryPort;
+import dev.auctoritas.auth.ports.identity.EndUserSessionRepositoryPort;
+import dev.auctoritas.auth.ports.oauth.OAuthExchangeCodeRepositoryPort;
 import jakarta.persistence.LockTimeoutException;
 import jakarta.persistence.PessimisticLockException;
 import java.time.Instant;
@@ -27,17 +27,17 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class OAuthExchangeService {
   private final ApiKeyService apiKeyService;
-  private final OAuthExchangeCodeRepository oauthExchangeCodeRepository;
-  private final EndUserRefreshTokenRepository refreshTokenRepository;
-  private final EndUserSessionRepository endUserSessionRepository;
+  private final OAuthExchangeCodeRepositoryPort oauthExchangeCodeRepository;
+  private final EndUserRefreshTokenRepositoryPort refreshTokenRepository;
+  private final EndUserSessionRepositoryPort endUserSessionRepository;
   private final TokenService tokenService;
   private final JwtService jwtService;
 
   public OAuthExchangeService(
       ApiKeyService apiKeyService,
-      OAuthExchangeCodeRepository oauthExchangeCodeRepository,
-      EndUserRefreshTokenRepository refreshTokenRepository,
-      EndUserSessionRepository endUserSessionRepository,
+      OAuthExchangeCodeRepositoryPort oauthExchangeCodeRepository,
+      EndUserRefreshTokenRepositoryPort refreshTokenRepository,
+      EndUserSessionRepositoryPort endUserSessionRepository,
       TokenService tokenService,
       JwtService jwtService) {
     this.apiKeyService = apiKeyService;

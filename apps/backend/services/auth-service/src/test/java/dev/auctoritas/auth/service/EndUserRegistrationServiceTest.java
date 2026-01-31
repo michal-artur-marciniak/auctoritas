@@ -12,8 +12,8 @@ import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
 import dev.auctoritas.auth.messaging.DomainEventPublisher;
 import dev.auctoritas.auth.messaging.UserRegisteredEvent;
-import dev.auctoritas.auth.repository.EndUserEmailVerificationTokenRepository;
-import dev.auctoritas.auth.repository.EndUserRepository;
+import dev.auctoritas.auth.ports.identity.EndUserEmailVerificationTokenRepositoryPort;
+import dev.auctoritas.auth.ports.identity.EndUserRepositoryPort;
 import dev.auctoritas.auth.domain.apikey.ApiKeyStatus;
 import dev.auctoritas.auth.domain.organization.OrganizationStatus;
 import jakarta.persistence.EntityManager;
@@ -60,8 +60,8 @@ class EndUserRegistrationServiceTest {
 
   @Autowired private EntityManager entityManager;
   @Autowired private EndUserRegistrationService registrationService;
-  @Autowired private EndUserRepository endUserRepository;
-  @Autowired private EndUserEmailVerificationTokenRepository verificationTokenRepository;
+  @Autowired private EndUserRepositoryPort endUserRepository;
+  @Autowired private EndUserEmailVerificationTokenRepositoryPort verificationTokenRepository;
   @Autowired private TokenService tokenService;
   @Autowired private InMemoryDomainEventPublisher domainEventPublisher;
 
@@ -114,14 +114,14 @@ class EndUserRegistrationServiceTest {
     assertThat(response.accessToken()).isNotBlank();
     assertThat(response.refreshToken()).isNotBlank();
 
-    List<EndUser> users = endUserRepository.findAll();
+    List<EndUser> users = entityManager.createQuery("SELECT u FROM EndUser u", EndUser.class).getResultList();
     assertThat(users).hasSize(1);
     EndUser user = users.getFirst();
     assertThat(user.getProject().getId()).isEqualTo(project.getId());
     assertThat(user.getEmail()).isEqualTo("user@example.com");
     assertThat(user.getEmailVerified()).isFalse();
 
-    List<EndUserEmailVerificationToken> tokens = verificationTokenRepository.findAll();
+    List<EndUserEmailVerificationToken> tokens = entityManager.createQuery("SELECT t FROM EndUserEmailVerificationToken t", EndUserEmailVerificationToken.class).getResultList();
     assertThat(tokens).hasSize(1);
     EndUserEmailVerificationToken token = tokens.getFirst();
     assertThat(token.getProject().getId()).isEqualTo(project.getId());
@@ -153,7 +153,7 @@ class EndUserRegistrationServiceTest {
         null,
         null);
 
-    List<EndUser> users = endUserRepository.findAll();
+    List<EndUser> users = entityManager.createQuery("SELECT u FROM EndUser u", EndUser.class).getResultList();
     assertThat(users).hasSize(1);
     assertThat(users.getFirst().getEmail()).isEqualTo("user@example.com");
 

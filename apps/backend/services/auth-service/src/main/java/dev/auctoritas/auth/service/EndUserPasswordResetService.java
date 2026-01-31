@@ -11,11 +11,11 @@ import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
 import dev.auctoritas.auth.messaging.DomainEventPublisher;
 import dev.auctoritas.auth.messaging.PasswordResetRequestedEvent;
-import dev.auctoritas.auth.repository.EndUserPasswordHistoryRepository;
-import dev.auctoritas.auth.repository.EndUserRefreshTokenRepository;
-import dev.auctoritas.auth.repository.EndUserPasswordResetTokenRepository;
-import dev.auctoritas.auth.repository.EndUserRepository;
-import dev.auctoritas.auth.repository.EndUserSessionRepository;
+import dev.auctoritas.auth.ports.identity.EndUserPasswordHistoryRepositoryPort;
+import dev.auctoritas.auth.ports.identity.EndUserPasswordResetTokenRepositoryPort;
+import dev.auctoritas.auth.ports.identity.EndUserRefreshTokenRepositoryPort;
+import dev.auctoritas.auth.ports.identity.EndUserRepositoryPort;
+import dev.auctoritas.auth.ports.identity.EndUserSessionRepositoryPort;
 import dev.auctoritas.auth.shared.security.PasswordPolicy;
 import dev.auctoritas.auth.shared.security.PasswordValidator;
 import jakarta.persistence.LockTimeoutException;
@@ -24,7 +24,7 @@ import java.time.Instant;
 import java.util.Locale;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.domain.PageRequest;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -44,11 +44,11 @@ public class EndUserPasswordResetService {
       "If an account exists, password reset instructions have been sent";
 
   private final ApiKeyService apiKeyService;
-  private final EndUserRepository endUserRepository;
-  private final EndUserPasswordResetTokenRepository resetTokenRepository;
-  private final EndUserPasswordHistoryRepository passwordHistoryRepository;
-  private final EndUserRefreshTokenRepository refreshTokenRepository;
-  private final EndUserSessionRepository endUserSessionRepository;
+  private final EndUserRepositoryPort endUserRepository;
+  private final EndUserPasswordResetTokenRepositoryPort resetTokenRepository;
+  private final EndUserPasswordHistoryRepositoryPort passwordHistoryRepository;
+  private final EndUserRefreshTokenRepositoryPort refreshTokenRepository;
+  private final EndUserSessionRepositoryPort endUserSessionRepository;
   private final PasswordEncoder passwordEncoder;
   private final TokenService tokenService;
   private final DomainEventPublisher domainEventPublisher;
@@ -56,11 +56,11 @@ public class EndUserPasswordResetService {
 
   public EndUserPasswordResetService(
       ApiKeyService apiKeyService,
-      EndUserRepository endUserRepository,
-      EndUserPasswordResetTokenRepository resetTokenRepository,
-      EndUserPasswordHistoryRepository passwordHistoryRepository,
-      EndUserRefreshTokenRepository refreshTokenRepository,
-      EndUserSessionRepository endUserSessionRepository,
+      EndUserRepositoryPort endUserRepository,
+      EndUserPasswordResetTokenRepositoryPort resetTokenRepository,
+      EndUserPasswordHistoryRepositoryPort passwordHistoryRepository,
+      EndUserRefreshTokenRepositoryPort refreshTokenRepository,
+      EndUserSessionRepositoryPort endUserSessionRepository,
       PasswordEncoder passwordEncoder,
       TokenService tokenService,
       DomainEventPublisher domainEventPublisher,
@@ -261,7 +261,7 @@ public class EndUserPasswordResetService {
     }
 
     passwordHistoryRepository
-        .findRecent(project.getId(), user.getId(), PageRequest.of(0, historyCount - 1))
+        .findRecent(project.getId(), user.getId(), historyCount - 1)
         .forEach(
             entry -> {
               if (passwordEncoder.matches(newPassword, entry.getPasswordHash())) {

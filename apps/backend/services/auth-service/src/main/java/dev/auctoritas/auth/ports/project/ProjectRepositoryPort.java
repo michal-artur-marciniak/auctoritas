@@ -16,4 +16,6 @@ public interface ProjectRepositoryPort {
   List<Project> findAllByOrganizationId(UUID organizationId);
 
   Optional<Project> findById(UUID projectId);
+
+  Optional<Project> findByIdWithSettings(UUID projectId);
 }

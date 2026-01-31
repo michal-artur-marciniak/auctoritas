@@ -4,7 +4,7 @@ import dev.auctoritas.auth.entity.project.ApiKey;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
 import dev.auctoritas.auth.ports.oauth.OAuthProviderPort;
-import dev.auctoritas.auth.repository.ProjectRepository;
+import dev.auctoritas.auth.ports.project.ProjectRepositoryPort;
 import dev.auctoritas.auth.service.ApiKeyService;
 import dev.auctoritas.auth.service.TokenService;
 import java.net.URI;
@@ -24,7 +24,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 public class PublicOAuthFlowService {
   private final ApiKeyService apiKeyService;
   private final TokenService tokenService;
-  private final ProjectRepository projectRepository;
+  private final ProjectRepositoryPort projectRepository;
   private final OAuthProviderRegistry oauthProviderRegistry;
   private final OAuthAuthorizationRequestPersisterRegistry authorizationRequestPersisterRegistry;
   private final OAuthCallbackHandlerRegistry callbackHandlerRegistry;
@@ -33,7 +33,7 @@ public class PublicOAuthFlowService {
   public PublicOAuthFlowService(
       ApiKeyService apiKeyService,
       TokenService tokenService,
-      ProjectRepository projectRepository,
+      ProjectRepositoryPort projectRepository,
       OAuthProviderRegistry oauthProviderRegistry,
       OAuthAuthorizationRequestPersisterRegistry authorizationRequestPersisterRegistry,
       OAuthCallbackHandlerRegistry callbackHandlerRegistry,

@@ -12,8 +12,8 @@ import dev.auctoritas.auth.entity.project.ProjectSettings;
 import dev.auctoritas.auth.ports.identity.EndUserRepositoryPort;
 import dev.auctoritas.auth.ports.security.JwtProviderPort;
 import dev.auctoritas.auth.ports.security.TokenHasherPort;
-import dev.auctoritas.auth.repository.EndUserRefreshTokenRepository;
-import dev.auctoritas.auth.repository.EndUserSessionRepository;
+import dev.auctoritas.auth.ports.identity.EndUserRefreshTokenRepositoryPort;
+import dev.auctoritas.auth.ports.identity.EndUserSessionRepositoryPort;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -35,8 +35,8 @@ public class EndUserLoginService {
 
   private final ApiKeyService apiKeyService;
   private final EndUserRepositoryPort endUserRepository;
-  private final EndUserSessionRepository endUserSessionRepository;
-  private final EndUserRefreshTokenRepository endUserRefreshTokenRepository;
+  private final EndUserSessionRepositoryPort endUserSessionRepository;
+  private final EndUserRefreshTokenRepositoryPort endUserRefreshTokenRepository;
   private final PasswordEncoder passwordEncoder;
   private final TokenHasherPort tokenHasherPort;
   private final JwtProviderPort jwtProviderPort;
@@ -44,8 +44,8 @@ public class EndUserLoginService {
   public EndUserLoginService(
       ApiKeyService apiKeyService,
       EndUserRepositoryPort endUserRepository,
-      EndUserSessionRepository endUserSessionRepository,
-      EndUserRefreshTokenRepository endUserRefreshTokenRepository,
+      EndUserSessionRepositoryPort endUserSessionRepository,
+      EndUserRefreshTokenRepositoryPort endUserRefreshTokenRepository,
       PasswordEncoder passwordEncoder,
       TokenHasherPort tokenHasherPort,
       JwtProviderPort jwtProviderPort) {
