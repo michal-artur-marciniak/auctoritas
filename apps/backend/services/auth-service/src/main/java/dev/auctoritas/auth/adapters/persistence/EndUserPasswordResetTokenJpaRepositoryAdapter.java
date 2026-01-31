@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.adapters.persistence;
 
-import dev.auctoritas.auth.domain.model.enduser.EndUserPasswordResetToken;
-import dev.auctoritas.auth.domain.model.enduser.EndUserPasswordResetTokenRepositoryPort;
+import dev.auctoritas.auth.domain.enduser.EndUserPasswordResetToken;
+import dev.auctoritas.auth.domain.enduser.EndUserPasswordResetTokenRepositoryPort;
 import dev.auctoritas.auth.repository.EndUserPasswordResetTokenRepository;
 import java.time.Instant;
 import java.util.Optional;

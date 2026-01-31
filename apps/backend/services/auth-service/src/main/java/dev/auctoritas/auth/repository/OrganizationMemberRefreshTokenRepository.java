@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.repository;
 
-import dev.auctoritas.auth.domain.model.organization.OrganizationMemberRefreshToken;
+import dev.auctoritas.auth.domain.organization.OrganizationMemberRefreshToken;
 import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.Optional;

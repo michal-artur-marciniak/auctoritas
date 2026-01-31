@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.adapters.infra.jpa;
 
-import dev.auctoritas.auth.domain.model.project.Project;
-import dev.auctoritas.auth.domain.model.project.ProjectRepositoryPort;
+import dev.auctoritas.auth.domain.project.Project;
+import dev.auctoritas.auth.domain.project.ProjectRepositoryPort;
 import dev.auctoritas.auth.repository.ProjectRepository;
 import java.util.List;
 import java.util.Optional;

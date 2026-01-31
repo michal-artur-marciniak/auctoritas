@@ -1,13 +1,13 @@
 package dev.auctoritas.auth.repository;
 
 import dev.auctoritas.auth.config.JpaConfig;
-import dev.auctoritas.auth.domain.model.organization.Organization;
-import dev.auctoritas.auth.domain.model.organization.OrganizationMember;
-import dev.auctoritas.auth.domain.model.organization.OrganizationInvitation;
-import dev.auctoritas.auth.domain.model.organization.OrganizationMemberRole;
-import dev.auctoritas.auth.domain.model.organization.OrganizationMemberStatus;
-import dev.auctoritas.auth.domain.model.enduser.Email;
-import dev.auctoritas.auth.domain.model.project.Slug;
+import dev.auctoritas.auth.domain.organization.Organization;
+import dev.auctoritas.auth.domain.organization.OrganizationMember;
+import dev.auctoritas.auth.domain.organization.OrganizationInvitation;
+import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
+import dev.auctoritas.auth.domain.organization.OrganizationMemberStatus;
+import dev.auctoritas.auth.domain.enduser.Email;
+import dev.auctoritas.auth.domain.project.Slug;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

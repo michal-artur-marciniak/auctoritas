@@ -2,11 +2,11 @@ package dev.auctoritas.auth.service.oauth;
 
 import dev.auctoritas.auth.domain.exception.DomainNotFoundException;
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
-import dev.auctoritas.auth.domain.model.project.ApiKey;
-import dev.auctoritas.auth.domain.model.project.Project;
-import dev.auctoritas.auth.domain.model.project.ProjectSettings;
+import dev.auctoritas.auth.domain.project.ApiKey;
+import dev.auctoritas.auth.domain.project.Project;
+import dev.auctoritas.auth.domain.project.ProjectSettings;
 import dev.auctoritas.auth.ports.oauth.OAuthProviderPort;
-import dev.auctoritas.auth.domain.model.project.ProjectRepositoryPort;
+import dev.auctoritas.auth.domain.project.ProjectRepositoryPort;
 import dev.auctoritas.auth.service.ApiKeyService;
 import dev.auctoritas.auth.service.TokenService;
 import java.net.URI;

@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.api;
 
-import dev.auctoritas.auth.domain.model.project.ApiKey;
+import dev.auctoritas.auth.domain.project.ApiKey;
 import dev.auctoritas.auth.service.ApiKeyService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;

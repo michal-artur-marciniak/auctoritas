@@ -1,8 +1,8 @@
 package dev.auctoritas.auth.adapters.persistence;
 
-import dev.auctoritas.auth.domain.model.organization.OrganizationStatus;
-import dev.auctoritas.auth.domain.model.organization.Organization;
-import dev.auctoritas.auth.domain.model.organization.OrganizationRepositoryPort;
+import dev.auctoritas.auth.domain.organization.OrganizationStatus;
+import dev.auctoritas.auth.domain.organization.Organization;
+import dev.auctoritas.auth.domain.organization.OrganizationRepositoryPort;
 import dev.auctoritas.auth.repository.OrganizationRepository;
 import java.util.List;
 import java.util.Optional;

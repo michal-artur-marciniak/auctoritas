@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.repository;
 
-import dev.auctoritas.auth.domain.model.oauth.OAuthAuthorizationRequest;
+import dev.auctoritas.auth.domain.oauth.OAuthAuthorizationRequest;
 import jakarta.persistence.LockModeType;
 import java.util.Optional;
 import java.util.UUID;

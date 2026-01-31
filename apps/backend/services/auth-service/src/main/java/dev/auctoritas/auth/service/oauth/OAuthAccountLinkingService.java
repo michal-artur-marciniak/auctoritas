@@ -2,19 +2,19 @@ package dev.auctoritas.auth.service.oauth;
 
 import dev.auctoritas.auth.domain.exception.DomainConflictException;
 import dev.auctoritas.auth.domain.exception.DomainNotFoundException;
-import dev.auctoritas.auth.domain.model.enduser.EndUser;
-import dev.auctoritas.auth.domain.model.oauth.OAuthConnection;
-import dev.auctoritas.auth.domain.model.oauth.OAuthAccountLinkingDomainService;
-import dev.auctoritas.auth.domain.model.oauth.OAuthAccountLinkingDomainService.EndUserUpdate;
-import dev.auctoritas.auth.domain.model.oauth.OAuthAccountLinkingDomainService.LinkingResult;
-import dev.auctoritas.auth.domain.model.oauth.OAuthAccountLinkingDomainService.OAuthConnectionUpdate;
-import dev.auctoritas.auth.domain.model.oauth.OAuthAccountLinkingDomainService.UserCreationSpec;
-import dev.auctoritas.auth.domain.model.project.Project;
-import dev.auctoritas.auth.domain.model.enduser.Email;
-import dev.auctoritas.auth.domain.model.enduser.Password;
-import dev.auctoritas.auth.domain.model.enduser.EndUserRepositoryPort;
+import dev.auctoritas.auth.domain.enduser.EndUser;
+import dev.auctoritas.auth.domain.oauth.OAuthConnection;
+import dev.auctoritas.auth.domain.oauth.OAuthAccountLinkingDomainService;
+import dev.auctoritas.auth.domain.oauth.OAuthAccountLinkingDomainService.EndUserUpdate;
+import dev.auctoritas.auth.domain.oauth.OAuthAccountLinkingDomainService.LinkingResult;
+import dev.auctoritas.auth.domain.oauth.OAuthAccountLinkingDomainService.OAuthConnectionUpdate;
+import dev.auctoritas.auth.domain.oauth.OAuthAccountLinkingDomainService.UserCreationSpec;
+import dev.auctoritas.auth.domain.project.Project;
+import dev.auctoritas.auth.domain.enduser.Email;
+import dev.auctoritas.auth.domain.enduser.Password;
+import dev.auctoritas.auth.domain.enduser.EndUserRepositoryPort;
 import dev.auctoritas.auth.ports.messaging.DomainEventPublisherPort;
-import dev.auctoritas.auth.domain.model.oauth.OAuthConnectionRepositoryPort;
+import dev.auctoritas.auth.domain.oauth.OAuthConnectionRepositoryPort;
 import dev.auctoritas.auth.messaging.OAuthUserRegisteredEvent;
 import dev.auctoritas.auth.service.TokenService;
 import java.util.Optional;
@@ -269,7 +269,7 @@ public class OAuthAccountLinkingService {
       String providerUserId) {
     boolean userRegisteredPublished = false;
     for (var event : user.getDomainEvents()) {
-      if (event instanceof dev.auctoritas.auth.domain.model.enduser.UserRegisteredEvent) {
+      if (event instanceof dev.auctoritas.auth.domain.enduser.UserRegisteredEvent) {
         if (!userRegisteredPublished) {
           domainEventPublisherPort.publish(
               OAuthUserRegisteredEvent.EVENT_TYPE,

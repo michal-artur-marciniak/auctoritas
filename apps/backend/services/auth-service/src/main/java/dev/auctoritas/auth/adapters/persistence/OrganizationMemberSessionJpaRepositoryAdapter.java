@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.adapters.persistence;
 
-import dev.auctoritas.auth.domain.model.organization.OrganizationMemberSession;
-import dev.auctoritas.auth.domain.model.organization.OrganizationMemberSessionRepositoryPort;
+import dev.auctoritas.auth.domain.organization.OrganizationMemberSession;
+import dev.auctoritas.auth.domain.organization.OrganizationMemberSessionRepositoryPort;
 import dev.auctoritas.auth.repository.OrganizationMemberSessionRepository;
 import java.time.Instant;
 import java.util.List;

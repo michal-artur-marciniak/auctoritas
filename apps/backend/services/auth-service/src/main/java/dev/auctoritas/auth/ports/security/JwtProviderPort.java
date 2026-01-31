@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.ports.security;
 
-import dev.auctoritas.auth.domain.model.organization.OrganizationMemberRole;
+import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
 import io.jsonwebtoken.Claims;
 import java.security.PublicKey;
 import java.util.UUID;

@@ -1,14 +1,14 @@
-package dev.auctoritas.auth.domain.model.organization.service;
+package dev.auctoritas.auth.domain.organization.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
-import dev.auctoritas.auth.domain.model.enduser.Email;
-import dev.auctoritas.auth.domain.model.organization.Organization;
-import dev.auctoritas.auth.domain.model.organization.OrganizationMemberRole;
-import dev.auctoritas.auth.domain.model.organization.OrganizationRegistrationDomainService;
-import dev.auctoritas.auth.domain.model.project.Slug;
+import dev.auctoritas.auth.domain.enduser.Email;
+import dev.auctoritas.auth.domain.organization.Organization;
+import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
+import dev.auctoritas.auth.domain.organization.OrganizationRegistrationDomainService;
+import dev.auctoritas.auth.domain.project.Slug;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

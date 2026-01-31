@@ -1,16 +1,16 @@
-package dev.auctoritas.auth.domain.model.enduser.service;
+package dev.auctoritas.auth.domain.enduser.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
-import dev.auctoritas.auth.domain.model.enduser.EndUserRegistrationDomainService;
-import dev.auctoritas.auth.domain.model.enduser.RegistrationAttempt;
-import dev.auctoritas.auth.domain.model.organization.Organization;
-import dev.auctoritas.auth.domain.model.project.Project;
-import dev.auctoritas.auth.domain.model.project.ProjectSettings;
-import dev.auctoritas.auth.domain.model.enduser.Email;
-import dev.auctoritas.auth.domain.model.project.Slug;
+import dev.auctoritas.auth.domain.enduser.EndUserRegistrationDomainService;
+import dev.auctoritas.auth.domain.enduser.RegistrationAttempt;
+import dev.auctoritas.auth.domain.organization.Organization;
+import dev.auctoritas.auth.domain.project.Project;
+import dev.auctoritas.auth.domain.project.ProjectSettings;
+import dev.auctoritas.auth.domain.enduser.Email;
+import dev.auctoritas.auth.domain.project.Slug;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;

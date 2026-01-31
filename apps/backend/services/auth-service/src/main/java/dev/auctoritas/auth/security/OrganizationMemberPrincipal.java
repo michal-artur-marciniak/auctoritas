@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.security;
 
-import dev.auctoritas.auth.domain.model.organization.OrganizationMemberRole;
+import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;

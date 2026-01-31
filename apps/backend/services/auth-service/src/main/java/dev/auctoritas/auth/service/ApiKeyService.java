@@ -2,9 +2,9 @@ package dev.auctoritas.auth.service;
 
 import dev.auctoritas.auth.domain.exception.DomainNotFoundException;
 import dev.auctoritas.auth.domain.exception.DomainUnauthorizedException;
-import dev.auctoritas.auth.domain.model.project.ApiKeyStatus;
-import dev.auctoritas.auth.domain.model.project.ApiKey;
-import dev.auctoritas.auth.domain.model.project.ApiKeyRepositoryPort;
+import dev.auctoritas.auth.domain.project.ApiKeyStatus;
+import dev.auctoritas.auth.domain.project.ApiKey;
+import dev.auctoritas.auth.domain.project.ApiKeyRepositoryPort;
 import dev.auctoritas.auth.ports.messaging.DomainEventPublisherPort;
 import java.util.List;
 import java.util.UUID;

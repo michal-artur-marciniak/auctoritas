@@ -2,7 +2,7 @@ package dev.auctoritas.auth.adapters.security;
 
 import dev.auctoritas.auth.ports.security.JwtProviderPort;
 import dev.auctoritas.auth.service.JwtService;
-import dev.auctoritas.auth.domain.model.organization.OrganizationMemberRole;
+import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
 import java.security.PublicKey;
 import java.util.UUID;
 import org.springframework.stereotype.Component;

@@ -3,23 +3,23 @@ package dev.auctoritas.auth.service;
 import dev.auctoritas.auth.application.enduser.EndUserRegistrationCommand;
 import dev.auctoritas.auth.application.enduser.EndUserRegistrationResult;
 import dev.auctoritas.auth.domain.exception.DomainConflictException;
-import dev.auctoritas.auth.domain.model.enduser.EndUser;
-import dev.auctoritas.auth.domain.model.enduser.EndUserRefreshToken;
-import dev.auctoritas.auth.domain.model.enduser.EndUserSession;
-import dev.auctoritas.auth.domain.model.enduser.EndUserRegistrationDomainService;
-import dev.auctoritas.auth.domain.model.enduser.RegistrationAttempt;
-import dev.auctoritas.auth.domain.model.project.ApiKey;
-import dev.auctoritas.auth.domain.model.project.Project;
-import dev.auctoritas.auth.domain.model.project.ProjectSettings;
-import dev.auctoritas.auth.domain.model.enduser.Email;
-import dev.auctoritas.auth.domain.model.enduser.Password;
+import dev.auctoritas.auth.domain.enduser.EndUser;
+import dev.auctoritas.auth.domain.enduser.EndUserRefreshToken;
+import dev.auctoritas.auth.domain.enduser.EndUserSession;
+import dev.auctoritas.auth.domain.enduser.EndUserRegistrationDomainService;
+import dev.auctoritas.auth.domain.enduser.RegistrationAttempt;
+import dev.auctoritas.auth.domain.project.ApiKey;
+import dev.auctoritas.auth.domain.project.Project;
+import dev.auctoritas.auth.domain.project.ProjectSettings;
+import dev.auctoritas.auth.domain.enduser.Email;
+import dev.auctoritas.auth.domain.enduser.Password;
 import dev.auctoritas.auth.messaging.UserRegisteredEvent;
-import dev.auctoritas.auth.domain.model.enduser.EndUserRepositoryPort;
+import dev.auctoritas.auth.domain.enduser.EndUserRepositoryPort;
 import dev.auctoritas.auth.ports.messaging.DomainEventPublisherPort;
 import dev.auctoritas.auth.ports.security.JwtProviderPort;
 import dev.auctoritas.auth.ports.security.TokenHasherPort;
-import dev.auctoritas.auth.domain.model.enduser.EndUserRefreshTokenRepositoryPort;
-import dev.auctoritas.auth.domain.model.enduser.EndUserSessionRepositoryPort;
+import dev.auctoritas.auth.domain.enduser.EndUserRefreshTokenRepositoryPort;
+import dev.auctoritas.auth.domain.enduser.EndUserSessionRepositoryPort;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
@@ -222,7 +222,7 @@ public class EndUserRegistrationService {
       EndUserEmailVerificationService.EmailVerificationPayload verificationPayload) {
     boolean userRegisteredPublished = false;
     for (var event : user.getDomainEvents()) {
-      if (event instanceof dev.auctoritas.auth.domain.model.enduser.UserRegisteredEvent) {
+      if (event instanceof dev.auctoritas.auth.domain.enduser.UserRegisteredEvent) {
         if (!userRegisteredPublished) {
           publishUserRegisteredEvent(user, project, verificationPayload);
           userRegisteredPublished = true;

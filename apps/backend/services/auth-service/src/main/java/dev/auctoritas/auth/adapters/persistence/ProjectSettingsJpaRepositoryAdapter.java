@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.adapters.persistence;
 
-import dev.auctoritas.auth.domain.model.project.ProjectSettings;
-import dev.auctoritas.auth.domain.model.project.ProjectSettingsRepositoryPort;
+import dev.auctoritas.auth.domain.project.ProjectSettings;
+import dev.auctoritas.auth.domain.project.ProjectSettingsRepositoryPort;
 import dev.auctoritas.auth.repository.ProjectSettingsRepository;
 import java.util.Optional;
 import java.util.UUID;

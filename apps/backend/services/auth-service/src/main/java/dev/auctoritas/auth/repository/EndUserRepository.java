@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.repository;
 
-import dev.auctoritas.auth.domain.model.enduser.EndUser;
+import dev.auctoritas.auth.domain.enduser.EndUser;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.Lock;

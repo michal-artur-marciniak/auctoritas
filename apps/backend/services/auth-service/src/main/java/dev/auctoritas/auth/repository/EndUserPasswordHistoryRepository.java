@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.repository;
 
-import dev.auctoritas.auth.domain.model.enduser.EndUserPasswordHistory;
+import dev.auctoritas.auth.domain.enduser.EndUserPasswordHistory;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;

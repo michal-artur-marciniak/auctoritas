@@ -1,11 +1,11 @@
-package dev.auctoritas.auth.domain.model.project;
+package dev.auctoritas.auth.domain.project;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
-import dev.auctoritas.auth.domain.model.organization.Organization;
-import dev.auctoritas.auth.domain.model.project.Slug;
+import dev.auctoritas.auth.domain.organization.Organization;
+import dev.auctoritas.auth.domain.project.Slug;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
