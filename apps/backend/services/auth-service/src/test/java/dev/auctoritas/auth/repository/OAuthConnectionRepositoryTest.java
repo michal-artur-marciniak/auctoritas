@@ -9,8 +9,9 @@ import dev.auctoritas.auth.domain.model.oauth.OAuthConnection;
 import dev.auctoritas.auth.domain.model.organization.Organization;
 import dev.auctoritas.auth.domain.model.project.Project;
 import dev.auctoritas.auth.domain.model.project.ProjectSettings;
-import dev.auctoritas.auth.domain.organization.OrganizationStatus;
-import dev.auctoritas.auth.domain.project.ProjectStatus;
+import dev.auctoritas.auth.domain.valueobject.Email;
+import dev.auctoritas.auth.domain.valueobject.Password;
+import dev.auctoritas.auth.domain.valueobject.Slug;
 import jakarta.persistence.EntityManager;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,32 +35,15 @@ class OAuthConnectionRepositoryTest {
 
   @BeforeEach
   void setUp() {
-    Organization org = new Organization();
-    org.setName("Test Org");
-    org.setSlug("test-org-oauth-conn");
-    org.setStatus(OrganizationStatus.ACTIVE);
+    Organization org = Organization.create("Test Org", Slug.of("test-org-oauth-conn"));
     entityManager.persist(org);
     entityManager.flush();
 
-    ProjectSettings settings = new ProjectSettings();
-
-    testProject = new Project();
-    testProject.setOrganization(org);
-    testProject.setName("Test Project");
-    testProject.setSlug("test-project-oauth-conn");
-    testProject.setStatus(ProjectStatus.ACTIVE);
-    testProject.setSettings(settings);
-    settings.setProject(testProject);
-
+    testProject = Project.create(org, "Test Project", Slug.of("test-project-oauth-conn"));
     entityManager.persist(testProject);
     entityManager.flush();
 
-    testUser = new EndUser();
-    testUser.setProject(testProject);
-    testUser.setEmail("user@example.com");
-    testUser.setPasswordHash("hash");
-    testUser.setName("Test User");
-    testUser.setEmailVerified(false);
+    testUser = EndUser.create(testProject, Email.of("user@example.com"), Password.fromHash("hash"), "Test User");
     entityManager.persist(testUser);
     entityManager.flush();
   }
@@ -95,12 +79,7 @@ class OAuthConnectionRepositoryTest {
     entityManager.persist(first);
     entityManager.flush();
 
-    EndUser otherUser = new EndUser();
-    otherUser.setProject(testProject);
-    otherUser.setEmail("other@example.com");
-    otherUser.setPasswordHash("hash2");
-    otherUser.setName("Other User");
-    otherUser.setEmailVerified(false);
+    EndUser otherUser = EndUser.create(testProject, Email.of("other@example.com"), Password.fromHash("hash2"), "Other User");
     entityManager.persist(otherUser);
     entityManager.flush();
 

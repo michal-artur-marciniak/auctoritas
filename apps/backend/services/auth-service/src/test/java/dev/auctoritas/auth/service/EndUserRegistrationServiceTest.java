@@ -15,7 +15,7 @@ import dev.auctoritas.auth.messaging.UserRegisteredEvent;
 import dev.auctoritas.auth.ports.identity.EndUserEmailVerificationTokenRepositoryPort;
 import dev.auctoritas.auth.ports.identity.EndUserRepositoryPort;
 import dev.auctoritas.auth.domain.apikey.ApiKeyStatus;
-import dev.auctoritas.auth.domain.organization.OrganizationStatus;
+import dev.auctoritas.auth.domain.valueobject.Slug;
 import jakarta.persistence.EntityManager;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -72,20 +72,10 @@ class EndUserRegistrationServiceTest {
   void setUp() {
     domainEventPublisher.events().clear();
 
-    Organization org = new Organization();
-    org.setName("Test Org");
-    org.setSlug("test-org-registration");
-    org.setStatus(OrganizationStatus.ACTIVE);
+    Organization org = Organization.create("Test Org", Slug.of("test-org-registration"));
     entityManager.persist(org);
 
-    ProjectSettings settings = new ProjectSettings();
-
-    project = new Project();
-    project.setOrganization(org);
-    project.setName("Test Project");
-    project.setSlug("test-project-registration");
-    project.setSettings(settings);
-    settings.setProject(project);
+    project = Project.create(org, "Test Project", Slug.of("test-project-registration"));
     entityManager.persist(project);
 
     ApiKey apiKey = new ApiKey();
@@ -119,7 +109,7 @@ class EndUserRegistrationServiceTest {
     EndUser user = users.getFirst();
     assertThat(user.getProject().getId()).isEqualTo(project.getId());
     assertThat(user.getEmail()).isEqualTo("user@example.com");
-    assertThat(user.getEmailVerified()).isFalse();
+    assertThat(user.isEmailVerified()).isFalse();
 
     List<EndUserEmailVerificationToken> tokens = entityManager.createQuery("SELECT t FROM EndUserEmailVerificationToken t", EndUserEmailVerificationToken.class).getResultList();
     assertThat(tokens).hasSize(1);

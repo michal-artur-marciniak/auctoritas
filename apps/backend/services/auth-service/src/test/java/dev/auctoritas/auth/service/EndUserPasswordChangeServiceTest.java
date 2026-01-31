@@ -18,7 +18,9 @@ import dev.auctoritas.auth.repository.EndUserRefreshTokenRepository;
 import dev.auctoritas.auth.repository.EndUserSessionRepository;
 import dev.auctoritas.auth.security.EndUserPrincipal;
 import dev.auctoritas.auth.domain.apikey.ApiKeyStatus;
-import dev.auctoritas.auth.domain.organization.OrganizationStatus;
+import dev.auctoritas.auth.domain.valueobject.Email;
+import dev.auctoritas.auth.domain.valueobject.Password;
+import dev.auctoritas.auth.domain.valueobject.Slug;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.List;
@@ -51,20 +53,10 @@ class EndUserPasswordChangeServiceTest {
 
   @BeforeEach
   void setUp() {
-    Organization org = new Organization();
-    org.setName("Test Org");
-    org.setSlug("test-org-password-change");
-    org.setStatus(OrganizationStatus.ACTIVE);
+    Organization org = Organization.create("Test Org", Slug.of("test-org-password-change"));
     entityManager.persist(org);
 
-    ProjectSettings settings = new ProjectSettings();
-
-    project = new Project();
-    project.setOrganization(org);
-    project.setName("Test Project");
-    project.setSlug("test-project-password-change");
-    project.setSettings(settings);
-    settings.setProject(project);
+    project = Project.create(org, "Test Project", Slug.of("test-project-password-change"));
     entityManager.persist(project);
 
     ApiKey apiKey = new ApiKey();
@@ -75,10 +67,7 @@ class EndUserPasswordChangeServiceTest {
     apiKey.setStatus(ApiKeyStatus.ACTIVE);
     entityManager.persist(apiKey);
 
-    user = new EndUser();
-    user.setProject(project);
-    user.setEmail("user@example.com");
-    user.setPasswordHash(passwordEncoder.encode("UserPass123!"));
+    user = EndUser.create(project, Email.of("user@example.com"), Password.fromHash(passwordEncoder.encode("UserPass123!")), null);
     entityManager.persist(user);
 
     entityManager.flush();

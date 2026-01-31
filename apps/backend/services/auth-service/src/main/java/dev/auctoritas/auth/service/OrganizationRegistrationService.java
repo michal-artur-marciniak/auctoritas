@@ -2,28 +2,35 @@ package dev.auctoritas.auth.service;
 
 import dev.auctoritas.auth.api.OrgRegistrationRequest;
 import dev.auctoritas.auth.api.OrgRegistrationResponse;
+import dev.auctoritas.auth.domain.exception.DomainConflictException;
+import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.model.organization.OrgMemberRefreshToken;
 import dev.auctoritas.auth.domain.model.organization.Organization;
 import dev.auctoritas.auth.domain.model.organization.OrganizationMember;
+import dev.auctoritas.auth.domain.organization.OrgMemberRole;
+import dev.auctoritas.auth.domain.valueobject.Email;
+import dev.auctoritas.auth.domain.valueobject.Slug;
+import dev.auctoritas.auth.ports.messaging.DomainEventPublisherPort;
 import dev.auctoritas.auth.ports.organization.OrgMemberRefreshTokenRepositoryPort;
 import dev.auctoritas.auth.ports.organization.OrganizationMemberRepositoryPort;
 import dev.auctoritas.auth.ports.organization.OrganizationRepositoryPort;
-import dev.auctoritas.auth.domain.organization.OrgMemberRole;
-import java.util.Locale;
-import org.springframework.http.HttpStatus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class OrganizationRegistrationService {
+  private static final Logger log = LoggerFactory.getLogger(OrganizationRegistrationService.class);
+
   private final OrganizationRepositoryPort organizationRepository;
   private final OrganizationMemberRepositoryPort organizationMemberRepository;
   private final OrgMemberRefreshTokenRepositoryPort refreshTokenRepository;
   private final PasswordEncoder passwordEncoder;
   private final TokenService tokenService;
   private final JwtService jwtService;
+  private final DomainEventPublisherPort domainEventPublisherPort;
 
   public OrganizationRegistrationService(
       OrganizationRepositoryPort organizationRepository,
@@ -31,40 +38,41 @@ public class OrganizationRegistrationService {
       OrgMemberRefreshTokenRepositoryPort refreshTokenRepository,
       PasswordEncoder passwordEncoder,
       TokenService tokenService,
-      JwtService jwtService) {
+      JwtService jwtService,
+      DomainEventPublisherPort domainEventPublisherPort) {
     this.organizationRepository = organizationRepository;
     this.organizationMemberRepository = organizationMemberRepository;
     this.refreshTokenRepository = refreshTokenRepository;
     this.passwordEncoder = passwordEncoder;
     this.tokenService = tokenService;
     this.jwtService = jwtService;
+    this.domainEventPublisherPort = domainEventPublisherPort;
   }
 
   @Transactional
   public OrgRegistrationResponse register(OrgRegistrationRequest request) {
-    String slug = normalizeSlug(requireValue(request.slug(), "org_slug_required"));
-    if (organizationRepository.existsBySlug(slug)) {
-      throw new ResponseStatusException(HttpStatus.CONFLICT, "org_slug_taken");
+    // Validate and create slug value object
+    Slug slug = createSlug(request.slug());
+
+    if (organizationRepository.existsBySlug(slug.value())) {
+      throw new DomainConflictException("org_slug_taken");
     }
 
-    Organization organization = new Organization();
-    organization.setName(requireValue(request.orgName(), "org_name_required"));
-    organization.setSlug(slug);
+    // Create organization using factory method
+    Organization organization = Organization.create(request.orgName(), slug);
 
-    OrganizationMember member = new OrganizationMember();
-    member.setOrganization(organization);
-    member.setEmail(normalizeEmail(requireValue(request.ownerEmail(), "owner_email_required")));
-    member.setPasswordHash(
-        passwordEncoder.encode(requireValue(request.ownerPassword(), "owner_password_required")));
-    member.setName(trimToNull(request.ownerName()));
-    member.setRole(OrgMemberRole.OWNER);
-    member.setEmailVerified(true);
+    // Create and add owner member
+    OrganizationMember owner = createOwnerMember(organization, request);
+    organization.addMember(owner);
 
-    organization.getMembers().add(member);
-
+    // Save organization (cascades to members due to CascadeType.ALL)
     Organization savedOrganization = organizationRepository.save(organization);
-    OrganizationMember savedMember = organizationMemberRepository.save(member);
+    OrganizationMember savedMember = savedOrganization.getMembers().get(0);
 
+    // Publish domain events
+    publishDomainEvents(savedOrganization, savedMember);
+
+    // Generate tokens
     String rawRefreshToken = tokenService.generateRefreshToken();
     persistRefreshToken(savedMember, rawRefreshToken);
 
@@ -75,6 +83,11 @@ public class OrganizationRegistrationService {
             savedMember.getEmail(),
             savedMember.getRole());
 
+    log.info(
+        "organization_registered organizationId={} memberId={}",
+        savedOrganization.getId(),
+        savedMember.getId());
+
     return new OrgRegistrationResponse(
         new OrgRegistrationResponse.OrganizationSummary(
             savedOrganization.getId(), savedOrganization.getName(), savedOrganization.getSlug()),
@@ -82,6 +95,34 @@ public class OrganizationRegistrationService {
             savedMember.getId(), savedMember.getEmail(), savedMember.getRole()),
         accessToken,
         rawRefreshToken);
+  }
+
+  private Slug createSlug(String slugValue) {
+    if (slugValue == null || slugValue.trim().isEmpty()) {
+      throw new DomainValidationException("org_slug_required");
+    }
+    return Slug.of(slugValue.trim().toLowerCase());
+  }
+
+  private OrganizationMember createOwnerMember(Organization organization, OrgRegistrationRequest request) {
+    if (request.ownerEmail() == null || request.ownerEmail().trim().isEmpty()) {
+      throw new DomainValidationException("owner_email_required");
+    }
+    if (request.ownerPassword() == null || request.ownerPassword().trim().isEmpty()) {
+      throw new DomainValidationException("owner_password_required");
+    }
+
+    Email email = Email.of(request.ownerEmail());
+    String passwordHash = passwordEncoder.encode(request.ownerPassword().trim());
+    String name = trimToNull(request.ownerName());
+
+    return OrganizationMember.create(
+        organization,
+        email,
+        passwordHash,
+        name,
+        OrgMemberRole.OWNER,
+        true);
   }
 
   private void persistRefreshToken(OrganizationMember member, String rawToken) {
@@ -93,23 +134,26 @@ public class OrganizationRegistrationService {
     refreshTokenRepository.save(token);
   }
 
-  private String normalizeSlug(String slug) {
-    return slug.trim().toLowerCase(Locale.ROOT);
-  }
+  private void publishDomainEvents(Organization organization, OrganizationMember member) {
+    // Publish organization events
+    organization.getDomainEvents().forEach(event -> {
+      try {
+        domainEventPublisherPort.publish(event.eventType(), event);
+      } catch (RuntimeException ex) {
+        log.warn("Failed to publish organization event: {}", event.eventType(), ex);
+      }
+    });
+    organization.clearDomainEvents();
 
-  private String normalizeEmail(String email) {
-    return email.trim().toLowerCase(Locale.ROOT);
-  }
-
-  private String requireValue(String value, String errorCode) {
-    if (value == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
-    }
-    String trimmed = value.trim();
-    if (trimmed.isEmpty()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
-    }
-    return trimmed;
+    // Publish member events
+    member.getDomainEvents().forEach(event -> {
+      try {
+        domainEventPublisherPort.publish(event.eventType(), event);
+      } catch (RuntimeException ex) {
+        log.warn("Failed to publish member event: {}", event.eventType(), ex);
+      }
+    });
+    member.clearDomainEvents();
   }
 
   private String trimToNull(String value) {

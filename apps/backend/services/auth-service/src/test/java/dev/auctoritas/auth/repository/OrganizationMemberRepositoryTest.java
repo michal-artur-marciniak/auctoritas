@@ -6,7 +6,8 @@ import dev.auctoritas.auth.domain.model.organization.OrganizationMember;
 import dev.auctoritas.auth.domain.model.organization.OrganizationInvitation;
 import dev.auctoritas.auth.domain.organization.OrgMemberRole;
 import dev.auctoritas.auth.domain.organization.OrgMemberStatus;
-import dev.auctoritas.auth.domain.organization.OrganizationStatus;
+import dev.auctoritas.auth.domain.valueobject.Email;
+import dev.auctoritas.auth.domain.valueobject.Slug;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -34,20 +35,18 @@ class OrganizationMemberRepositoryTest {
 
   @BeforeEach
   void setUp() {
-    testOrg = new Organization();
-    testOrg.setName("Test Org");
-    testOrg.setSlug("test-org-member");
-    testOrg.setStatus(OrganizationStatus.ACTIVE);
+    testOrg = Organization.create("Test Org", Slug.of("test-org-member"));
     entityManager.persist(testOrg);
     entityManager.flush();
 
-    testMember = new OrganizationMember();
-    testMember.setEmail("member@test.com");
-    testMember.setName("Test Member");
-    testMember.setRole(OrgMemberRole.MEMBER);
-    testMember.setStatus(OrgMemberStatus.ACTIVE);
-    testMember.setPasswordHash("hashedpassword123");
-    testMember.setOrganization(testOrg);
+    testMember = OrganizationMember.create(
+        testOrg,
+        Email.of("member@test.com"),
+        "hashedpassword123",
+        "Test Member",
+        OrgMemberRole.MEMBER,
+        true);
+    testOrg.addMember(testMember);
     entityManager.persist(testMember);
     entityManager.flush();
   }

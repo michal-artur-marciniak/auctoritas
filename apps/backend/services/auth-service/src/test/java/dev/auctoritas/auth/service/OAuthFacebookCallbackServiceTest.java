@@ -21,8 +21,9 @@ import dev.auctoritas.auth.ports.oauth.OAuthExchangeCodeRepositoryPort;
 import dev.auctoritas.auth.adapters.external.oauth.FacebookOAuthProvider;
 import dev.auctoritas.auth.service.oauth.OAuthAccountLinkingService;
 import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
-import dev.auctoritas.auth.domain.organization.OrganizationStatus;
-import dev.auctoritas.auth.domain.project.ProjectStatus;
+import dev.auctoritas.auth.domain.valueobject.Email;
+import dev.auctoritas.auth.domain.valueobject.Password;
+import dev.auctoritas.auth.domain.valueobject.Slug;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.HashMap;
@@ -73,30 +74,21 @@ class OAuthFacebookCallbackServiceTest {
 
   @BeforeEach
   void setUp() {
-    Organization org = new Organization();
-    org.setName("Test Org");
-    org.setSlug("test-org-facebook-oauth-callback");
-    org.setStatus(OrganizationStatus.ACTIVE);
+    Organization org = Organization.create("Test Org", Slug.of("test-org-facebook-oauth-callback"));
     entityManager.persist(org);
     entityManager.flush();
 
-    ProjectSettings settings = new ProjectSettings();
+    project = Project.create(org, "Test Project", Slug.of("test-project-facebook-oauth-callback"));
+    ProjectSettings settings = project.getSettings();
+
     Map<String, Object> facebook = new HashMap<>();
     facebook.put("enabled", true);
     facebook.put("clientId", "facebook-client-id");
 
     Map<String, Object> oauthConfig = new HashMap<>();
     oauthConfig.put("facebook", facebook);
-    settings.setOauthConfig(oauthConfig);
+    settings.updateOauthConfig(oauthConfig);
     settings.setOauthFacebookClientSecretEnc("facebook-client-secret");
-
-    project = new Project();
-    project.setOrganization(org);
-    project.setName("Test Project");
-    project.setSlug("test-project-facebook-oauth-callback");
-    project.setStatus(ProjectStatus.ACTIVE);
-    project.setSettings(settings);
-    settings.setProject(project);
 
     entityManager.persist(project);
     entityManager.flush();
@@ -135,7 +127,7 @@ class OAuthFacebookCallbackServiceTest {
         .get()
         .satisfies(
             user -> {
-              assertThat(user.getEmailVerified()).isFalse();
+              assertThat(user.isEmailVerified()).isFalse();
               assertThat(user.getPasswordHash()).isNotBlank();
             });
 
@@ -167,12 +159,7 @@ class OAuthFacebookCallbackServiceTest {
   @Test
   @DisplayName("Should use existing OAuth connection when provider_user_id matches")
   void shouldUseExistingConnectionByProviderUserId() {
-    EndUser existing = new EndUser();
-    existing.setProject(project);
-    existing.setEmail("user@example.com");
-    existing.setName(null);
-    existing.setEmailVerified(false);
-    existing.setPasswordHash("hash");
+    EndUser existing = EndUser.create(project, Email.of("user@example.com"), Password.fromHash("hash"), null);
     entityManager.persist(existing);
 
     dev.auctoritas.auth.domain.model.oauth.OAuthConnection conn =
@@ -208,7 +195,7 @@ class OAuthFacebookCallbackServiceTest {
         .get()
         .satisfies(
             user -> {
-              assertThat(user.getEmailVerified()).isFalse();
+              assertThat(user.isEmailVerified()).isFalse();
               assertThat(user.getName()).isEqualTo("New Name");
             });
 

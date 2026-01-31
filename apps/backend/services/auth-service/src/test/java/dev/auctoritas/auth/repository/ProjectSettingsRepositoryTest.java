@@ -4,7 +4,7 @@ import dev.auctoritas.auth.config.JpaConfig;
 import dev.auctoritas.auth.domain.model.organization.Organization;
 import dev.auctoritas.auth.domain.model.project.Project;
 import dev.auctoritas.auth.domain.model.project.ProjectSettings;
-import dev.auctoritas.auth.domain.organization.OrganizationStatus;
+import dev.auctoritas.auth.domain.valueobject.Slug;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -32,33 +32,21 @@ class ProjectSettingsRepositoryTest {
 
   @BeforeEach
   void setUp() {
-    testOrg = new Organization();
-    testOrg.setName("Test Org");
-    testOrg.setSlug("test-org-settings");
-    testOrg.setStatus(OrganizationStatus.ACTIVE);
+    testOrg = Organization.create("Test Org", Slug.of("test-org-settings"));
     entityManager.persist(testOrg);
     entityManager.flush();
 
-    testSettings = new ProjectSettings();
-    testSettings.setMinLength(10);
-    testSettings.setRequireUppercase(true);
-    testSettings.setRequireNumbers(true);
-    testSettings.setRequireSpecialChars(true);
-    testSettings.setPasswordHistoryCount(5);
-    testSettings.setAccessTokenTtlSeconds(1800);
-    testSettings.setRefreshTokenTtlSeconds(604800);
-    testSettings.setMaxSessions(10);
-    testSettings.setMfaEnabled(true);
-    testSettings.setMfaRequired(false);
-
-    testProject = new Project();
-    testProject.setOrganization(testOrg);
-    testProject.setName("Test Project");
-    testProject.setSlug("test-project-settings");
-    testProject.setSettings(testSettings);
-    testSettings.setProject(testProject);
-
+    // Project.create() automatically creates settings
+    testProject = Project.create(testOrg, "Test Project", Slug.of("test-project-settings"));
     entityManager.persist(testProject);
+    entityManager.flush();
+
+    // Get the settings created by the factory and update them
+    testSettings = testProject.getSettings();
+    testSettings.updatePasswordPolicy(10, true, true, true, true, 5);
+    testSettings.updateSessionSettings(1800, 604800, 10);
+    testSettings.updateMfaSettings(true, false);
+    entityManager.persist(testSettings);
     entityManager.flush();
   }
 
@@ -75,17 +63,12 @@ class ProjectSettingsRepositoryTest {
   @Test
   @DisplayName("Should have default values when not set")
   void shouldHaveDefaultValues() {
-    ProjectSettings defaultSettings = new ProjectSettings();
-    Project defaultProject = new Project();
-    defaultProject.setOrganization(testOrg);
-    defaultProject.setName("Default Project");
-    defaultProject.setSlug("default-project");
-    defaultProject.setSettings(defaultSettings);
-    defaultSettings.setProject(defaultProject);
-
+    // Project.create() creates settings with defaults
+    Project defaultProject = Project.create(testOrg, "Default Project", Slug.of("default-project"));
     entityManager.persist(defaultProject);
     entityManager.flush();
 
+    ProjectSettings defaultSettings = defaultProject.getSettings();
     Optional<ProjectSettings> found = settingsRepository.findById(defaultSettings.getId());
     assertThat(found).isPresent();
     assertThat(found.get().getMinLength()).isEqualTo(8);

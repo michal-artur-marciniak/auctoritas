@@ -2,7 +2,7 @@ package dev.auctoritas.auth.repository;
 
 import dev.auctoritas.auth.config.JpaConfig;
 import dev.auctoritas.auth.domain.model.organization.Organization;
-import dev.auctoritas.auth.domain.organization.OrganizationStatus;
+import dev.auctoritas.auth.domain.valueobject.Slug;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -28,10 +28,7 @@ class OrganizationRepositoryTest {
 
   @BeforeEach
   void setUp() {
-    testOrg = new Organization();
-    testOrg.setName("Test Organization");
-    testOrg.setSlug("test-org");
-    testOrg.setStatus(OrganizationStatus.ACTIVE);
+    testOrg = Organization.create("Test Organization", Slug.of("test-org"));
     entityManager.persist(testOrg);
     entityManager.flush();
   }
@@ -54,9 +51,7 @@ class OrganizationRepositoryTest {
   @Test
   @DisplayName("Should enforce unique slug constraint")
   void shouldEnforceUniqueSlug() {
-    Organization duplicate = new Organization();
-    duplicate.setName("Duplicate");
-    duplicate.setSlug("test-org");
+    Organization duplicate = Organization.create("Duplicate", Slug.of("test-org"));
     entityManager.persist(duplicate);
     assertThatThrownBy(() -> entityManager.flush())
         .isInstanceOf(jakarta.persistence.PersistenceException.class);

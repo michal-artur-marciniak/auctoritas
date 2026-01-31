@@ -1,8 +1,11 @@
 package dev.auctoritas.auth.domain.model.organization;
 
-import dev.auctoritas.auth.shared.persistence.BaseAuditEntity;
+import dev.auctoritas.auth.domain.event.DomainEvent;
+import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.organization.OrgMemberRole;
 import dev.auctoritas.auth.domain.organization.OrgMemberStatus;
+import dev.auctoritas.auth.domain.valueobject.Email;
+import dev.auctoritas.auth.shared.persistence.BaseAuditEntity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -14,20 +17,24 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import jakarta.persistence.UniqueConstraint;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 
+/**
+ * Entity representing a member of an organization.
+ * Part of the Organization aggregate.
+ */
 @Entity
 @Table(
     name = "organization_members",
     uniqueConstraints = @UniqueConstraint(columnNames = {"organization_id", "email"}))
 @Getter
-@Setter
-@NoArgsConstructor
 public class OrganizationMember extends BaseAuditEntity {
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "organization_id", nullable = false)
@@ -61,4 +68,174 @@ public class OrganizationMember extends BaseAuditEntity {
 
   @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<OrgMemberSession> sessions = new ArrayList<>();
+
+  @Transient
+  private final List<DomainEvent> domainEvents = new ArrayList<>();
+
+  protected OrganizationMember() {
+  }
+
+  /**
+   * Factory method to create a new OrganizationMember with validated data.
+   * Publishes OrganizationMemberCreatedEvent.
+   */
+  public static OrganizationMember create(
+      Organization organization,
+      Email email,
+      String passwordHash,
+      String name,
+      OrgMemberRole role,
+      boolean emailVerified) {
+
+    if (organization == null) {
+      throw new DomainValidationException("organization_required");
+    }
+    if (email == null) {
+      throw new DomainValidationException("email_required");
+    }
+    if (passwordHash == null || passwordHash.isEmpty()) {
+      throw new DomainValidationException("password_hash_required");
+    }
+    if (role == null) {
+      throw new DomainValidationException("role_required");
+    }
+
+    OrganizationMember member = new OrganizationMember();
+    member.organization = organization;
+    member.email = email.value();
+    member.passwordHash = passwordHash;
+    member.name = normalizeName(name);
+    member.role = role;
+    member.emailVerified = emailVerified;
+    member.status = OrgMemberStatus.ACTIVE;
+
+    // Register domain event
+    member.registerEvent(new OrganizationMemberCreatedEvent(
+        UUID.randomUUID(),
+        member.getId(),
+        organization.getId(),
+        member.email,
+        member.name,
+        member.role,
+        member.emailVerified,
+        Instant.now()
+    ));
+
+    return member;
+  }
+
+  private static String normalizeName(String name) {
+    if (name == null) {
+      return null;
+    }
+    String trimmed = name.trim();
+    return trimmed.isEmpty() ? null : trimmed;
+  }
+
+  /**
+   * Sets the organization. Used internally by Organization.addMember().
+   */
+  void setOrganization(Organization organization) {
+    this.organization = organization;
+  }
+
+  /**
+   * Updates the member's name.
+   */
+  public void updateName(String newName) {
+    ensureActive();
+    this.name = normalizeName(newName);
+  }
+
+  /**
+   * Updates the member's avatar URL.
+   */
+  public void updateAvatarUrl(String avatarUrl) {
+    ensureActive();
+    this.avatarUrl = avatarUrl;
+  }
+
+  /**
+   * Verifies the member's email address.
+   */
+  public void verifyEmail() {
+    ensureActive();
+    this.emailVerified = true;
+  }
+
+  /**
+   * Changes the member's role.
+   */
+  public void changeRole(OrgMemberRole newRole) {
+    ensureActive();
+    if (newRole == null) {
+      throw new DomainValidationException("role_required");
+    }
+    this.role = newRole;
+  }
+
+  /**
+   * Updates the password hash.
+   */
+  public void updatePasswordHash(String newPasswordHash) {
+    ensureActive();
+    if (newPasswordHash == null || newPasswordHash.isEmpty()) {
+      throw new DomainValidationException("password_hash_required");
+    }
+    this.passwordHash = newPasswordHash;
+  }
+
+  /**
+   * Suspends the member.
+   */
+  public void suspend() {
+    if (this.status == OrgMemberStatus.SUSPENDED) {
+      throw new DomainValidationException("member_already_suspended");
+    }
+    this.status = OrgMemberStatus.SUSPENDED;
+  }
+
+  /**
+   * Reactivates a suspended member.
+   */
+  public void reactivate() {
+    if (this.status != OrgMemberStatus.SUSPENDED) {
+      throw new DomainValidationException("member_not_suspended");
+    }
+    this.status = OrgMemberStatus.ACTIVE;
+  }
+
+  /**
+   * Checks if the member is active.
+   */
+  public boolean isActive() {
+    return this.status == OrgMemberStatus.ACTIVE;
+  }
+
+  private void ensureActive() {
+    if (!isActive()) {
+      throw new DomainValidationException("member_not_active");
+    }
+  }
+
+  /**
+   * Registers a domain event.
+   */
+  protected void registerEvent(DomainEvent event) {
+    domainEvents.add(event);
+  }
+
+  /**
+   * Returns unmodifiable list of domain events.
+   */
+  public List<DomainEvent> getDomainEvents() {
+    return Collections.unmodifiableList(domainEvents);
+  }
+
+  /**
+   * Clears all domain events. Should be called after events are published.
+   */
+  public void clearDomainEvents() {
+    domainEvents.clear();
+  }
 }

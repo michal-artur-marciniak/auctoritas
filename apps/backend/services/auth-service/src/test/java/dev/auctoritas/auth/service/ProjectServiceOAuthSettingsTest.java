@@ -9,7 +9,7 @@ import dev.auctoritas.auth.domain.model.project.Project;
 import dev.auctoritas.auth.domain.model.project.ProjectSettings;
 import dev.auctoritas.auth.security.OrgMemberPrincipal;
 import dev.auctoritas.auth.domain.organization.OrgMemberRole;
-import dev.auctoritas.auth.domain.organization.OrganizationStatus;
+import dev.auctoritas.auth.domain.valueobject.Slug;
 import jakarta.persistence.EntityManager;
 import java.util.HashMap;
 import java.util.List;
@@ -36,19 +36,10 @@ class ProjectServiceOAuthSettingsTest {
 
   @BeforeEach
   void setUp() {
-    org = new Organization();
-    org.setName("Test Org");
-    org.setSlug("test-org-project-oauth-settings");
-    org.setStatus(OrganizationStatus.ACTIVE);
+    org = Organization.create("Test Org", Slug.of("test-org-project-oauth-settings"));
     entityManager.persist(org);
 
-    ProjectSettings settings = new ProjectSettings();
-    project = new Project();
-    project.setOrganization(org);
-    project.setName("Test Project");
-    project.setSlug("test-project-oauth-settings");
-    project.setSettings(settings);
-    settings.setProject(project);
+    project = Project.create(org, "Test Project", Slug.of("test-project-oauth-settings"));
     entityManager.persist(project);
 
     entityManager.flush();

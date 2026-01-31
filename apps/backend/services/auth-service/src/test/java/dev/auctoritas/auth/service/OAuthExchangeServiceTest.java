@@ -12,7 +12,9 @@ import dev.auctoritas.auth.domain.model.project.ApiKey;
 import dev.auctoritas.auth.domain.model.project.Project;
 import dev.auctoritas.auth.domain.model.project.ProjectSettings;
 import dev.auctoritas.auth.domain.apikey.ApiKeyStatus;
-import dev.auctoritas.auth.domain.organization.OrganizationStatus;
+import dev.auctoritas.auth.domain.valueobject.Email;
+import dev.auctoritas.auth.domain.valueobject.Password;
+import dev.auctoritas.auth.domain.valueobject.Slug;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,20 +39,10 @@ class OAuthExchangeServiceTest {
 
   @BeforeEach
   void setUp() {
-    Organization org = new Organization();
-    org.setName("Test Org");
-    org.setSlug("test-org-oauth-exchange");
-    org.setStatus(OrganizationStatus.ACTIVE);
+    Organization org = Organization.create("Test Org", Slug.of("test-org-oauth-exchange"));
     entityManager.persist(org);
 
-    ProjectSettings settings = new ProjectSettings();
-
-    project = new Project();
-    project.setOrganization(org);
-    project.setName("Test Project");
-    project.setSlug("test-project-oauth-exchange");
-    project.setSettings(settings);
-    settings.setProject(project);
+    project = Project.create(org, "Test Project", Slug.of("test-project-oauth-exchange"));
     entityManager.persist(project);
 
     ApiKey apiKey = new ApiKey();
@@ -67,12 +59,13 @@ class OAuthExchangeServiceTest {
 
   @Test
   void exchangeIssuesTokensAndMarksCodeUsedAndRejectsReplay() {
-    EndUser user = new EndUser();
-    user.setProject(entityManager.find(Project.class, project.getId()));
-    user.setEmail("user@example.com");
-    user.setName("Test User");
-    user.setEmailVerified(true);
-    user.setPasswordHash("password-hash");
+    Project managedProject = entityManager.find(Project.class, project.getId());
+    EndUser user = EndUser.create(
+        managedProject,
+        Email.of("user@example.com"),
+        Password.fromHash("password-hash"),
+        "Test User");
+    user.verifyEmail();
     entityManager.persist(user);
 
     String rawCode = tokenService.generateOAuthExchangeCode();
@@ -114,11 +107,13 @@ class OAuthExchangeServiceTest {
 
   @Test
   void exchangeRejectsExpiredCode() {
-    EndUser user = new EndUser();
-    user.setProject(entityManager.find(Project.class, project.getId()));
-    user.setEmail("expired@example.com");
-    user.setEmailVerified(true);
-    user.setPasswordHash("password-hash");
+    Project managedProject = entityManager.find(Project.class, project.getId());
+    EndUser user = EndUser.create(
+        managedProject,
+        Email.of("expired@example.com"),
+        Password.fromHash("password-hash"),
+        null);
+    user.verifyEmail();
     entityManager.persist(user);
 
     String rawCode = tokenService.generateOAuthExchangeCode();

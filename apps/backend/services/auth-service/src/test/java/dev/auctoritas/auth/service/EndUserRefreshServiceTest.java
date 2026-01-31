@@ -13,7 +13,9 @@ import dev.auctoritas.auth.domain.model.project.Project;
 import dev.auctoritas.auth.domain.model.project.ProjectSettings;
 import dev.auctoritas.auth.repository.EndUserRefreshTokenRepository;
 import dev.auctoritas.auth.domain.apikey.ApiKeyStatus;
-import dev.auctoritas.auth.domain.organization.OrganizationStatus;
+import dev.auctoritas.auth.domain.valueobject.Email;
+import dev.auctoritas.auth.domain.valueobject.Password;
+import dev.auctoritas.auth.domain.valueobject.Slug;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.List;
@@ -40,20 +42,10 @@ class EndUserRefreshServiceTest {
 
   @BeforeEach
   void setUp() {
-    Organization org = new Organization();
-    org.setName("Test Org");
-    org.setSlug("test-org-refresh");
-    org.setStatus(OrganizationStatus.ACTIVE);
+    Organization org = Organization.create("Test Org", Slug.of("test-org-refresh"));
     entityManager.persist(org);
 
-    ProjectSettings settings = new ProjectSettings();
-
-    project = new Project();
-    project.setOrganization(org);
-    project.setName("Test Project");
-    project.setSlug("test-project-refresh");
-    project.setSettings(settings);
-    settings.setProject(project);
+    project = Project.create(org, "Test Project", Slug.of("test-project-refresh"));
     entityManager.persist(project);
 
     ApiKey apiKey = new ApiKey();
@@ -70,11 +62,12 @@ class EndUserRefreshServiceTest {
 
   @Test
   void refreshAllowsUnverifiedUserByDefaultAndIncludesEmailVerifiedClaim() {
-    EndUser user = new EndUser();
-    user.setProject(entityManager.find(Project.class, project.getId()));
-    user.setEmail("user@example.com");
-    user.setPasswordHash("hash");
-    user.setEmailVerified(false);
+    Project managedProject = entityManager.find(Project.class, project.getId());
+    EndUser user = EndUser.create(
+        managedProject,
+        Email.of("user@example.com"),
+        Password.fromHash("hash"),
+        null);
     entityManager.persist(user);
 
     String rawRefreshToken = "refresh-raw";
@@ -117,14 +110,15 @@ class EndUserRefreshServiceTest {
   @Test
   void refreshRejectsUnverifiedUserWhenProjectRequiresVerifiedEmail() {
     ProjectSettings settings = entityManager.find(Project.class, project.getId()).getSettings();
-    settings.setRequireVerifiedEmailForLogin(true);
+    settings.updateAuthSettings(true);
     entityManager.flush();
 
-    EndUser user = new EndUser();
-    user.setProject(entityManager.find(Project.class, project.getId()));
-    user.setEmail("user2@example.com");
-    user.setPasswordHash("hash");
-    user.setEmailVerified(false);
+    Project managedProject = entityManager.find(Project.class, project.getId());
+    EndUser user = EndUser.create(
+        managedProject,
+        Email.of("user2@example.com"),
+        Password.fromHash("hash"),
+        null);
     entityManager.persist(user);
 
     String rawRefreshToken = "refresh-raw-2";

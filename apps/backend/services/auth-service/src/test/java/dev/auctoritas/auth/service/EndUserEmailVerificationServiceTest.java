@@ -16,7 +16,9 @@ import dev.auctoritas.auth.messaging.DomainEventPublisher;
 import dev.auctoritas.auth.messaging.EmailVerificationResentEvent;
 import dev.auctoritas.auth.repository.EndUserEmailVerificationTokenRepository;
 import dev.auctoritas.auth.domain.apikey.ApiKeyStatus;
-import dev.auctoritas.auth.domain.organization.OrganizationStatus;
+import dev.auctoritas.auth.domain.valueobject.Email;
+import dev.auctoritas.auth.domain.valueobject.Password;
+import dev.auctoritas.auth.domain.valueobject.Slug;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.List;
@@ -49,20 +51,10 @@ class EndUserEmailVerificationServiceTest {
   @BeforeEach
   void setUp() {
     domainEventPublisher.clear();
-    Organization org = new Organization();
-    org.setName("Test Org");
-    org.setSlug("test-org-email-verification");
-    org.setStatus(OrganizationStatus.ACTIVE);
+    Organization org = Organization.create("Test Org", Slug.of("test-org-email-verification"));
     entityManager.persist(org);
 
-    ProjectSettings settings = new ProjectSettings();
-
-    project = new Project();
-    project.setOrganization(org);
-    project.setName("Test Project");
-    project.setSlug("test-project-email-verification");
-    project.setSettings(settings);
-    settings.setProject(project);
+    project = Project.create(org, "Test Project", Slug.of("test-project-email-verification"));
     entityManager.persist(project);
 
     ApiKey apiKey = new ApiKey();
@@ -73,11 +65,7 @@ class EndUserEmailVerificationServiceTest {
     apiKey.setStatus(ApiKeyStatus.ACTIVE);
     entityManager.persist(apiKey);
 
-    user = new EndUser();
-    user.setProject(project);
-    user.setEmail("user@example.com");
-    user.setPasswordHash("hash");
-    user.setEmailVerified(false);
+    user = EndUser.create(project, Email.of("user@example.com"), Password.fromHash("hash"), null);
     entityManager.persist(user);
 
     entityManager.flush();
@@ -102,7 +90,7 @@ class EndUserEmailVerificationServiceTest {
     entityManager.clear();
 
     EndUser updatedUser = entityManager.find(EndUser.class, user.getId());
-    assertThat(updatedUser.getEmailVerified()).isTrue();
+    assertThat(updatedUser.isEmailVerified()).isTrue();
 
     List<EndUserEmailVerificationToken> tokens = verificationTokenRepository.findAll();
     assertThat(tokens).hasSize(1);
@@ -162,11 +150,7 @@ class EndUserEmailVerificationServiceTest {
     EndUserEmailVerificationService.EmailVerificationPayload payload =
         emailVerificationService.issueVerificationToken(managedUser);
 
-    EndUser otherUser = new EndUser();
-    otherUser.setProject(project);
-    otherUser.setEmail("other@example.com");
-    otherUser.setPasswordHash("hash");
-    otherUser.setEmailVerified(false);
+    EndUser otherUser = EndUser.create(project, Email.of("other@example.com"), Password.fromHash("hash"), null);
     entityManager.persist(otherUser);
 
     entityManager.flush();

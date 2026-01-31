@@ -6,8 +6,7 @@ import dev.auctoritas.auth.domain.model.project.ApiKey;
 import dev.auctoritas.auth.domain.model.project.Project;
 import dev.auctoritas.auth.domain.model.project.ProjectSettings;
 import dev.auctoritas.auth.domain.apikey.ApiKeyStatus;
-import dev.auctoritas.auth.domain.organization.OrganizationStatus;
-import dev.auctoritas.auth.domain.project.ProjectStatus;
+import dev.auctoritas.auth.domain.valueobject.Slug;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -36,22 +35,11 @@ class ApiKeyRepositoryTest {
 
   @BeforeEach
   void setUp() {
-    testOrg = new Organization();
-    testOrg.setName("Test Org");
-    testOrg.setSlug("test-org-apikey");
-    testOrg.setStatus(OrganizationStatus.ACTIVE);
+    testOrg = Organization.create("Test Org", Slug.of("test-org-apikey"));
     entityManager.persist(testOrg);
     entityManager.flush();
 
-    ProjectSettings settings = new ProjectSettings();
-
-    testProject = new Project();
-    testProject.setOrganization(testOrg);
-    testProject.setName("Test Project");
-    testProject.setSlug("test-project-apikey");
-    testProject.setSettings(settings);
-    settings.setProject(testProject);
-
+    testProject = Project.create(testOrg, "Test Project", Slug.of("test-project-apikey"));
     entityManager.persist(testProject);
     entityManager.flush();
 

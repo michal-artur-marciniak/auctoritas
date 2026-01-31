@@ -18,8 +18,9 @@ import dev.auctoritas.auth.ports.identity.EndUserRepositoryPort;
 import dev.auctoritas.auth.ports.oauth.OAuthAuthorizationRequestRepositoryPort;
 import dev.auctoritas.auth.ports.oauth.OAuthConnectionRepositoryPort;
 import dev.auctoritas.auth.ports.oauth.OAuthExchangeCodeRepositoryPort;
-import dev.auctoritas.auth.domain.organization.OrganizationStatus;
-import dev.auctoritas.auth.domain.project.ProjectStatus;
+import dev.auctoritas.auth.domain.valueobject.Email;
+import dev.auctoritas.auth.domain.valueobject.Password;
+import dev.auctoritas.auth.domain.valueobject.Slug;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.HashMap;
@@ -73,30 +74,21 @@ class OAuthGoogleCallbackServiceTest {
 
   @BeforeEach
   void setUp() {
-    Organization org = new Organization();
-    org.setName("Test Org");
-    org.setSlug("test-org-oauth-callback");
-    org.setStatus(OrganizationStatus.ACTIVE);
+    Organization org = Organization.create("Test Org", Slug.of("test-org-oauth-callback"));
     entityManager.persist(org);
     entityManager.flush();
 
-    ProjectSettings settings = new ProjectSettings();
+    project = Project.create(org, "Test Project", Slug.of("test-project-oauth-callback"));
+    ProjectSettings settings = project.getSettings();
+
     Map<String, Object> google = new HashMap<>();
     google.put("enabled", true);
     google.put("clientId", "google-client-id");
 
     Map<String, Object> oauthConfig = new HashMap<>();
     oauthConfig.put("google", google);
-    settings.setOauthConfig(oauthConfig);
+    settings.updateOauthConfig(oauthConfig);
     settings.setOauthGoogleClientSecretEnc("google-client-secret");
-
-    project = new Project();
-    project.setOrganization(org);
-    project.setName("Test Project");
-    project.setSlug("test-project-oauth-callback");
-    project.setStatus(ProjectStatus.ACTIVE);
-    project.setSettings(settings);
-    settings.setProject(project);
 
     entityManager.persist(project);
     entityManager.flush();
@@ -138,7 +130,7 @@ class OAuthGoogleCallbackServiceTest {
         .get()
         .satisfies(
             user -> {
-              assertThat(user.getEmailVerified()).isTrue();
+              assertThat(user.isEmailVerified()).isTrue();
               assertThat(user.getPasswordHash()).isNotBlank();
             });
 
@@ -170,12 +162,7 @@ class OAuthGoogleCallbackServiceTest {
   @Test
   @DisplayName("Should mark existing end-user as emailVerified when signing in with Google")
   void shouldMarkExistingUserVerified() {
-    EndUser existing = new EndUser();
-    existing.setProject(project);
-    existing.setEmail("user@example.com");
-    existing.setName(null);
-    existing.setEmailVerified(false);
-    existing.setPasswordHash("hash");
+    EndUser existing = EndUser.create(project, Email.of("user@example.com"), Password.fromHash("hash"), null);
     entityManager.persist(existing);
     entityManager.flush();
 
@@ -203,7 +190,7 @@ class OAuthGoogleCallbackServiceTest {
         .get()
         .satisfies(
             user -> {
-              assertThat(user.getEmailVerified()).isTrue();
+              assertThat(user.isEmailVerified()).isTrue();
               assertThat(user.getName()).isEqualTo("Existing Name");
             });
   }
@@ -211,12 +198,7 @@ class OAuthGoogleCallbackServiceTest {
   @Test
   @DisplayName("Should use existing OAuth connection when provider_user_id matches")
   void shouldUseExistingConnectionByProviderUserId() {
-    EndUser existing = new EndUser();
-    existing.setProject(project);
-    existing.setEmail("user@example.com");
-    existing.setName(null);
-    existing.setEmailVerified(false);
-    existing.setPasswordHash("hash");
+    EndUser existing = EndUser.create(project, Email.of("user@example.com"), Password.fromHash("hash"), null);
     entityManager.persist(existing);
 
     dev.auctoritas.auth.domain.model.oauth.OAuthConnection conn =
@@ -255,7 +237,7 @@ class OAuthGoogleCallbackServiceTest {
         .get()
         .satisfies(
             user -> {
-              assertThat(user.getEmailVerified()).isFalse();
+              assertThat(user.isEmailVerified()).isFalse();
               assertThat(user.getName()).isEqualTo("New Name");
             });
 
@@ -299,7 +281,7 @@ class OAuthGoogleCallbackServiceTest {
         .get()
         .satisfies(
             user -> {
-              assertThat(user.getEmailVerified()).isFalse();
+              assertThat(user.isEmailVerified()).isFalse();
               assertThat(user.getName()).isEqualTo("Unverified User");
             });
   }

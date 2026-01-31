@@ -3,9 +3,8 @@ package dev.auctoritas.auth.repository;
 import dev.auctoritas.auth.config.JpaConfig;
 import dev.auctoritas.auth.domain.model.organization.Organization;
 import dev.auctoritas.auth.domain.model.project.Project;
-import dev.auctoritas.auth.domain.model.project.ProjectSettings;
 import dev.auctoritas.auth.domain.project.ProjectStatus;
-import dev.auctoritas.auth.domain.organization.OrganizationStatus;
+import dev.auctoritas.auth.domain.valueobject.Slug;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -33,26 +32,11 @@ class ProjectRepositoryTest {
 
   @BeforeEach
   void setUp() {
-    testOrg = new Organization();
-    testOrg.setName("Test Org");
-    testOrg.setSlug("test-org-project");
-    testOrg.setStatus(OrganizationStatus.ACTIVE);
+    testOrg = Organization.create("Test Org", Slug.of("test-org-project"));
     entityManager.persist(testOrg);
     entityManager.flush();
 
-    ProjectSettings settings = new ProjectSettings();
-    settings.setMinLength(8);
-    settings.setRequireUppercase(true);
-    settings.setRequireNumbers(true);
-
-    testProject = new Project();
-    testProject.setOrganization(testOrg);
-    testProject.setName("Test Project");
-    testProject.setSlug("test-project");
-    testProject.setStatus(ProjectStatus.ACTIVE);
-    testProject.setSettings(settings);
-    settings.setProject(testProject);
-
+    testProject = Project.create(testOrg, "Test Project", Slug.of("test-project"));
     entityManager.persist(testProject);
     entityManager.flush();
   }
@@ -97,10 +81,7 @@ class ProjectRepositoryTest {
   @Test
   @DisplayName("Should enforce unique slug per organization")
   void shouldEnforceUniqueSlugPerOrganization() {
-    Project duplicate = new Project();
-    duplicate.setOrganization(testOrg);
-    duplicate.setName("Duplicate");
-    duplicate.setSlug("test-project");
+    Project duplicate = Project.create(testOrg, "Duplicate", Slug.of("test-project"));
     entityManager.persist(duplicate);
     assertThatThrownBy(() -> entityManager.flush())
         .isInstanceOf(jakarta.persistence.PersistenceException.class);

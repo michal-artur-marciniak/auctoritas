@@ -21,8 +21,9 @@ import dev.auctoritas.auth.ports.oauth.OAuthExchangeCodeRepositoryPort;
 import dev.auctoritas.auth.adapters.external.oauth.MicrosoftOAuthProvider;
 import dev.auctoritas.auth.service.oauth.OAuthAccountLinkingService;
 import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
-import dev.auctoritas.auth.domain.organization.OrganizationStatus;
-import dev.auctoritas.auth.domain.project.ProjectStatus;
+import dev.auctoritas.auth.domain.valueobject.Email;
+import dev.auctoritas.auth.domain.valueobject.Password;
+import dev.auctoritas.auth.domain.valueobject.Slug;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.HashMap;
@@ -76,14 +77,13 @@ class OAuthMicrosoftCallbackServiceTest {
 
   @BeforeEach
   void setUp() {
-    Organization org = new Organization();
-    org.setName("Test Org");
-    org.setSlug("test-org-microsoft-oauth-callback");
-    org.setStatus(OrganizationStatus.ACTIVE);
+    Organization org = Organization.create("Test Org", Slug.of("test-org-microsoft-oauth-callback"));
     entityManager.persist(org);
     entityManager.flush();
 
-    ProjectSettings settings = new ProjectSettings();
+    project = Project.create(org, "Test Project", Slug.of("test-project-microsoft-oauth-callback"));
+    ProjectSettings settings = project.getSettings();
+
     Map<String, Object> microsoft = new HashMap<>();
     microsoft.put("enabled", true);
     microsoft.put("clientId", "microsoft-client-id");
@@ -91,16 +91,8 @@ class OAuthMicrosoftCallbackServiceTest {
 
     Map<String, Object> oauthConfig = new HashMap<>();
     oauthConfig.put("microsoft", microsoft);
-    settings.setOauthConfig(oauthConfig);
+    settings.updateOauthConfig(oauthConfig);
     settings.setOauthMicrosoftClientSecretEnc("microsoft-client-secret");
-
-    project = new Project();
-    project.setOrganization(org);
-    project.setName("Test Project");
-    project.setSlug("test-project-microsoft-oauth-callback");
-    project.setStatus(ProjectStatus.ACTIVE);
-    project.setSettings(settings);
-    settings.setProject(project);
 
     entityManager.persist(project);
     entityManager.flush();
@@ -140,7 +132,7 @@ class OAuthMicrosoftCallbackServiceTest {
         .get()
         .satisfies(
             user -> {
-              assertThat(user.getEmailVerified()).isFalse();
+              assertThat(user.isEmailVerified()).isFalse();
               assertThat(user.getPasswordHash()).isNotBlank();
             });
 
@@ -172,12 +164,7 @@ class OAuthMicrosoftCallbackServiceTest {
   @Test
   @DisplayName("Should use existing OAuth connection when provider_user_id matches")
   void shouldUseExistingConnectionByProviderUserId() {
-    EndUser existing = new EndUser();
-    existing.setProject(project);
-    existing.setEmail("user@example.com");
-    existing.setName(null);
-    existing.setEmailVerified(false);
-    existing.setPasswordHash("hash");
+    EndUser existing = EndUser.create(project, Email.of("user@example.com"), Password.fromHash("hash"), null);
     entityManager.persist(existing);
 
     dev.auctoritas.auth.domain.model.oauth.OAuthConnection conn = new dev.auctoritas.auth.domain.model.oauth.OAuthConnection();
@@ -213,7 +200,7 @@ class OAuthMicrosoftCallbackServiceTest {
         .get()
         .satisfies(
             user -> {
-              assertThat(user.getEmailVerified()).isFalse();
+              assertThat(user.isEmailVerified()).isFalse();
               assertThat(user.getName()).isEqualTo("New Name");
             });
 

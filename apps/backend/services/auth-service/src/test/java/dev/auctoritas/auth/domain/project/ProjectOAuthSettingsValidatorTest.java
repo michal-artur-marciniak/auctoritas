@@ -4,7 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
+import dev.auctoritas.auth.domain.model.organization.Organization;
+import dev.auctoritas.auth.domain.model.project.Project;
 import dev.auctoritas.auth.domain.model.project.ProjectSettings;
+import dev.auctoritas.auth.domain.valueobject.Slug;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,9 +16,15 @@ import org.junit.jupiter.api.Test;
 class ProjectOAuthSettingsValidatorTest {
   private final ProjectOAuthSettingsValidator validator = new ProjectOAuthSettingsValidator();
 
+  private ProjectSettings createSettings() {
+    Organization org = Organization.create("Test", Slug.of("test"));
+    Project project = Project.create(org, "Test", Slug.of("test"));
+    return project.getSettings();
+  }
+
   @Test
   void validateRejectsInvalidRedirectUri() {
-    ProjectSettings settings = new ProjectSettings();
+    ProjectSettings settings = createSettings();
     Map<String, Object> patch = new HashMap<>();
     patch.put("redirectUris", List.of("ftp://app.example.com/callback"));
 
@@ -26,7 +35,7 @@ class ProjectOAuthSettingsValidatorTest {
 
   @Test
   void validateNormalizesRedirectUris() {
-    ProjectSettings settings = new ProjectSettings();
+    ProjectSettings settings = createSettings();
     Map<String, Object> patch = new HashMap<>();
     patch.put(
         "redirectUris",
@@ -41,7 +50,7 @@ class ProjectOAuthSettingsValidatorTest {
 
   @Test
   void validateRejectsGithubRedirectUriNotInAllowlist() {
-    ProjectSettings settings = new ProjectSettings();
+    ProjectSettings settings = createSettings();
 
     Map<String, Object> github = new HashMap<>();
     github.put("enabled", true);
@@ -60,7 +69,7 @@ class ProjectOAuthSettingsValidatorTest {
 
   @Test
   void validateRequiresGoogleClientIdWhenEnabled() {
-    ProjectSettings settings = new ProjectSettings();
+    ProjectSettings settings = createSettings();
 
     Map<String, Object> google = new HashMap<>();
     google.put("enabled", true);
@@ -76,7 +85,7 @@ class ProjectOAuthSettingsValidatorTest {
 
   @Test
   void validateRequiresGoogleSecretWhenEnabled() {
-    ProjectSettings settings = new ProjectSettings();
+    ProjectSettings settings = createSettings();
 
     Map<String, Object> google = new HashMap<>();
     google.put("enabled", true);
@@ -92,7 +101,7 @@ class ProjectOAuthSettingsValidatorTest {
 
   @Test
   void validateAcceptsApplePrivateKeyRef() {
-    ProjectSettings settings = new ProjectSettings();
+    ProjectSettings settings = createSettings();
 
     Map<String, Object> apple = new HashMap<>();
     apple.put("enabled", true);
