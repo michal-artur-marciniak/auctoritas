@@ -3,9 +3,9 @@ package dev.auctoritas.auth.service;
 import dev.auctoritas.auth.api.EndUserEmailVerificationRequest;
 import dev.auctoritas.auth.api.EndUserEmailVerificationResponse;
 import dev.auctoritas.auth.api.EndUserResendVerificationRequest;
-import dev.auctoritas.auth.domain.exception.DomainUnauthorizedException;
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.model.enduser.EndUser;
+import dev.auctoritas.auth.domain.model.enduser.EndUserEmailVerificationDomainService;
 import dev.auctoritas.auth.domain.model.enduser.EndUserEmailVerificationToken;
 import dev.auctoritas.auth.domain.model.project.ApiKey;
 import dev.auctoritas.auth.domain.model.project.Project;
@@ -15,7 +15,6 @@ import dev.auctoritas.auth.domain.model.enduser.EndUserEmailVerificationTokenRep
 import dev.auctoritas.auth.domain.model.enduser.EndUserRepositoryPort;
 import jakarta.persistence.LockTimeoutException;
 import jakarta.persistence.PessimisticLockException;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.UUID;
@@ -32,15 +31,13 @@ public class EndUserEmailVerificationService {
   private static final Logger log = LoggerFactory.getLogger(EndUserEmailVerificationService.class);
   private static final String GENERIC_MESSAGE =
       "If an account exists, verification instructions have been sent";
-  private static final int RESEND_MAX_PER_HOUR = 3;
-  private static final Duration RESEND_WINDOW = Duration.ofHours(1);
-
   private final ApiKeyService apiKeyService;
   private final EndUserRepositoryPort endUserRepository;
   private final EndUserEmailVerificationTokenRepositoryPort verificationTokenRepository;
   private final TokenService tokenService;
   private final DomainEventPublisher domainEventPublisher;
   private final boolean logVerificationChallenge;
+  private final EndUserEmailVerificationDomainService domainService;
 
   public EndUserEmailVerificationService(
       ApiKeyService apiKeyService,
@@ -55,6 +52,7 @@ public class EndUserEmailVerificationService {
     this.tokenService = tokenService;
     this.domainEventPublisher = domainEventPublisher;
     this.logVerificationChallenge = logVerificationChallenge;
+    this.domainService = new EndUserEmailVerificationDomainService();
   }
 
   @Transactional
@@ -77,28 +75,18 @@ public class EndUserEmailVerificationService {
       throw new DomainValidationException("invalid_verification_token");
     }
 
-    if (!token.getProject().getId().equals(project.getId())) {
-      throw new DomainUnauthorizedException("api_key_invalid");
-    }
-
-    if (token.getUsedAt() != null) {
-      throw new DomainValidationException("verification_token_used");
-    }
-
-    if (token.getExpiresAt().isBefore(Instant.now())) {
-      throw new DomainValidationException("verification_token_expired");
-    }
-
-    if (!tokenService.hashToken(rawCode).equals(token.getCodeHash())) {
-      throw new DomainValidationException("verification_code_invalid");
-    }
-
-    EndUser user = token.getUser();
+    EndUserEmailVerificationDomainService.VerificationTokenValidationResult validation =
+        domainService.validateToken(
+            token,
+            project,
+            tokenService.hashToken(rawCode),
+            Instant.now());
+    EndUser user = validation.user();
     user.verifyEmail();
     endUserRepository.save(user);
     publishUserDomainEvents(user);
 
-    token.setUsedAt(Instant.now());
+    token.markUsed(Instant.now());
     verificationTokenRepository.save(token);
 
     return new EndUserEmailVerificationResponse("Email verified");
@@ -126,12 +114,12 @@ public class EndUserEmailVerificationService {
                 return;
               }
 
-              Instant now = Instant.now();
-              Instant since = now.minus(RESEND_WINDOW);
+              EndUserEmailVerificationDomainService.ResendWindow window =
+                  domainService.decideResendWindow(user.getId(), Instant.now());
               long issuedCount =
                   verificationTokenRepository.countIssuedSince(
-                      user.getId(), project.getId(), since);
-              if (issuedCount >= RESEND_MAX_PER_HOUR) {
+                      user.getId(), project.getId(), window.since());
+              if (issuedCount >= window.maxAllowed()) {
                 log.info(
                     "email_verification_resend_requested {} {} {} {}",
                     kv("projectId", project.getId()),
@@ -188,12 +176,12 @@ public class EndUserEmailVerificationService {
     String rawToken = tokenService.generateEmailVerificationToken();
     String rawCode = tokenService.generateEmailVerificationCode();
     Instant expiresAt = tokenService.getEmailVerificationTokenExpiry();
-    EndUserEmailVerificationToken token = new EndUserEmailVerificationToken();
-    token.setProject(user.getProject());
-    token.setUser(user);
-    token.setTokenHash(tokenService.hashToken(rawToken));
-    token.setCodeHash(tokenService.hashToken(rawCode));
-    token.setExpiresAt(expiresAt);
+    EndUserEmailVerificationToken token = EndUserEmailVerificationToken.issue(
+        user.getProject(),
+        user,
+        tokenService.hashToken(rawToken),
+        tokenService.hashToken(rawCode),
+        expiresAt);
     EndUserEmailVerificationToken saved = verificationTokenRepository.save(token);
     return new EmailVerificationPayload(saved.getId(), rawToken, rawCode, expiresAt);
   }

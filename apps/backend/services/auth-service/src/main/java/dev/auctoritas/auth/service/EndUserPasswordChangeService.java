@@ -6,6 +6,8 @@ import dev.auctoritas.auth.domain.exception.DomainUnauthorizedException;
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.model.enduser.Password;
 import dev.auctoritas.auth.domain.model.enduser.EndUser;
+import dev.auctoritas.auth.domain.model.enduser.EndUserCredentialPolicyDomainService;
+import dev.auctoritas.auth.domain.model.enduser.EndUserPasswordChangeDomainService;
 import dev.auctoritas.auth.domain.model.enduser.EndUserPasswordHistory;
 import dev.auctoritas.auth.domain.model.enduser.EndUserRefreshToken;
 import dev.auctoritas.auth.domain.model.project.ApiKey;
@@ -16,8 +18,6 @@ import dev.auctoritas.auth.domain.model.enduser.EndUserRefreshTokenRepositoryPor
 import dev.auctoritas.auth.domain.model.enduser.EndUserRepositoryPort;
 import dev.auctoritas.auth.domain.model.enduser.EndUserSessionRepositoryPort;
 import dev.auctoritas.auth.security.EndUserPrincipal;
-import dev.auctoritas.auth.shared.security.PasswordPolicy;
-import dev.auctoritas.auth.shared.security.PasswordValidator;
 import java.util.UUID;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -26,16 +26,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class EndUserPasswordChangeService {
-  private static final int DEFAULT_MAX_PASSWORD_LENGTH = 128;
-  private static final int DEFAULT_MIN_UNIQUE = 4;
-  private static final int DEFAULT_PASSWORD_HISTORY_COUNT = 5;
-
   private final ApiKeyService apiKeyService;
   private final EndUserRepositoryPort endUserRepository;
   private final EndUserPasswordHistoryRepositoryPort passwordHistoryRepository;
   private final EndUserSessionRepositoryPort sessionRepository;
   private final EndUserRefreshTokenRepositoryPort refreshTokenRepository;
   private final PasswordEncoder passwordEncoder;
+  private final EndUserPasswordChangeDomainService domainService;
 
   public EndUserPasswordChangeService(
       ApiKeyService apiKeyService,
@@ -50,6 +47,8 @@ public class EndUserPasswordChangeService {
     this.sessionRepository = sessionRepository;
     this.refreshTokenRepository = refreshTokenRepository;
     this.passwordEncoder = passwordEncoder;
+    this.domainService =
+        new EndUserPasswordChangeDomainService(new EndUserCredentialPolicyDomainService());
   }
 
   @Transactional
@@ -67,13 +66,14 @@ public class EndUserPasswordChangeService {
     if (!project.getId().equals(principal.projectId())) {
       throw new DomainUnauthorizedException("api_key_invalid");
     }
-    ProjectSettings settings = project.getSettings();
-    if (settings == null) {
-      throw new DomainValidationException("project_settings_missing");
-    }
+    ProjectSettings settings = domainService.requireSettings(project.getSettings());
 
-    String currentPassword = requireValue(request.currentPassword(), "current_password_required");
-    String newPassword = requireValue(request.newPassword(), "new_password_required");
+    EndUserPasswordChangeDomainService.ChangeValidationResult validation =
+        domainService.validateChangeRequest(
+            request.currentPassword(),
+            request.newPassword());
+    String currentPassword = validation.currentPassword();
+    String newPassword = validation.newPassword();
 
     EndUser user =
         endUserRepository
@@ -84,7 +84,7 @@ public class EndUserPasswordChangeService {
       throw new DomainValidationException("invalid_current_password");
     }
 
-    validatePassword(settings, newPassword);
+    domainService.validatePasswordPolicy(settings, newPassword);
     enforcePasswordHistory(settings, project.getId(), user, newPassword);
 
     String previousPasswordHash = user.getPasswordHash();
@@ -136,59 +136,18 @@ public class EndUserPasswordChangeService {
 
   private void enforcePasswordHistory(
       ProjectSettings settings, UUID projectId, EndUser user, String newPassword) {
-    int historyCount = resolvePasswordHistoryCount(settings);
-    if (historyCount <= 1) {
-      if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
-        throw new DomainValidationException("password_reuse_not_allowed");
-      }
-      return;
-    }
-
-    if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
-      throw new DomainValidationException("password_reuse_not_allowed");
-    }
-
-    passwordHistoryRepository
-        .findRecent(projectId, user.getId(), historyCount - 1)
-        .forEach(
-            entry -> {
-              if (passwordEncoder.matches(newPassword, entry.getPasswordHash())) {
-                throw new DomainValidationException("password_reuse_not_allowed");
-              }
-            });
+    int historyCount = domainService.resolvePasswordHistoryCount(settings);
+    var recentHashes = passwordHistoryRepository
+        .findRecent(projectId, user.getId(), Math.max(0, historyCount - 1))
+        .stream()
+        .map(EndUserPasswordHistory::getPasswordHash)
+        .toList();
+    domainService.enforcePasswordHistory(
+        settings,
+        newPassword,
+        user.getPasswordHash(),
+        recentHashes,
+        passwordEncoder::matches);
   }
 
-  private int resolvePasswordHistoryCount(ProjectSettings settings) {
-    int configured = settings.getPasswordHistoryCount();
-    return configured > 0 ? configured : DEFAULT_PASSWORD_HISTORY_COUNT;
-  }
-
-  private void validatePassword(ProjectSettings settings, String password) {
-    int minLength = settings.getMinLength();
-    int minUnique = Math.max(1, Math.min(DEFAULT_MIN_UNIQUE, minLength));
-    PasswordPolicy policy =
-        new PasswordPolicy(
-            minLength,
-            DEFAULT_MAX_PASSWORD_LENGTH,
-            settings.isRequireUppercase(),
-            settings.isRequireLowercase(),
-            settings.isRequireNumbers(),
-            settings.isRequireSpecialChars(),
-            minUnique);
-    PasswordValidator.ValidationResult result = new PasswordValidator(policy).validate(password);
-    if (!result.valid()) {
-      throw new DomainValidationException("password_policy_failed");
-    }
-  }
-
-  private String requireValue(String value, String errorCode) {
-    if (value == null) {
-      throw new DomainValidationException(errorCode);
-    }
-    String trimmed = value.trim();
-    if (trimmed.isEmpty()) {
-      throw new DomainValidationException(errorCode);
-    }
-    return trimmed;
-  }
 }

@@ -4,11 +4,12 @@ import dev.auctoritas.auth.api.EndUserPasswordForgotRequest;
 import dev.auctoritas.auth.api.EndUserPasswordResetRequest;
 import dev.auctoritas.auth.api.EndUserPasswordResetResponse;
 import dev.auctoritas.auth.domain.exception.DomainException;
-import dev.auctoritas.auth.domain.exception.DomainUnauthorizedException;
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.model.enduser.Password;
 import dev.auctoritas.auth.domain.model.enduser.EndUser;
+import dev.auctoritas.auth.domain.model.enduser.EndUserCredentialPolicyDomainService;
 import dev.auctoritas.auth.domain.model.enduser.EndUserPasswordHistory;
+import dev.auctoritas.auth.domain.model.enduser.EndUserPasswordResetDomainService;
 import dev.auctoritas.auth.domain.model.enduser.EndUserPasswordResetToken;
 import dev.auctoritas.auth.domain.model.project.ApiKey;
 import dev.auctoritas.auth.domain.model.project.Project;
@@ -20,8 +21,6 @@ import dev.auctoritas.auth.domain.model.enduser.EndUserPasswordResetTokenReposit
 import dev.auctoritas.auth.domain.model.enduser.EndUserRefreshTokenRepositoryPort;
 import dev.auctoritas.auth.domain.model.enduser.EndUserRepositoryPort;
 import dev.auctoritas.auth.domain.model.enduser.EndUserSessionRepositoryPort;
-import dev.auctoritas.auth.shared.security.PasswordPolicy;
-import dev.auctoritas.auth.shared.security.PasswordValidator;
 import jakarta.persistence.LockTimeoutException;
 import jakarta.persistence.PessimisticLockException;
 import java.time.Instant;
@@ -39,9 +38,6 @@ import static net.logstash.logback.argument.StructuredArguments.kv;
 @Service
 public class EndUserPasswordResetService {
   private static final Logger log = LoggerFactory.getLogger(EndUserPasswordResetService.class);
-  private static final int DEFAULT_MAX_PASSWORD_LENGTH = 128;
-  private static final int DEFAULT_MIN_UNIQUE = 4;
-  private static final int DEFAULT_PASSWORD_HISTORY_COUNT = 5;
   private static final String GENERIC_MESSAGE =
       "If an account exists, password reset instructions have been sent";
 
@@ -55,6 +51,7 @@ public class EndUserPasswordResetService {
   private final TokenService tokenService;
   private final DomainEventPublisher domainEventPublisher;
   private final boolean logResetToken;
+  private final EndUserPasswordResetDomainService domainService;
 
   public EndUserPasswordResetService(
       ApiKeyService apiKeyService,
@@ -77,6 +74,8 @@ public class EndUserPasswordResetService {
     this.tokenService = tokenService;
     this.domainEventPublisher = domainEventPublisher;
     this.logResetToken = logResetToken;
+    this.domainService =
+        new EndUserPasswordResetDomainService(new EndUserCredentialPolicyDomainService());
   }
 
   @Transactional
@@ -84,10 +83,7 @@ public class EndUserPasswordResetService {
       String apiKey, EndUserPasswordForgotRequest request, String ipAddress, String userAgent) {
     ApiKey resolvedKey = apiKeyService.validateActiveKey(apiKey);
     Project project = resolvedKey.getProject();
-    ProjectSettings settings = project.getSettings();
-    if (settings == null) {
-      throw new DomainValidationException("project_settings_missing");
-    }
+    domainService.requireSettings(project.getSettings());
 
     String email = normalizeEmail(requireValue(request.email(), "email_required"));
     String emailHash = shortenHash(tokenService.hashToken(email));
@@ -98,13 +94,13 @@ public class EndUserPasswordResetService {
           String userIdAnon = anonymizeUserId(user);
           resetTokenRepository.markUsedByUserIdAndProjectId(user.getId(), project.getId(), Instant.now());
           String rawToken = tokenService.generatePasswordResetToken();
-          EndUserPasswordResetToken token = new EndUserPasswordResetToken();
-          token.setProject(project);
-          token.setUser(user);
-          token.setTokenHash(tokenService.hashToken(rawToken));
-          token.setExpiresAt(tokenService.getPasswordResetTokenExpiry());
-          token.setIpAddress(trimToNull(ipAddress));
-          token.setUserAgent(trimToNull(userAgent));
+          EndUserPasswordResetToken token = EndUserPasswordResetToken.issue(
+              project,
+              user,
+              tokenService.hashToken(rawToken),
+              tokenService.getPasswordResetTokenExpiry(),
+              trimToNull(ipAddress),
+              trimToNull(userAgent));
           resetTokenRepository.save(token);
 
           log.info(
@@ -161,10 +157,7 @@ public class EndUserPasswordResetService {
       String apiKey, EndUserPasswordResetRequest request) {
     ApiKey resolvedKey = apiKeyService.validateActiveKey(apiKey);
     Project project = resolvedKey.getProject();
-    ProjectSettings settings = project.getSettings();
-    if (settings == null) {
-      throw new DomainValidationException("project_settings_missing");
-    }
+    ProjectSettings settings = domainService.requireSettings(project.getSettings());
 
     String rawToken = request.token();
     String tokenHashPrefix = null;
@@ -190,27 +183,12 @@ public class EndUserPasswordResetService {
         throw new DomainValidationException("invalid_reset_token");
       }
 
-      if (!resetToken.getUser().getProject().getId().equals(project.getId())) {
-        throw new DomainUnauthorizedException("api_key_invalid");
-      }
-
-      if (!resetToken.getProject().getId().equals(project.getId())) {
-        throw new DomainUnauthorizedException("api_key_invalid");
-      }
-
-      if (resetToken.getUsedAt() != null) {
-        throw new DomainValidationException("reset_token_used");
-      }
-
-      if (resetToken.getExpiresAt().isBefore(Instant.now())) {
-        throw new DomainValidationException("reset_token_expired");
-      }
-
-      validatePassword(settings, newPassword);
-
-      EndUser user = resetToken.getUser();
+      EndUserPasswordResetDomainService.ResetTokenValidationResult validation =
+          domainService.validateResetToken(resetToken, project, Instant.now());
+      EndUser user = validation.user();
       String userIdAnon = anonymizeUserId(user);
 
+      domainService.validatePasswordPolicy(settings, newPassword);
       enforcePasswordHistory(settings, project, user, newPassword);
 
       String previousPasswordHash = user.getPasswordHash();
@@ -223,7 +201,7 @@ public class EndUserPasswordResetService {
       refreshTokenRepository.revokeActiveByUserId(user.getId());
       endUserSessionRepository.deleteByUserId(user.getId());
 
-      resetToken.setUsedAt(Instant.now());
+      resetToken.markUsed(Instant.now());
       resetTokenRepository.save(resetToken);
 
       log.info(
@@ -248,26 +226,18 @@ public class EndUserPasswordResetService {
 
   private void enforcePasswordHistory(
       ProjectSettings settings, Project project, EndUser user, String newPassword) {
-    int historyCount = resolvePasswordHistoryCount(settings);
-    if (historyCount <= 1) {
-      if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
-        throw new DomainValidationException("password_reuse_not_allowed");
-      }
-      return;
-    }
-
-    if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
-      throw new DomainValidationException("password_reuse_not_allowed");
-    }
-
-    passwordHistoryRepository
-        .findRecent(project.getId(), user.getId(), historyCount - 1)
-        .forEach(
-            entry -> {
-              if (passwordEncoder.matches(newPassword, entry.getPasswordHash())) {
-                throw new DomainValidationException("password_reuse_not_allowed");
-              }
-            });
+    int historyCount = domainService.resolvePasswordHistoryCount(settings);
+    var recentHashes = passwordHistoryRepository
+        .findRecent(project.getId(), user.getId(), Math.max(0, historyCount - 1))
+        .stream()
+        .map(EndUserPasswordHistory::getPasswordHash)
+        .toList();
+    domainService.validatePasswordReuse(
+        settings,
+        newPassword,
+        user.getPasswordHash(),
+        recentHashes,
+        passwordEncoder::matches);
   }
 
   private void recordPasswordHistory(Project project, EndUser user, String previousPasswordHash) {
@@ -279,29 +249,6 @@ public class EndUserPasswordResetService {
     history.setUser(user);
     history.setPasswordHash(previousPasswordHash);
     passwordHistoryRepository.save(history);
-  }
-
-  private int resolvePasswordHistoryCount(ProjectSettings settings) {
-    int configured = settings.getPasswordHistoryCount();
-    return configured > 0 ? configured : DEFAULT_PASSWORD_HISTORY_COUNT;
-  }
-
-  private void validatePassword(ProjectSettings settings, String password) {
-    int minLength = settings.getMinLength();
-    int minUnique = Math.max(1, Math.min(DEFAULT_MIN_UNIQUE, minLength));
-    PasswordPolicy policy =
-        new PasswordPolicy(
-            minLength,
-            DEFAULT_MAX_PASSWORD_LENGTH,
-            settings.isRequireUppercase(),
-            settings.isRequireLowercase(),
-            settings.isRequireNumbers(),
-            settings.isRequireSpecialChars(),
-            minUnique);
-    PasswordValidator.ValidationResult result = new PasswordValidator(policy).validate(password);
-    if (!result.valid()) {
-      throw new DomainValidationException("password_policy_failed");
-    }
   }
 
   private String normalizeEmail(String email) {
