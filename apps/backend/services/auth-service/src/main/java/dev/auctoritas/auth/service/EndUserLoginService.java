@@ -15,10 +15,10 @@ import dev.auctoritas.auth.ports.security.JwtProviderPort;
 import dev.auctoritas.auth.ports.security.TokenHasherPort;
 import dev.auctoritas.auth.ports.identity.EndUserRefreshTokenRepositoryPort;
 import dev.auctoritas.auth.ports.identity.EndUserSessionRepositoryPort;
+import dev.auctoritas.auth.ports.messaging.DomainEventPublisherPort;
+import java.time.Duration;
 import java.time.Instant;
-import java.util.Comparator;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -41,6 +41,7 @@ public class EndUserLoginService {
   private final PasswordEncoder passwordEncoder;
   private final TokenHasherPort tokenHasherPort;
   private final JwtProviderPort jwtProviderPort;
+  private final DomainEventPublisherPort domainEventPublisherPort;
 
   public EndUserLoginService(
       ApiKeyService apiKeyService,
@@ -49,7 +50,8 @@ public class EndUserLoginService {
       EndUserRefreshTokenRepositoryPort endUserRefreshTokenRepository,
       PasswordEncoder passwordEncoder,
       TokenHasherPort tokenHasherPort,
-      JwtProviderPort jwtProviderPort) {
+      JwtProviderPort jwtProviderPort,
+      DomainEventPublisherPort domainEventPublisherPort) {
     this.apiKeyService = apiKeyService;
     this.endUserRepository = endUserRepository;
     this.endUserSessionRepository = endUserSessionRepository;
@@ -57,6 +59,7 @@ public class EndUserLoginService {
     this.passwordEncoder = passwordEncoder;
     this.tokenHasherPort = tokenHasherPort;
     this.jwtProviderPort = jwtProviderPort;
+    this.domainEventPublisherPort = domainEventPublisherPort;
   }
 
   @Transactional
@@ -154,16 +157,14 @@ public class EndUserLoginService {
 
   private void persistSession(
       EndUser user, Instant expiresAt, String ipAddress, String userAgent) {
-    List<EndUserSession> sessions = endUserSessionRepository.findByUserId(user.getId());
+    Duration ttl = Duration.between(Instant.now(), expiresAt);
     EndUserSession session =
-        sessions.stream()
-            .max(Comparator.comparing(EndUserSession::getCreatedAt))
-            .orElseGet(EndUserSession::new);
-    session.setUser(user);
-    session.setDeviceInfo(buildDeviceInfo(userAgent));
-    session.setIpAddress(trimToNull(ipAddress));
-    session.setExpiresAt(expiresAt);
+        EndUserSession.create(user, trimToNull(ipAddress), buildDeviceInfo(userAgent), ttl);
     endUserSessionRepository.save(session);
+
+    // Publish and clear domain events
+    session.getDomainEvents().forEach(event -> domainEventPublisherPort.publish(event.eventType(), event));
+    session.clearDomainEvents();
   }
 
   private Map<String, Object> buildDeviceInfo(String userAgent) {

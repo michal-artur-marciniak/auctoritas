@@ -10,12 +10,12 @@ import dev.auctoritas.auth.domain.model.project.Project;
 import dev.auctoritas.auth.domain.model.project.ProjectSettings;
 import dev.auctoritas.auth.ports.identity.EndUserRefreshTokenRepositoryPort;
 import dev.auctoritas.auth.ports.identity.EndUserSessionRepositoryPort;
+import dev.auctoritas.auth.ports.messaging.DomainEventPublisherPort;
 import jakarta.persistence.LockTimeoutException;
 import jakarta.persistence.PessimisticLockException;
+import java.time.Duration;
 import java.time.Instant;
-import java.util.Comparator;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -29,18 +29,21 @@ public class EndUserRefreshService {
   private final EndUserSessionRepositoryPort endUserSessionRepository;
   private final TokenService tokenService;
   private final JwtService jwtService;
+  private final DomainEventPublisherPort domainEventPublisherPort;
 
   public EndUserRefreshService(
       ApiKeyService apiKeyService,
       EndUserRefreshTokenRepositoryPort refreshTokenRepository,
       EndUserSessionRepositoryPort endUserSessionRepository,
       TokenService tokenService,
-      JwtService jwtService) {
+      JwtService jwtService,
+      DomainEventPublisherPort domainEventPublisherPort) {
     this.apiKeyService = apiKeyService;
     this.refreshTokenRepository = refreshTokenRepository;
     this.endUserSessionRepository = endUserSessionRepository;
     this.tokenService = tokenService;
     this.jwtService = jwtService;
+    this.domainEventPublisherPort = domainEventPublisherPort;
   }
 
   @Transactional
@@ -133,16 +136,14 @@ public class EndUserRefreshService {
 
   private void persistSession(
       EndUser user, Instant expiresAt, String ipAddress, String userAgent) {
-    List<EndUserSession> sessions = endUserSessionRepository.findByUserId(user.getId());
+    Duration ttl = Duration.between(Instant.now(), expiresAt);
     EndUserSession session =
-        sessions.stream()
-            .max(Comparator.comparing(EndUserSession::getCreatedAt))
-            .orElseGet(EndUserSession::new);
-    session.setUser(user);
-    session.setDeviceInfo(buildDeviceInfo(userAgent));
-    session.setIpAddress(trimToNull(ipAddress));
-    session.setExpiresAt(expiresAt);
+        EndUserSession.create(user, trimToNull(ipAddress), buildDeviceInfo(userAgent), ttl);
     endUserSessionRepository.save(session);
+
+    // Publish and clear domain events
+    session.getDomainEvents().forEach(event -> domainEventPublisherPort.publish(event.eventType(), event));
+    session.clearDomainEvents();
   }
 
   private Map<String, Object> buildDeviceInfo(String userAgent) {

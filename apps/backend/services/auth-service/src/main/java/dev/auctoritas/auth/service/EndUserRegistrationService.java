@@ -20,7 +20,9 @@ import dev.auctoritas.auth.ports.security.JwtProviderPort;
 import dev.auctoritas.auth.ports.security.TokenHasherPort;
 import dev.auctoritas.auth.ports.identity.EndUserRefreshTokenRepositoryPort;
 import dev.auctoritas.auth.ports.identity.EndUserSessionRepositoryPort;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -220,12 +222,14 @@ public class EndUserRegistrationService {
 
   private void persistSession(
       EndUser user, Instant expiresAt, String ipAddress, String userAgent) {
-    EndUserSession session = new EndUserSession();
-    session.setUser(user);
-    session.setDeviceInfo(buildDeviceInfo(userAgent));
-    session.setIpAddress(trimToNull(ipAddress));
-    session.setExpiresAt(expiresAt);
+    Duration ttl = Duration.between(Instant.now(), expiresAt);
+    EndUserSession session =
+        EndUserSession.create(user, trimToNull(ipAddress), buildDeviceInfo(userAgent), ttl);
     endUserSessionRepository.save(session);
+
+    // Publish and clear domain events
+    session.getDomainEvents().forEach(event -> domainEventPublisherPort.publish(event.eventType(), event));
+    session.clearDomainEvents();
   }
 
   private Map<String, Object> buildDeviceInfo(String userAgent) {
