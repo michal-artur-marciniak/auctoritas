@@ -3,13 +3,13 @@ package dev.auctoritas.auth.service;
 import dev.auctoritas.auth.api.OrgRegistrationRequest;
 import dev.auctoritas.auth.api.OrgRegistrationResponse;
 import dev.auctoritas.auth.domain.exception.DomainConflictException;
-import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.model.organization.OrgMemberRefreshToken;
 import dev.auctoritas.auth.domain.model.organization.Organization;
 import dev.auctoritas.auth.domain.model.organization.OrganizationMember;
+import dev.auctoritas.auth.domain.model.organization.service.OrganizationRegistrationDomainService;
+import dev.auctoritas.auth.domain.model.organization.service.OrganizationRegistrationDomainService.OwnerSpec;
+import dev.auctoritas.auth.domain.model.organization.service.OrganizationRegistrationDomainService.RegistrationResult;
 import dev.auctoritas.auth.domain.organization.OrgMemberRole;
-import dev.auctoritas.auth.domain.valueobject.Email;
-import dev.auctoritas.auth.domain.valueobject.Slug;
 import dev.auctoritas.auth.ports.messaging.DomainEventPublisherPort;
 import dev.auctoritas.auth.ports.organization.OrgMemberRefreshTokenRepositoryPort;
 import dev.auctoritas.auth.ports.organization.OrganizationMemberRepositoryPort;
@@ -31,6 +31,7 @@ public class OrganizationRegistrationService {
   private final TokenService tokenService;
   private final JwtService jwtService;
   private final DomainEventPublisherPort domainEventPublisherPort;
+  private final OrganizationRegistrationDomainService domainService;
 
   public OrganizationRegistrationService(
       OrganizationRepositoryPort organizationRepository,
@@ -47,22 +48,38 @@ public class OrganizationRegistrationService {
     this.tokenService = tokenService;
     this.jwtService = jwtService;
     this.domainEventPublisherPort = domainEventPublisherPort;
+    this.domainService = new OrganizationRegistrationDomainService();
   }
 
   @Transactional
   public OrgRegistrationResponse register(OrgRegistrationRequest request) {
-    // Validate and create slug value object
-    Slug slug = createSlug(request.slug());
-
-    if (organizationRepository.existsBySlug(slug.value())) {
+    // Check slug uniqueness before delegating to domain service
+    if (organizationRepository.existsBySlug(request.slug().trim().toLowerCase())) {
       throw new DomainConflictException("org_slug_taken");
     }
 
-    // Create organization using factory method
-    Organization organization = Organization.create(request.orgName(), slug);
+    // Delegate to domain service for business logic
+    RegistrationResult result = domainService.register(
+        request.orgName(),
+        request.slug(),
+        request.ownerEmail(),
+        request.ownerPassword(),
+        request.ownerName());
 
-    // Create and add owner member
-    OrganizationMember owner = createOwnerMember(organization, request);
+    Organization organization = result.organization();
+    OwnerSpec ownerSpec = result.ownerSpec();
+
+    // Application layer handles infrastructure: password hashing and member creation
+    String passwordHash = passwordEncoder.encode(ownerSpec.plainPassword());
+    OrganizationMember owner = OrganizationMember.create(
+        organization,
+        ownerSpec.email(),
+        passwordHash,
+        ownerSpec.name(),
+        OrgMemberRole.OWNER,
+        true);
+
+    // Add owner to organization
     organization.addMember(owner);
 
     // Save organization (cascades to members due to CascadeType.ALL)
@@ -97,34 +114,6 @@ public class OrganizationRegistrationService {
         rawRefreshToken);
   }
 
-  private Slug createSlug(String slugValue) {
-    if (slugValue == null || slugValue.trim().isEmpty()) {
-      throw new DomainValidationException("org_slug_required");
-    }
-    return Slug.of(slugValue.trim().toLowerCase());
-  }
-
-  private OrganizationMember createOwnerMember(Organization organization, OrgRegistrationRequest request) {
-    if (request.ownerEmail() == null || request.ownerEmail().trim().isEmpty()) {
-      throw new DomainValidationException("owner_email_required");
-    }
-    if (request.ownerPassword() == null || request.ownerPassword().trim().isEmpty()) {
-      throw new DomainValidationException("owner_password_required");
-    }
-
-    Email email = Email.of(request.ownerEmail());
-    String passwordHash = passwordEncoder.encode(request.ownerPassword().trim());
-    String name = trimToNull(request.ownerName());
-
-    return OrganizationMember.create(
-        organization,
-        email,
-        passwordHash,
-        name,
-        OrgMemberRole.OWNER,
-        true);
-  }
-
   private void persistRefreshToken(OrganizationMember member, String rawToken) {
     OrgMemberRefreshToken token = new OrgMemberRefreshToken();
     token.setMember(member);
@@ -154,13 +143,5 @@ public class OrganizationRegistrationService {
       }
     });
     member.clearDomainEvents();
-  }
-
-  private String trimToNull(String value) {
-    if (value == null) {
-      return null;
-    }
-    String trimmed = value.trim();
-    return trimmed.isEmpty() ? null : trimmed;
   }
 }
