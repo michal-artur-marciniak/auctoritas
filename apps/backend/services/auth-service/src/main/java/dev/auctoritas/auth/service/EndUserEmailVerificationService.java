@@ -94,7 +94,7 @@ public class EndUserEmailVerificationService {
     }
 
     EndUser user = token.getUser();
-    user.setEmailVerified(true);
+    user.verifyEmail();
     endUserRepository.save(user);
 
     token.setUsedAt(Instant.now());
@@ -116,7 +116,7 @@ public class EndUserEmailVerificationService {
         .findByEmailAndProjectIdForUpdate(email, project.getId())
         .ifPresentOrElse(
             user -> {
-              if (Boolean.TRUE.equals(user.getEmailVerified())) {
+              if (user.isEmailVerified()) {
                 log.info(
                     "email_verification_resend_requested {} {} {}",
                     kv("projectId", project.getId()),

@@ -45,13 +45,17 @@ public class ProjectOAuthSettingsApplicationService {
     ProjectSettings settings = loadProject(orgId, projectId).getSettings();
 
     ProjectOAuthSettingsUpdate update = oauthSettingsValidator.validate(settings, request.config());
+
+    // Apply encrypted secrets using entity methods
     applySecretUpdate(update.googleClientSecret(), settings::setOauthGoogleClientSecretEnc);
     applySecretUpdate(update.githubClientSecret(), settings::setOauthGithubClientSecretEnc);
     applySecretUpdate(update.microsoftClientSecret(), settings::setOauthMicrosoftClientSecretEnc);
     applySecretUpdate(update.facebookClientSecret(), settings::setOauthFacebookClientSecretEnc);
     applySecretUpdate(update.applePrivateKey(), settings::setOauthApplePrivateKeyEnc);
 
-    settings.setOauthConfig(update.oauthConfig());
+    // Update OAuth config using entity method
+    settings.updateOauthConfig(update.oauthConfig());
+
     return projectSettingsRepository.save(settings);
   }
 

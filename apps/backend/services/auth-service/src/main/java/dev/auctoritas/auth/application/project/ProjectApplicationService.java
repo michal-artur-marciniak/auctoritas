@@ -6,16 +6,15 @@ import dev.auctoritas.auth.api.ProjectCreateResponse;
 import dev.auctoritas.auth.api.ProjectSummaryResponse;
 import dev.auctoritas.auth.api.ProjectUpdateRequest;
 import dev.auctoritas.auth.application.apikey.ApiKeyApplicationService;
+import dev.auctoritas.auth.domain.project.ProjectStatus;
+import dev.auctoritas.auth.domain.valueobject.Slug;
 import dev.auctoritas.auth.entity.organization.Organization;
 import dev.auctoritas.auth.entity.project.Project;
-import dev.auctoritas.auth.entity.project.ProjectSettings;
 import dev.auctoritas.auth.ports.organization.OrganizationRepositoryPort;
 import dev.auctoritas.auth.ports.project.ProjectRepositoryPort;
 import dev.auctoritas.auth.security.OrgMemberPrincipal;
 import dev.auctoritas.auth.domain.organization.OrgMemberRole;
-import dev.auctoritas.auth.domain.project.ProjectStatus;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -23,7 +22,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-/** Application service that owns Project CRUD operations. */
+/**
+ * Application service that owns Project CRUD operations.
+ * Thin orchestration layer - business logic delegated to domain entities.
+ */
 @Service
 public class ProjectApplicationService {
   private final OrganizationRepositoryPort organizationRepository;
@@ -45,9 +47,9 @@ public class ProjectApplicationService {
     enforceOrgAccess(orgId, principal);
 
     String name = requireValue(request.name(), "project_name_required");
-    String slug = normalizeSlug(requireValue(request.slug(), "project_slug_required"));
+    Slug slug = Slug.of(request.slug());
 
-    if (projectRepository.existsBySlugAndOrganizationId(slug, orgId)) {
+    if (projectRepository.existsBySlugAndOrganizationId(slug.value(), orgId)) {
       throw new ResponseStatusException(HttpStatus.CONFLICT, "project_slug_taken");
     }
 
@@ -56,22 +58,12 @@ public class ProjectApplicationService {
             .findById(orgId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "org_not_found"));
 
-    Project project = new Project();
-    project.setOrganization(organization);
-    project.setName(name);
-    project.setSlug(slug);
-
-    ProjectSettings settings = new ProjectSettings();
-    settings.setProject(project);
-    project.setSettings(settings);
-
     try {
+      Project project = Project.create(organization, name, slug);
       Project savedProject = projectRepository.save(project);
       ApiKeySecretResponse apiKeySecret = apiKeyApplicationService.createDefaultKey(savedProject);
 
-      return new ProjectCreateResponse(
-          toSummary(savedProject),
-          apiKeySecret);
+      return new ProjectCreateResponse(toSummary(savedProject), apiKeySecret);
     } catch (DataIntegrityViolationException ex) {
       throw new ResponseStatusException(HttpStatus.CONFLICT, "project_slug_taken", ex);
     }
@@ -91,32 +83,34 @@ public class ProjectApplicationService {
       UUID orgId, UUID projectId, OrgMemberPrincipal principal, ProjectUpdateRequest request) {
     enforceOrgAccess(orgId, principal);
     Project project = loadProject(orgId, projectId);
-    if (project.getStatus() == ProjectStatus.DELETED) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "project_not_found");
-    }
 
     if (request.name() != null) {
-      project.setName(requireValue(request.name(), "project_name_required"));
+      project.rename(request.name());
     }
 
     if (request.slug() != null) {
-      String normalized = normalizeSlug(requireValue(request.slug(), "project_slug_required"));
-      if (!normalized.equals(project.getSlug())
-          && projectRepository.existsBySlugAndOrganizationId(normalized, orgId)) {
+      Slug newSlug = Slug.of(request.slug());
+      if (!newSlug.value().equals(project.getSlug())
+          && projectRepository.existsBySlugAndOrganizationId(newSlug.value(), orgId)) {
         throw new ResponseStatusException(HttpStatus.CONFLICT, "project_slug_taken");
       }
-      project.setSlug(normalized);
+      project.changeSlug(newSlug);
     }
 
     if (request.status() != null) {
-      ProjectStatus requestedStatus = request.status();
-      if (requestedStatus == ProjectStatus.DELETED) {
-        throw new ResponseStatusException(HttpStatus.CONFLICT, "project_status_invalid");
-      }
-      project.setStatus(requestedStatus);
+      updateProjectStatus(project, request.status());
     }
 
     return toSummary(projectRepository.save(project));
+  }
+
+  private void updateProjectStatus(Project project, ProjectStatus requestedStatus) {
+    switch (requestedStatus) {
+      case ACTIVE -> project.reactivate();
+      case ARCHIVED -> project.archive();
+      case SUSPENDED -> project.suspend();
+      case DELETED -> throw new ResponseStatusException(HttpStatus.CONFLICT, "project_status_invalid");
+    }
   }
 
   @Transactional
@@ -124,7 +118,7 @@ public class ProjectApplicationService {
     enforceOrgAccess(orgId, principal);
     enforceAdminAccess(principal);
     Project project = loadProject(orgId, projectId);
-    project.setStatus(ProjectStatus.DELETED);
+    project.markDeleted();
     projectRepository.save(project);
     apiKeyApplicationService.revokeAllByProjectId(projectId);
   }
@@ -153,10 +147,6 @@ public class ProjectApplicationService {
     if (role != OrgMemberRole.OWNER && role != OrgMemberRole.ADMIN) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "insufficient_role");
     }
-  }
-
-  private String normalizeSlug(String slug) {
-    return slug.trim().toLowerCase(Locale.ROOT);
   }
 
   private Project loadProject(UUID orgId, UUID projectId) {

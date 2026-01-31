@@ -2,6 +2,7 @@ package dev.auctoritas.auth.service;
 
 import dev.auctoritas.auth.api.EndUserPasswordChangeRequest;
 import dev.auctoritas.auth.api.EndUserPasswordChangeResponse;
+import dev.auctoritas.auth.domain.valueobject.Password;
 import dev.auctoritas.auth.entity.enduser.EndUser;
 import dev.auctoritas.auth.entity.enduser.EndUserPasswordHistory;
 import dev.auctoritas.auth.entity.enduser.EndUserRefreshToken;
@@ -87,7 +88,7 @@ public class EndUserPasswordChangeService {
     enforcePasswordHistory(settings, project.getId(), user, newPassword);
 
     String previousPasswordHash = user.getPasswordHash();
-    user.setPasswordHash(passwordEncoder.encode(newPassword));
+    user.setPassword(Password.fromHash(passwordEncoder.encode(newPassword)));
     endUserRepository.save(user);
 
     recordPasswordHistory(project, user, previousPasswordHash);

@@ -82,7 +82,7 @@ public class OAuthExchangeService {
     }
 
     EndUser user = code.getUser();
-    if (settings.isRequireVerifiedEmailForLogin() && !Boolean.TRUE.equals(user.getEmailVerified())) {
+    if (settings.isRequireVerifiedEmailForLogin() && !user.isEmailVerified()) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "email_not_verified");
     }
 
@@ -99,12 +99,12 @@ public class OAuthExchangeService {
             user.getId(),
             project.getId(),
             user.getEmail(),
-            Boolean.TRUE.equals(user.getEmailVerified()),
+            user.isEmailVerified(),
             settings.getAccessTokenTtlSeconds());
 
     return new EndUserLoginResponse(
         new EndUserLoginResponse.EndUserSummary(
-            user.getId(), user.getEmail(), user.getName(), Boolean.TRUE.equals(user.getEmailVerified())),
+            user.getId(), user.getEmail(), user.getName(), user.isEmailVerified()),
         accessToken,
         rawRefreshToken);
   }

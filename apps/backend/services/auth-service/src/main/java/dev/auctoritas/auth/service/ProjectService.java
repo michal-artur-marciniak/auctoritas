@@ -15,6 +15,7 @@ import dev.auctoritas.auth.api.ProjectUpdateRequest;
 import dev.auctoritas.auth.application.apikey.ApiKeyApplicationService;
 import dev.auctoritas.auth.application.project.ProjectApplicationService;
 import dev.auctoritas.auth.application.project.ProjectOAuthSettingsApplicationService;
+import dev.auctoritas.auth.domain.valueobject.Slug;
 import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.entity.project.ProjectSettings;
 import dev.auctoritas.auth.ports.project.ProjectRepositoryPort;
@@ -29,6 +30,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Facade service coordinating Project operations.
+ * Thin application service - delegates business logic to domain entities.
+ */
 @Service
 public class ProjectService {
   private final ProjectRepositoryPort projectRepository;
@@ -86,14 +91,18 @@ public class ProjectService {
       UUID projectId,
       OrgMemberPrincipal principal,
       ProjectPasswordSettingsRequest request) {
+
     enforceOrgAccess(orgId, principal);
     ProjectSettings settings = loadProject(orgId, projectId).getSettings();
-    settings.setMinLength(request.minLength());
-    settings.setRequireUppercase(request.requireUppercase());
-    settings.setRequireLowercase(request.requireLowercase());
-    settings.setRequireNumbers(request.requireNumbers());
-    settings.setRequireSpecialChars(request.requireSpecialChars());
-    settings.setPasswordHistoryCount(request.passwordHistoryCount());
+
+    settings.updatePasswordPolicy(
+        request.minLength(),
+        request.requireUppercase(),
+        request.requireLowercase(),
+        request.requireNumbers(),
+        request.requireSpecialChars(),
+        request.passwordHistoryCount());
+
     return toSettingsResponse(projectSettingsRepository.save(settings));
   }
 
@@ -103,13 +112,17 @@ public class ProjectService {
       UUID projectId,
       OrgMemberPrincipal principal,
       ProjectSessionSettingsRequest request) {
+
     enforceOrgAccess(orgId, principal);
     ProjectSettings settings = loadProject(orgId, projectId).getSettings();
-    settings.setAccessTokenTtlSeconds(request.accessTokenTtlSeconds());
-    settings.setRefreshTokenTtlSeconds(request.refreshTokenTtlSeconds());
-    settings.setMaxSessions(request.maxSessions());
-    settings.setMfaEnabled(request.mfaEnabled());
-    settings.setMfaRequired(request.mfaRequired());
+
+    settings.updateSessionSettings(
+        request.accessTokenTtlSeconds(),
+        request.refreshTokenTtlSeconds(),
+        request.maxSessions());
+
+    settings.updateMfaSettings(request.mfaEnabled(), request.mfaRequired());
+
     return toSettingsResponse(projectSettingsRepository.save(settings));
   }
 
@@ -119,9 +132,12 @@ public class ProjectService {
       UUID projectId,
       OrgMemberPrincipal principal,
       ProjectAuthSettingsRequest request) {
+
     enforceOrgAccess(orgId, principal);
     ProjectSettings settings = loadProject(orgId, projectId).getSettings();
-    settings.setRequireVerifiedEmailForLogin(request.requireVerifiedEmailForLogin());
+
+    settings.updateAuthSettings(request.requireVerifiedEmailForLogin());
+
     return toSettingsResponse(projectSettingsRepository.save(settings));
   }
 
@@ -131,9 +147,11 @@ public class ProjectService {
       UUID projectId,
       OrgMemberPrincipal principal,
       ProjectOAuthSettingsRequest request) {
-    return toSettingsResponse(
+
+    ProjectSettings settings =
         projectOAuthSettingsApplicationService.updateOAuthSettings(
-            orgId, projectId, principal, request));
+            orgId, projectId, principal, request);
+    return toSettingsResponse(settings);
   }
 
   @Transactional
@@ -175,7 +193,7 @@ public class ProjectService {
   }
 
   private Map<String, Object> toSafeOauthConfig(ProjectSettings settings) {
-    Map<String, Object> stored = settings.getOauthConfig() == null ? Map.of() : settings.getOauthConfig();
+    Map<String, Object> stored = settings.getOauthConfig();
     Map<String, Object> safe = new HashMap<>(stored);
 
     boolean hadGoogle = stored.containsKey("google");
@@ -288,5 +306,4 @@ public class ProjectService {
     }
     return project;
   }
-
 }

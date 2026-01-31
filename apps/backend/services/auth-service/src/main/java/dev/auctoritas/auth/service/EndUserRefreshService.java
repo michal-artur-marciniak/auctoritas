@@ -85,7 +85,7 @@ public class EndUserRefreshService {
     }
 
     EndUser user = existingToken.getUser();
-    if (settings.isRequireVerifiedEmailForLogin() && !Boolean.TRUE.equals(user.getEmailVerified())) {
+    if (settings.isRequireVerifiedEmailForLogin() && !user.isEmailVerified()) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "email_not_verified");
     }
 
@@ -109,7 +109,7 @@ public class EndUserRefreshService {
             user.getId(),
             project.getId(),
             user.getEmail(),
-            Boolean.TRUE.equals(user.getEmailVerified()),
+            user.isEmailVerified(),
             settings.getAccessTokenTtlSeconds());
 
     return new EndUserRefreshResponse(accessToken, newRawRefreshToken);

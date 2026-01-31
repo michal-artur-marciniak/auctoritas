@@ -3,6 +3,7 @@ package dev.auctoritas.auth.service;
 import dev.auctoritas.auth.api.EndUserLoginRequest;
 import dev.auctoritas.auth.api.EndUserLoginResponse;
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
+import dev.auctoritas.auth.domain.valueobject.Email;
 import dev.auctoritas.auth.entity.enduser.EndUser;
 import dev.auctoritas.auth.entity.enduser.EndUserRefreshToken;
 import dev.auctoritas.auth.entity.enduser.EndUserSession;
@@ -18,7 +19,6 @@ import java.time.Instant;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Handles EndUser login and session issuance.
+ * Thin application service - delegates business logic to domain entities.
  */
 @Service
 public class EndUserLoginService {
@@ -64,6 +65,7 @@ public class EndUserLoginService {
       EndUserLoginRequest request,
       String ipAddress,
       String userAgent) {
+
     ApiKey resolvedKey = apiKeyService.validateActiveKey(apiKey);
     Project project = resolvedKey.getProject();
     ProjectSettings settings = project.getSettings();
@@ -71,25 +73,20 @@ public class EndUserLoginService {
       throw new DomainValidationException("project_settings_missing");
     }
 
-    String email = normalizeEmail(requireValue(request.email(), "email_required"));
+    Email email = Email.of(request.email());
     String password = requireValue(request.password(), "password_required");
 
     EndUser user =
         endUserRepository
-            .findByEmailAndProjectIdForUpdate(email, project.getId())
-            .orElseThrow(
-                () -> new DomainValidationException("invalid_credentials"));
+            .findByEmailAndProjectIdForUpdate(email.value(), project.getId())
+            .orElseThrow(() -> new DomainValidationException("invalid_credentials"));
 
+    Instant now = Instant.now();
+    int maxAttempts = resolveMaxAttempts(settings);
     int windowSeconds = resolveWindowSeconds(settings);
-    resetExpiredLockout(user, windowSeconds);
-
-    if (isLockedOut(user)) {
-      endUserRepository.save(user);
-      throw new DomainValidationException("account_locked");
-    }
 
     if (!passwordEncoder.matches(password, user.getPasswordHash())) {
-      boolean locked = recordFailedAttempt(user, settings, windowSeconds);
+      boolean locked = user.recordFailedLogin(maxAttempts, windowSeconds, now);
       endUserRepository.save(user);
       if (locked) {
         throw new DomainValidationException("account_locked");
@@ -97,15 +94,19 @@ public class EndUserLoginService {
       throw new DomainValidationException("invalid_credentials");
     }
 
-    clearFailedAttempts(user);
+    user.clearFailedAttempts();
+    user.validateCanLogin(settings.isRequireVerifiedEmailForLogin(), now);
     endUserRepository.save(user);
 
-    if (settings.isRequireVerifiedEmailForLogin() && !Boolean.TRUE.equals(user.getEmailVerified())) {
-      throw new DomainValidationException("email_not_verified");
-    }
+    return createSession(user, project, settings, ipAddress, userAgent);
+  }
+
+  private EndUserLoginResponse createSession(
+      EndUser user, Project project, ProjectSettings settings, String ipAddress, String userAgent) {
 
     Instant refreshExpiresAt = tokenHasherPort.getRefreshTokenExpiry();
     String rawRefreshToken = tokenHasherPort.generateRefreshToken();
+
     persistRefreshToken(user, rawRefreshToken, refreshExpiresAt, ipAddress, userAgent);
     persistSession(user, refreshExpiresAt, ipAddress, userAgent);
 
@@ -114,12 +115,12 @@ public class EndUserLoginService {
             user.getId(),
             project.getId(),
             user.getEmail(),
-            Boolean.TRUE.equals(user.getEmailVerified()),
+            user.isEmailVerified(),
             settings.getAccessTokenTtlSeconds());
 
     return new EndUserLoginResponse(
         new EndUserLoginResponse.EndUserSummary(
-            user.getId(), user.getEmail(), user.getName(), Boolean.TRUE.equals(user.getEmailVerified())),
+            user.getId(), user.getEmail(), user.getName(), user.isEmailVerified()),
         accessToken,
         rawRefreshToken);
   }
@@ -133,52 +134,6 @@ public class EndUserLoginService {
     int configured = settings.getFailedLoginWindowSeconds();
     int resolved = configured > 0 ? configured : DEFAULT_WINDOW_SECONDS;
     return Math.max(MIN_WINDOW_SECONDS, resolved);
-  }
-
-  private void resetExpiredLockout(EndUser user, int windowSeconds) {
-    Instant now = Instant.now();
-    if (user.getLockoutUntil() != null && !user.getLockoutUntil().isAfter(now)) {
-      user.setLockoutUntil(null);
-    }
-    Instant windowStart = user.getFailedLoginWindowStart();
-    if (windowStart != null && windowStart.plusSeconds(windowSeconds).isBefore(now)) {
-      user.setFailedLoginAttempts(0);
-      user.setFailedLoginWindowStart(null);
-    }
-  }
-
-  private boolean isLockedOut(EndUser user) {
-    Instant lockoutUntil = user.getLockoutUntil();
-    return lockoutUntil != null && lockoutUntil.isAfter(Instant.now());
-  }
-
-  private boolean recordFailedAttempt(EndUser user, ProjectSettings settings, int windowSeconds) {
-    Instant now = Instant.now();
-    Instant windowStart = user.getFailedLoginWindowStart();
-    int attempts = user.getFailedLoginAttempts();
-
-    if (windowStart == null || windowStart.plusSeconds(windowSeconds).isBefore(now)) {
-      windowStart = now;
-      attempts = 1;
-    } else {
-      attempts += 1;
-    }
-
-    user.setFailedLoginWindowStart(windowStart);
-    user.setFailedLoginAttempts(attempts);
-
-    int maxAttempts = resolveMaxAttempts(settings);
-    if (attempts >= maxAttempts) {
-      user.setLockoutUntil(now.plusSeconds(windowSeconds));
-      return true;
-    }
-    return false;
-  }
-
-  private void clearFailedAttempts(EndUser user) {
-    user.setFailedLoginAttempts(0);
-    user.setFailedLoginWindowStart(null);
-    user.setLockoutUntil(null);
   }
 
   private void persistRefreshToken(
@@ -216,10 +171,6 @@ public class EndUserLoginService {
     String resolvedAgent = trimToNull(userAgent);
     info.put("userAgent", resolvedAgent == null ? "unknown" : resolvedAgent);
     return Map.copyOf(info);
-  }
-
-  private String normalizeEmail(String email) {
-    return email.trim().toLowerCase(Locale.ROOT);
   }
 
   private String requireValue(String value, String errorCode) {

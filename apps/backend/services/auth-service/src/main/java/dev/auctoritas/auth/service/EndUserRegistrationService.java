@@ -4,6 +4,8 @@ import dev.auctoritas.auth.application.enduser.EndUserRegistrationCommand;
 import dev.auctoritas.auth.application.enduser.EndUserRegistrationResult;
 import dev.auctoritas.auth.domain.exception.DomainConflictException;
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
+import dev.auctoritas.auth.domain.valueobject.Email;
+import dev.auctoritas.auth.domain.valueobject.Password;
 import dev.auctoritas.auth.entity.enduser.EndUser;
 import dev.auctoritas.auth.entity.enduser.EndUserRefreshToken;
 import dev.auctoritas.auth.entity.enduser.EndUserSession;
@@ -17,11 +19,8 @@ import dev.auctoritas.auth.ports.security.JwtProviderPort;
 import dev.auctoritas.auth.ports.security.TokenHasherPort;
 import dev.auctoritas.auth.ports.identity.EndUserRefreshTokenRepositoryPort;
 import dev.auctoritas.auth.ports.identity.EndUserSessionRepositoryPort;
-import dev.auctoritas.auth.shared.security.PasswordPolicy;
-import dev.auctoritas.auth.shared.security.PasswordValidator;
 import java.time.Instant;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,12 +33,11 @@ import static net.logstash.logback.argument.StructuredArguments.kv;
 
 /**
  * Handles EndUser registration and initial session issuance.
+ * Thin application service - delegates business logic to domain entities.
  */
 @Service
 public class EndUserRegistrationService {
   private static final Logger log = LoggerFactory.getLogger(EndUserRegistrationService.class);
-  private static final int DEFAULT_MAX_PASSWORD_LENGTH = 128;
-  private static final int DEFAULT_MIN_UNIQUE = 4;
 
   private final ApiKeyService apiKeyService;
   private final EndUserRepositoryPort endUserRepository;
@@ -97,6 +95,7 @@ public class EndUserRegistrationService {
       String name,
       String ipAddress,
       String userAgent) {
+
     ApiKey resolvedKey = apiKeyService.validateActiveKey(apiKey);
     Project project = resolvedKey.getProject();
     ProjectSettings settings = project.getSettings();
@@ -104,22 +103,30 @@ public class EndUserRegistrationService {
       throw new DomainValidationException("project_settings_missing");
     }
 
-    String normalizedEmail = normalizeEmail(requireValue(email, "email_required"));
-    String normalizedPassword = requireValue(password, "password_required");
+    Email validatedEmail = Email.of(email);
 
-    if (endUserRepository.existsByEmailAndProjectId(normalizedEmail, project.getId())) {
+    if (endUserRepository.existsByEmailAndProjectId(validatedEmail.value(), project.getId())) {
       throw new DomainConflictException("email_taken");
     }
 
-    validatePassword(settings, normalizedPassword);
+    Password validatedPassword = Password.create(
+        password,
+        settings.getMinLength(),
+        settings.isRequireUppercase(),
+        settings.isRequireLowercase(),
+        settings.isRequireNumbers(),
+        settings.isRequireSpecialChars());
 
-    EndUser user = new EndUser();
-    user.setProject(project);
-    user.setEmail(normalizedEmail);
-    user.setPasswordHash(passwordEncoder.encode(normalizedPassword));
-    user.setName(trimToNull(name));
+    String hashedPassword = passwordEncoder.encode(validatedPassword.value());
+
+    EndUser user = EndUser.create(
+        project,
+        validatedEmail,
+        Password.fromHash(hashedPassword),
+        name);
 
     EndUser savedUser = endUserRepository.save(user);
+
     EndUserEmailVerificationService.EmailVerificationPayload verificationPayload =
         endUserEmailVerificationService.issueVerificationToken(savedUser);
 
@@ -128,24 +135,7 @@ public class EndUserRegistrationService {
         kv("projectId", project.getId()),
         kv("userId", savedUser.getId()));
 
-    UserRegisteredEvent event =
-        new UserRegisteredEvent(
-            project.getId(),
-            savedUser.getId(),
-            savedUser.getEmail(),
-            savedUser.getName(),
-            Boolean.TRUE.equals(savedUser.getEmailVerified()),
-            verificationPayload.tokenId(),
-            verificationPayload.expiresAt());
-    try {
-      domainEventPublisherPort.publish(UserRegisteredEvent.EVENT_TYPE, event);
-    } catch (RuntimeException ex) {
-      log.warn(
-          "user_registered_event_publish_failed {} {}",
-          kv("projectId", project.getId()),
-          kv("userId", savedUser.getId()),
-          ex);
-    }
+    publishUserRegisteredEvent(savedUser, project, verificationPayload);
 
     if (logVerificationChallenge) {
       log.info(
@@ -158,45 +148,60 @@ public class EndUserRegistrationService {
           kv("expiresAt", verificationPayload.expiresAt()));
     }
 
+    return createInitialSession(savedUser, project, settings, ipAddress, userAgent);
+  }
+
+  private void publishUserRegisteredEvent(
+      EndUser user,
+      Project project,
+      EndUserEmailVerificationService.EmailVerificationPayload verificationPayload) {
+
+    UserRegisteredEvent event =
+        new UserRegisteredEvent(
+            project.getId(),
+            user.getId(),
+            user.getEmail(),
+            user.getName(),
+            user.isEmailVerified(),
+            verificationPayload.tokenId(),
+            verificationPayload.expiresAt());
+
+    try {
+      domainEventPublisherPort.publish(UserRegisteredEvent.EVENT_TYPE, event);
+    } catch (RuntimeException ex) {
+      log.warn(
+          "user_registered_event_publish_failed {} {}",
+          kv("projectId", project.getId()),
+          kv("userId", user.getId()),
+          ex);
+    }
+  }
+
+  private EndUserRegistrationResult createInitialSession(
+      EndUser user, Project project, ProjectSettings settings, String ipAddress, String userAgent) {
+
     Instant refreshExpiresAt = tokenHasherPort.getRefreshTokenExpiry();
     String rawRefreshToken = tokenHasherPort.generateRefreshToken();
-    persistRefreshToken(savedUser, rawRefreshToken, refreshExpiresAt, ipAddress, userAgent);
-    persistSession(savedUser, refreshExpiresAt, ipAddress, userAgent);
+
+    persistRefreshToken(user, rawRefreshToken, refreshExpiresAt, ipAddress, userAgent);
+    persistSession(user, refreshExpiresAt, ipAddress, userAgent);
 
     String accessToken =
         jwtProviderPort.generateEndUserAccessToken(
-            savedUser.getId(),
+            user.getId(),
             project.getId(),
-            savedUser.getEmail(),
-            Boolean.TRUE.equals(savedUser.getEmailVerified()),
+            user.getEmail(),
+            user.isEmailVerified(),
             settings.getAccessTokenTtlSeconds());
 
     return new EndUserRegistrationResult(
         new EndUserRegistrationResult.EndUserSummary(
-            savedUser.getId(),
-            savedUser.getEmail(),
-            savedUser.getName(),
-            Boolean.TRUE.equals(savedUser.getEmailVerified())),
+            user.getId(),
+            user.getEmail(),
+            user.getName(),
+            user.isEmailVerified()),
         accessToken,
         rawRefreshToken);
-  }
-
-  private void validatePassword(ProjectSettings settings, String password) {
-    int minLength = settings.getMinLength();
-    int minUnique = Math.max(1, Math.min(DEFAULT_MIN_UNIQUE, minLength));
-    PasswordPolicy policy =
-        new PasswordPolicy(
-            minLength,
-            DEFAULT_MAX_PASSWORD_LENGTH,
-            settings.isRequireUppercase(),
-            settings.isRequireLowercase(),
-            settings.isRequireNumbers(),
-            settings.isRequireSpecialChars(),
-            minUnique);
-    PasswordValidator.ValidationResult result = new PasswordValidator(policy).validate(password);
-    if (!result.valid()) {
-      throw new DomainValidationException("password_policy_failed");
-    }
   }
 
   private void persistRefreshToken(
@@ -230,21 +235,6 @@ public class EndUserRegistrationService {
     String resolvedAgent = trimToNull(userAgent);
     info.put("userAgent", resolvedAgent == null ? "unknown" : resolvedAgent);
     return Map.copyOf(info);
-  }
-
-  private String normalizeEmail(String email) {
-    return email.trim().toLowerCase(Locale.ROOT);
-  }
-
-  private String requireValue(String value, String errorCode) {
-    if (value == null) {
-      throw new DomainValidationException(errorCode);
-    }
-    String trimmed = value.trim();
-    if (trimmed.isEmpty()) {
-      throw new DomainValidationException(errorCode);
-    }
-    return trimmed;
   }
 
   private String trimToNull(String value) {

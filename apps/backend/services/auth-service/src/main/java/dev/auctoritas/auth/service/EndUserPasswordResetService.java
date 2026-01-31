@@ -3,6 +3,7 @@ package dev.auctoritas.auth.service;
 import dev.auctoritas.auth.api.EndUserPasswordForgotRequest;
 import dev.auctoritas.auth.api.EndUserPasswordResetRequest;
 import dev.auctoritas.auth.api.EndUserPasswordResetResponse;
+import dev.auctoritas.auth.domain.valueobject.Password;
 import dev.auctoritas.auth.entity.enduser.EndUser;
 import dev.auctoritas.auth.entity.enduser.EndUserPasswordHistory;
 import dev.auctoritas.auth.entity.enduser.EndUserPasswordResetToken;
@@ -212,10 +213,8 @@ public class EndUserPasswordResetService {
       enforcePasswordHistory(settings, project, user, newPassword);
 
       String previousPasswordHash = user.getPasswordHash();
-      user.setPasswordHash(passwordEncoder.encode(newPassword));
-      user.setFailedLoginAttempts(0);
-      user.setFailedLoginWindowStart(null);
-      user.setLockoutUntil(null);
+      user.setPassword(Password.fromHash(passwordEncoder.encode(newPassword)));
+      user.clearFailedAttempts();
       endUserRepository.save(user);
 
       recordPasswordHistory(project, user, previousPasswordHash);
