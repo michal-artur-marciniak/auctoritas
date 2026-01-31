@@ -121,9 +121,11 @@ class EndUserRegistrationServiceTest {
     assertThat(token.getUsedAt()).isNull();
     assertThat(token.getExpiresAt()).isNotNull();
 
-    assertThat(domainEventPublisher.events()).hasSize(1);
-    InMemoryDomainEventPublisher.PublishedEvent published = domainEventPublisher.events().getFirst();
-    assertThat(published.type()).isEqualTo(UserRegisteredEvent.EVENT_TYPE);
+    InMemoryDomainEventPublisher.PublishedEvent published =
+        domainEventPublisher.events().stream()
+            .filter(event -> UserRegisteredEvent.EVENT_TYPE.equals(event.type()))
+            .findFirst()
+            .orElseThrow();
     assertThat(published.payload()).isInstanceOf(UserRegisteredEvent.class);
     UserRegisteredEvent event = (UserRegisteredEvent) published.payload();
     assertThat(event.projectId()).isEqualTo(project.getId());
@@ -147,8 +149,12 @@ class EndUserRegistrationServiceTest {
     assertThat(users).hasSize(1);
     assertThat(users.getFirst().getEmail()).isEqualTo("user@example.com");
 
-    assertThat(domainEventPublisher.events()).hasSize(1);
-    UserRegisteredEvent event = (UserRegisteredEvent) domainEventPublisher.events().getFirst().payload();
+    UserRegisteredEvent event =
+        (UserRegisteredEvent) domainEventPublisher.events().stream()
+            .filter(published -> UserRegisteredEvent.EVENT_TYPE.equals(published.type()))
+            .findFirst()
+            .orElseThrow()
+            .payload();
     assertThat(event.email()).isEqualTo("user@example.com");
   }
 }

@@ -65,7 +65,6 @@ public class EndUserRegistrationService {
       JwtProviderPort jwtProviderPort,
       EndUserEmailVerificationService endUserEmailVerificationService,
       DomainEventPublisherPort domainEventPublisherPort,
-      EndUserRegistrationDomainService registrationDomainService,
       @Value("${auctoritas.auth.email-verification.log-challenge:true}") boolean logVerificationChallenge,
       PlatformTransactionManager transactionManager) {
     this.apiKeyService = apiKeyService;
@@ -77,7 +76,7 @@ public class EndUserRegistrationService {
     this.jwtProviderPort = jwtProviderPort;
     this.endUserEmailVerificationService = endUserEmailVerificationService;
     this.domainEventPublisherPort = domainEventPublisherPort;
-    this.registrationDomainService = registrationDomainService;
+    this.registrationDomainService = new EndUserRegistrationDomainService();
     this.logVerificationChallenge = logVerificationChallenge;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
   }
@@ -166,7 +165,7 @@ public class EndUserRegistrationService {
         kv("projectId", project.getId()),
         kv("userId", savedUser.getId()));
 
-    publishUserRegisteredEvent(savedUser, project, verificationPayload);
+    publishUserDomainEvents(savedUser, project, verificationPayload);
 
     if (logVerificationChallenge) {
       log.info(
@@ -215,6 +214,24 @@ public class EndUserRegistrationService {
           kv("userId", user.getId()),
           ex);
     }
+  }
+
+  private void publishUserDomainEvents(
+      EndUser user,
+      Project project,
+      EndUserEmailVerificationService.EmailVerificationPayload verificationPayload) {
+    boolean userRegisteredPublished = false;
+    for (var event : user.getDomainEvents()) {
+      if (event instanceof dev.auctoritas.auth.domain.model.enduser.UserRegisteredEvent) {
+        if (!userRegisteredPublished) {
+          publishUserRegisteredEvent(user, project, verificationPayload);
+          userRegisteredPublished = true;
+        }
+        continue;
+      }
+      domainEventPublisherPort.publish(event.eventType(), event);
+    }
+    user.clearDomainEvents();
   }
 
   private String createInitialSession(

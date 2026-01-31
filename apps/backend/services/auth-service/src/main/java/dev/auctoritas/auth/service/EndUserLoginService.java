@@ -121,6 +121,7 @@ public class EndUserLoginService {
     if (!passwordEncoder.matches(password, user.getPasswordHash())) {
       boolean locked = user.recordFailedLogin(maxAttempts, windowSeconds, now);
       endUserRepository.save(user);
+      publishUserDomainEvents(user);
       if (locked) {
         throw new DomainValidationException("account_locked");
       }
@@ -130,6 +131,7 @@ public class EndUserLoginService {
     user.clearFailedAttempts();
     user.validateCanLogin(settings.isRequireVerifiedEmailForLogin(), now);
     endUserRepository.save(user);
+    publishUserDomainEvents(user);
 
     String rawRefreshToken = createSession(user, ipAddress, userAgent);
 
@@ -206,6 +208,11 @@ public class EndUserLoginService {
     // Publish and clear domain events
     session.getDomainEvents().forEach(event -> domainEventPublisherPort.publish(event.eventType(), event));
     session.clearDomainEvents();
+  }
+
+  private void publishUserDomainEvents(EndUser user) {
+    user.getDomainEvents().forEach(event -> domainEventPublisherPort.publish(event.eventType(), event));
+    user.clearDomainEvents();
   }
 
   private Map<String, Object> buildDeviceInfo(String userAgent) {

@@ -15,6 +15,7 @@ import dev.auctoritas.auth.domain.model.enduser.Password;
 import dev.auctoritas.auth.domain.model.enduser.EndUserRepositoryPort;
 import dev.auctoritas.auth.ports.messaging.DomainEventPublisherPort;
 import dev.auctoritas.auth.domain.model.oauth.OAuthConnectionRepositoryPort;
+import dev.auctoritas.auth.messaging.OAuthUserRegisteredEvent;
 import dev.auctoritas.auth.service.TokenService;
 import java.util.Optional;
 import java.util.UUID;
@@ -152,7 +153,7 @@ public class OAuthAccountLinkingService {
     boolean isEmailVerified = emailVerified != null && emailVerified;
 
     // Create new user
-    EndUser user = createOAuthEndUser(project, email, name, isEmailVerified);
+    EndUser user = createOAuthEndUser(project, provider, providerUserId, email, name, isEmailVerified);
 
     // Create OAuth connection with retry for race conditions
     return createConnectionWithRetry(project.getId(), provider, providerUserId, email, user);
@@ -206,7 +207,13 @@ public class OAuthAccountLinkingService {
     return lockUser(projectId, conn.getUser());
   }
 
-  private EndUser createOAuthEndUser(Project project, String email, String name, boolean emailVerified) {
+  private EndUser createOAuthEndUser(
+      Project project,
+      String provider,
+      String providerUserId,
+      String email,
+      String name,
+      boolean emailVerified) {
     UserCreationSpec spec = domainService.createUserSpec(project, email, name, emailVerified);
 
     String randomPassword = tokenService.generateRefreshToken();
@@ -222,7 +229,9 @@ public class OAuthAccountLinkingService {
       user.verifyEmail();
     }
 
-    return endUserRepository.save(user);
+    EndUser savedUser = endUserRepository.save(user);
+    publishUserDomainEventsForOAuthRegistration(savedUser, provider, providerUserId);
+    return savedUser;
   }
 
   private void applyUserUpdate(EndUser user, EndUserUpdate update) {
@@ -237,6 +246,7 @@ public class OAuthAccountLinkingService {
     });
 
     endUserRepository.save(user);
+    publishUserDomainEvents(user);
   }
 
   private EndUser lockUser(UUID projectId, EndUser user) {
@@ -246,5 +256,37 @@ public class OAuthAccountLinkingService {
     return endUserRepository
         .findByIdAndProjectIdForUpdate(user.getId(), projectId)
         .orElseThrow(() -> new DomainNotFoundException("user_not_found"));
+  }
+
+  private void publishUserDomainEvents(EndUser user) {
+    user.getDomainEvents().forEach(event -> domainEventPublisherPort.publish(event.eventType(), event));
+    user.clearDomainEvents();
+  }
+
+  private void publishUserDomainEventsForOAuthRegistration(
+      EndUser user,
+      String provider,
+      String providerUserId) {
+    boolean userRegisteredPublished = false;
+    for (var event : user.getDomainEvents()) {
+      if (event instanceof dev.auctoritas.auth.domain.model.enduser.UserRegisteredEvent) {
+        if (!userRegisteredPublished) {
+          domainEventPublisherPort.publish(
+              OAuthUserRegisteredEvent.EVENT_TYPE,
+              new OAuthUserRegisteredEvent(
+                  user.getProject().getId(),
+                  user.getId(),
+                  user.getEmail(),
+                  user.getName(),
+                  user.isEmailVerified(),
+                  provider,
+                  providerUserId));
+          userRegisteredPublished = true;
+        }
+        continue;
+      }
+      domainEventPublisherPort.publish(event.eventType(), event);
+    }
+    user.clearDomainEvents();
   }
 }

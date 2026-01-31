@@ -96,6 +96,7 @@ public class EndUserEmailVerificationService {
     EndUser user = token.getUser();
     user.verifyEmail();
     endUserRepository.save(user);
+    publishUserDomainEvents(user);
 
     token.setUsedAt(Instant.now());
     verificationTokenRepository.save(token);
@@ -224,5 +225,10 @@ public class EndUserEmailVerificationService {
       throw new DomainValidationException(errorCode);
     }
     return trimmed;
+  }
+
+  private void publishUserDomainEvents(EndUser user) {
+    user.getDomainEvents().forEach(event -> domainEventPublisher.publish(event.eventType(), event));
+    user.clearDomainEvents();
   }
 }
