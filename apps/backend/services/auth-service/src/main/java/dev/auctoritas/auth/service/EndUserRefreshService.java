@@ -92,18 +92,25 @@ public class EndUserRefreshService {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "email_not_verified");
     }
 
-    existingToken.setRevoked(true);
-
     Instant refreshExpiresAt = tokenService.getRefreshTokenExpiry();
     String newRawRefreshToken = tokenService.generateRefreshToken();
-    EndUserRefreshToken newToken =
-        persistRefreshToken(
-            existingToken.getUser(),
-            newRawRefreshToken,
-            refreshExpiresAt,
-            ipAddress,
-            userAgent);
-    existingToken.setReplacedBy(newToken);
+
+    // Use rich domain model's rotate method
+    EndUserRefreshToken newToken = existingToken.rotate(
+        tokenService.hashToken(newRawRefreshToken),
+        Duration.between(Instant.now(), refreshExpiresAt),
+        trimToNull(ipAddress),
+        trimToNull(userAgent));
+    
+    // Save both tokens (old one is now revoked, new one is created)
+    refreshTokenRepository.save(existingToken);
+    refreshTokenRepository.save(newToken);
+
+    // Publish events from both tokens
+    existingToken.getDomainEvents().forEach(event -> domainEventPublisherPort.publish(event.eventType(), event));
+    existingToken.clearDomainEvents();
+    newToken.getDomainEvents().forEach(event -> domainEventPublisherPort.publish(event.eventType(), event));
+    newToken.clearDomainEvents();
 
     persistSession(user, refreshExpiresAt, ipAddress, userAgent);
 
@@ -116,22 +123,6 @@ public class EndUserRefreshService {
             settings.getAccessTokenTtlSeconds());
 
     return new EndUserRefreshResponse(accessToken, newRawRefreshToken);
-  }
-
-  private EndUserRefreshToken persistRefreshToken(
-      EndUser user,
-      String rawToken,
-      Instant expiresAt,
-      String ipAddress,
-      String userAgent) {
-    EndUserRefreshToken token = new EndUserRefreshToken();
-    token.setUser(user);
-    token.setTokenHash(tokenService.hashToken(rawToken));
-    token.setExpiresAt(expiresAt);
-    token.setRevoked(false);
-    token.setIpAddress(trimToNull(ipAddress));
-    token.setUserAgent(trimToNull(userAgent));
-    return refreshTokenRepository.save(token);
   }
 
   private void persistSession(

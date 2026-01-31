@@ -118,14 +118,19 @@ public class OAuthExchangeService {
       Instant expiresAt,
       String ipAddress,
       String userAgent) {
-    EndUserRefreshToken token = new EndUserRefreshToken();
-    token.setUser(user);
-    token.setTokenHash(tokenService.hashToken(rawToken));
-    token.setExpiresAt(expiresAt);
-    token.setRevoked(false);
-    token.setIpAddress(trimToNull(ipAddress));
-    token.setUserAgent(trimToNull(userAgent));
+    Duration ttl = Duration.between(Instant.now(), expiresAt);
+    EndUserRefreshToken token =
+        EndUserRefreshToken.create(
+            user,
+            tokenService.hashToken(rawToken),
+            ttl,
+            trimToNull(ipAddress),
+            trimToNull(userAgent));
     refreshTokenRepository.save(token);
+
+    // Publish and clear domain events
+    token.getDomainEvents().forEach(event -> domainEventPublisherPort.publish(event.eventType(), event));
+    token.clearDomainEvents();
   }
 
   private void persistSession(EndUser user, Instant expiresAt, String ipAddress, String userAgent) {

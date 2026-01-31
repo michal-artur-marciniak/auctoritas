@@ -115,12 +115,19 @@ public class OrganizationRegistrationService {
   }
 
   private void persistRefreshToken(OrganizationMember member, String rawToken) {
-    OrgMemberRefreshToken token = new OrgMemberRefreshToken();
-    token.setMember(member);
-    token.setTokenHash(tokenService.hashToken(rawToken));
-    token.setExpiresAt(tokenService.getRefreshTokenExpiry());
-    token.setRevoked(false);
+    OrgMemberRefreshToken token =
+        OrgMemberRefreshToken.create(
+            member,
+            tokenService.hashToken(rawToken),
+            java.time.Duration.ofHours(720), // 30 days default
+            null, // no IP for registration
+            null  // no user agent for registration
+        );
     refreshTokenRepository.save(token);
+
+    // Publish and clear domain events
+    token.getDomainEvents().forEach(event -> domainEventPublisherPort.publish(event.eventType(), event));
+    token.clearDomainEvents();
   }
 
   private void publishDomainEvents(Organization organization, OrganizationMember member) {

@@ -7,11 +7,13 @@ import dev.auctoritas.auth.api.OrgRefreshResponse;
 import dev.auctoritas.auth.domain.model.organization.OrgMemberRefreshToken;
 import dev.auctoritas.auth.domain.model.organization.Organization;
 import dev.auctoritas.auth.domain.model.organization.OrganizationMember;
+import dev.auctoritas.auth.ports.messaging.DomainEventPublisherPort;
 import dev.auctoritas.auth.ports.organization.OrgMemberRefreshTokenRepositoryPort;
 import dev.auctoritas.auth.ports.organization.OrganizationMemberRepositoryPort;
 import dev.auctoritas.auth.ports.organization.OrganizationRepositoryPort;
 import jakarta.persistence.LockTimeoutException;
 import jakarta.persistence.PessimisticLockException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Locale;
 import org.springframework.http.HttpStatus;
@@ -28,6 +30,7 @@ public class OrgAuthService {
   private final PasswordEncoder passwordEncoder;
   private final TokenService tokenService;
   private final JwtService jwtService;
+  private final DomainEventPublisherPort domainEventPublisherPort;
 
   public OrgAuthService(
       OrganizationRepositoryPort organizationRepository,
@@ -35,13 +38,15 @@ public class OrgAuthService {
       OrgMemberRefreshTokenRepositoryPort refreshTokenRepository,
       PasswordEncoder passwordEncoder,
       TokenService tokenService,
-      JwtService jwtService) {
+      JwtService jwtService,
+      DomainEventPublisherPort domainEventPublisherPort) {
     this.organizationRepository = organizationRepository;
     this.organizationMemberRepository = organizationMemberRepository;
     this.refreshTokenRepository = refreshTokenRepository;
     this.passwordEncoder = passwordEncoder;
     this.tokenService = tokenService;
     this.jwtService = jwtService;
+    this.domainEventPublisherPort = domainEventPublisherPort;
   }
 
   @Transactional
@@ -110,18 +115,23 @@ public class OrgAuthService {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "refresh_token_expired");
     }
 
-    // Rotate: revoke old token and issue new one
-    existingToken.setRevoked(true);
-
+    // Use rich domain model's rotate method
     String newRawRefreshToken = tokenService.generateRefreshToken();
-    OrgMemberRefreshToken newToken =
-        persistRefreshToken(
-            existingToken.getMember(),
-            newRawRefreshToken,
-            existingToken.getIpAddress(),
-            existingToken.getUserAgent());
+    OrgMemberRefreshToken newToken = existingToken.rotate(
+        tokenService.hashToken(newRawRefreshToken),
+        Duration.ofHours(720), // 30 days default
+        existingToken.getIpAddress(),
+        existingToken.getUserAgent());
 
-    existingToken.setReplacedBy(newToken);
+    // Save both tokens (old one is now revoked, new one is created)
+    refreshTokenRepository.save(existingToken);
+    refreshTokenRepository.save(newToken);
+
+    // Publish events from both tokens
+    existingToken.getDomainEvents().forEach(event -> domainEventPublisherPort.publish(event.eventType(), event));
+    existingToken.clearDomainEvents();
+    newToken.getDomainEvents().forEach(event -> domainEventPublisherPort.publish(event.eventType(), event));
+    newToken.clearDomainEvents();
 
     OrganizationMember member = existingToken.getMember();
     String accessToken =
@@ -136,14 +146,20 @@ public class OrgAuthService {
 
   private OrgMemberRefreshToken persistRefreshToken(
       OrganizationMember member, String rawToken, String ipAddress, String userAgent) {
-    OrgMemberRefreshToken token = new OrgMemberRefreshToken();
-    token.setMember(member);
-    token.setTokenHash(tokenService.hashToken(rawToken));
-    token.setExpiresAt(tokenService.getRefreshTokenExpiry());
-    token.setRevoked(false);
-    token.setIpAddress(ipAddress);
-    token.setUserAgent(userAgent);
-    return refreshTokenRepository.save(token);
+    OrgMemberRefreshToken token =
+        OrgMemberRefreshToken.create(
+            member,
+            tokenService.hashToken(rawToken),
+            Duration.ofHours(720), // 30 days default
+            ipAddress,
+            userAgent);
+    refreshTokenRepository.save(token);
+
+    // Publish and clear domain events
+    token.getDomainEvents().forEach(event -> domainEventPublisherPort.publish(event.eventType(), event));
+    token.clearDomainEvents();
+
+    return token;
   }
 
   private String normalizeSlug(String slug) {

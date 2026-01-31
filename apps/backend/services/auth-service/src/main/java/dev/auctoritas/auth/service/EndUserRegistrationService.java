@@ -210,14 +210,19 @@ public class EndUserRegistrationService {
       Instant expiresAt,
       String ipAddress,
       String userAgent) {
-    EndUserRefreshToken token = new EndUserRefreshToken();
-    token.setUser(user);
-    token.setTokenHash(tokenHasherPort.hashToken(rawToken));
-    token.setExpiresAt(expiresAt);
-    token.setRevoked(false);
-    token.setIpAddress(trimToNull(ipAddress));
-    token.setUserAgent(trimToNull(userAgent));
+    Duration ttl = Duration.between(Instant.now(), expiresAt);
+    EndUserRefreshToken token =
+        EndUserRefreshToken.create(
+            user,
+            tokenHasherPort.hashToken(rawToken),
+            ttl,
+            trimToNull(ipAddress),
+            trimToNull(userAgent));
     endUserRefreshTokenRepository.save(token);
+
+    // Publish and clear domain events
+    token.getDomainEvents().forEach(event -> domainEventPublisherPort.publish(event.eventType(), event));
+    token.clearDomainEvents();
   }
 
   private void persistSession(
