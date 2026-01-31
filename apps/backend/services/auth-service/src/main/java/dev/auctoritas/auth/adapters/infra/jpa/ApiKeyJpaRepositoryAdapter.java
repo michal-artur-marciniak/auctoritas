@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.adapters.infra.jpa;
 
 import dev.auctoritas.auth.domain.apikey.ApiKeyStatus;
-import dev.auctoritas.auth.entity.project.ApiKey;
+import dev.auctoritas.auth.domain.model.project.ApiKey;
 import dev.auctoritas.auth.ports.apikey.ApiKeyRepositoryPort;
 import dev.auctoritas.auth.repository.ApiKeyRepository;
 import java.util.List;

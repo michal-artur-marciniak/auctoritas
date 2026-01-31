@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.ports.identity;
 
-import dev.auctoritas.auth.entity.enduser.EndUserEmailVerificationToken;
+import dev.auctoritas.auth.domain.model.enduser.EndUserEmailVerificationToken;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;

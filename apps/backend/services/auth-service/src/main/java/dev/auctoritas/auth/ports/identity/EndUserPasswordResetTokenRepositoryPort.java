@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.ports.identity;
 
-import dev.auctoritas.auth.entity.enduser.EndUserPasswordResetToken;
+import dev.auctoritas.auth.domain.model.enduser.EndUserPasswordResetToken;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;

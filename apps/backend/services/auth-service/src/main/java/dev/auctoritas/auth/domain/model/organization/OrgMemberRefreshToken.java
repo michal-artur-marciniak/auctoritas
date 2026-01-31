@@ -1,12 +1,12 @@
-package dev.auctoritas.auth.entity.enduser;
+package dev.auctoritas.auth.domain.model.organization;
 
-import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.shared.persistence.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import lombok.Getter;
@@ -14,18 +14,14 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "password_reset_tokens")
+@Table(name = "org_member_refresh_tokens")
 @Getter
 @Setter
 @NoArgsConstructor
-public class EndUserPasswordResetToken extends BaseEntity {
+public class OrgMemberRefreshToken extends BaseEntity {
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "project_id", nullable = false)
-  private Project project;
-
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "user_id", nullable = false)
-  private EndUser user;
+  @JoinColumn(name = "member_id", nullable = false)
+  private OrganizationMember member;
 
   @Column(name = "token_hash", nullable = false, length = 128)
   private String tokenHash;
@@ -33,8 +29,12 @@ public class EndUserPasswordResetToken extends BaseEntity {
   @Column(name = "expires_at", nullable = false)
   private Instant expiresAt;
 
-  @Column(name = "used_at")
-  private Instant usedAt;
+  @Column(nullable = false)
+  private boolean revoked = false;
+
+  @OneToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "replaced_by_id")
+  private OrgMemberRefreshToken replacedBy;
 
   @Column(name = "ip_address", length = 45)
   private String ipAddress;

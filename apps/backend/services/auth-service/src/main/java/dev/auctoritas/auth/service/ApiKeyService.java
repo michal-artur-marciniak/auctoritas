@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.service;
 
-import dev.auctoritas.auth.entity.project.ApiKey;
+import dev.auctoritas.auth.domain.model.project.ApiKey;
 import dev.auctoritas.auth.ports.apikey.ApiKeyRepositoryPort;
 import dev.auctoritas.auth.domain.apikey.ApiKeyStatus;
 import java.time.LocalDateTime;

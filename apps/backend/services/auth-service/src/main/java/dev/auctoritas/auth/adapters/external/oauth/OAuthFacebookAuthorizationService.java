@@ -2,9 +2,9 @@ package dev.auctoritas.auth.adapters.external.oauth;
 
 import dev.auctoritas.auth.domain.exception.DomainNotFoundException;
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
-import dev.auctoritas.auth.entity.oauth.OAuthAuthorizationRequest;
-import dev.auctoritas.auth.entity.project.Project;
-import dev.auctoritas.auth.entity.project.ProjectSettings;
+import dev.auctoritas.auth.domain.model.oauth.OAuthAuthorizationRequest;
+import dev.auctoritas.auth.domain.model.project.Project;
+import dev.auctoritas.auth.domain.model.project.ProjectSettings;
 import dev.auctoritas.auth.ports.oauth.OAuthAuthorizationRequestRepositoryPort;
 import dev.auctoritas.auth.ports.project.ProjectRepositoryPort;
 import dev.auctoritas.auth.service.TokenService;

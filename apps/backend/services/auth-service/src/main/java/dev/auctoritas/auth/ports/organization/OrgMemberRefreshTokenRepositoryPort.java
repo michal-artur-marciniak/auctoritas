@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.ports.organization;
 
-import dev.auctoritas.auth.entity.organization.OrgMemberRefreshToken;
+import dev.auctoritas.auth.domain.model.organization.OrgMemberRefreshToken;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;

@@ -9,11 +9,11 @@ import dev.auctoritas.auth.adapters.persistence.OAuthAuthorizationRequestJpaRepo
 import dev.auctoritas.auth.adapters.persistence.OAuthConnectionJpaRepositoryAdapter;
 import dev.auctoritas.auth.adapters.persistence.OAuthExchangeCodeJpaRepositoryAdapter;
 import dev.auctoritas.auth.config.JpaConfig;
-import dev.auctoritas.auth.entity.enduser.EndUser;
-import dev.auctoritas.auth.entity.oauth.OAuthAuthorizationRequest;
-import dev.auctoritas.auth.entity.organization.Organization;
-import dev.auctoritas.auth.entity.project.Project;
-import dev.auctoritas.auth.entity.project.ProjectSettings;
+import dev.auctoritas.auth.domain.model.enduser.EndUser;
+import dev.auctoritas.auth.domain.model.oauth.OAuthAuthorizationRequest;
+import dev.auctoritas.auth.domain.model.organization.Organization;
+import dev.auctoritas.auth.domain.model.project.Project;
+import dev.auctoritas.auth.domain.model.project.ProjectSettings;
 import dev.auctoritas.auth.ports.identity.EndUserRepositoryPort;
 import dev.auctoritas.auth.ports.oauth.OAuthAuthorizationRequestRepositoryPort;
 import dev.auctoritas.auth.ports.oauth.OAuthConnectionRepositoryPort;
@@ -180,7 +180,7 @@ class OAuthMicrosoftCallbackServiceTest {
     existing.setPasswordHash("hash");
     entityManager.persist(existing);
 
-    dev.auctoritas.auth.entity.oauth.OAuthConnection conn = new dev.auctoritas.auth.entity.oauth.OAuthConnection();
+    dev.auctoritas.auth.domain.model.oauth.OAuthConnection conn = new dev.auctoritas.auth.domain.model.oauth.OAuthConnection();
     conn.setProject(project);
     conn.setUser(existing);
     conn.setProvider("microsoft");

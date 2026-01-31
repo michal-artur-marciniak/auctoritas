@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.ports.oauth;
 
-import dev.auctoritas.auth.entity.oauth.OAuthExchangeCode;
+import dev.auctoritas.auth.domain.model.oauth.OAuthExchangeCode;
 import java.util.Optional;
 import java.util.UUID;
 

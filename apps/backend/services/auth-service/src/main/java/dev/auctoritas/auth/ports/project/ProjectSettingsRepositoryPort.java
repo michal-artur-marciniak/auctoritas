@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.ports.project;
 
-import dev.auctoritas.auth.entity.project.ProjectSettings;
+import dev.auctoritas.auth.domain.model.project.ProjectSettings;
 import java.util.Optional;
 import java.util.UUID;
 

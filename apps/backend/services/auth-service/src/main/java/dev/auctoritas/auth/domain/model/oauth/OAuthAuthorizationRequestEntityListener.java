@@ -1,4 +1,4 @@
-package dev.auctoritas.auth.entity.oauth;
+package dev.auctoritas.auth.domain.model.oauth;
 
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;

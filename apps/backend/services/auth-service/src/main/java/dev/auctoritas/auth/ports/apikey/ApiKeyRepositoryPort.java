@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.ports.apikey;
 
 import dev.auctoritas.auth.domain.apikey.ApiKeyStatus;
-import dev.auctoritas.auth.entity.project.ApiKey;
+import dev.auctoritas.auth.domain.model.project.ApiKey;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;

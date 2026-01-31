@@ -1,9 +1,10 @@
-package dev.auctoritas.auth.entity.enduser;
+package dev.auctoritas.auth.domain.model.enduser;
 
+import dev.auctoritas.auth.domain.event.DomainEvent;
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
+import dev.auctoritas.auth.domain.model.project.Project;
 import dev.auctoritas.auth.domain.valueobject.Email;
 import dev.auctoritas.auth.domain.valueobject.Password;
-import dev.auctoritas.auth.entity.project.Project;
 import dev.auctoritas.auth.shared.persistence.BaseAuditEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -12,9 +13,17 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import jakarta.persistence.Transient;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
 import lombok.Getter;
 
+/**
+ * Aggregate root representing an end-user in the identity domain.
+ */
 @Entity
 @Table(
     name = "end_users",
@@ -46,11 +55,15 @@ public class EndUser extends BaseAuditEntity {
   @Column(name = "lockout_until")
   private Instant lockoutUntil;
 
+  @Transient
+  private final List<DomainEvent> domainEvents = new ArrayList<>();
+
   protected EndUser() {
   }
 
   /**
    * Factory method to create a new EndUser with validated data.
+   * Publishes UserRegisteredEvent.
    */
   public static EndUser create(Project project, Email email, Password password, String name) {
     EndUser user = new EndUser();
@@ -60,6 +73,17 @@ public class EndUser extends BaseAuditEntity {
     user.name = normalizeName(name);
     user.emailVerified = false;
     user.failedLoginAttempts = 0;
+    
+    // Register domain event
+    user.registerEvent(new UserRegisteredEvent(
+        user.getId(),
+        project.getId(),
+        user.email,
+        user.name,
+        user.emailVerified,
+        Instant.now()
+    ));
+    
     return user;
   }
 
@@ -90,9 +114,20 @@ public class EndUser extends BaseAuditEntity {
 
   /**
    * Verifies the user's email address.
+   * Publishes EmailVerifiedEvent.
    */
   public void verifyEmail() {
+    if (this.emailVerified) {
+      return; // Already verified, no event
+    }
     this.emailVerified = true;
+    
+    registerEvent(new EmailVerifiedEvent(
+        UUID.randomUUID(),
+        getId(),
+        this.email,
+        Instant.now()
+    ));
   }
 
   /**
@@ -115,6 +150,15 @@ public class EndUser extends BaseAuditEntity {
 
     if (failedLoginAttempts >= maxAttempts) {
       lockoutUntil = now.plusSeconds(windowSeconds);
+      
+      registerEvent(new AccountLockedEvent(
+          UUID.randomUUID(),
+          getId(),
+          this.email,
+          lockoutUntil,
+          Instant.now()
+      ));
+      
       return true;
     }
     return false;
@@ -167,5 +211,26 @@ public class EndUser extends BaseAuditEntity {
     if (requireVerifiedEmail && !emailVerified) {
       throw new DomainValidationException("email_not_verified");
     }
+  }
+
+  /**
+   * Registers a domain event.
+   */
+  protected void registerEvent(DomainEvent event) {
+    domainEvents.add(event);
+  }
+
+  /**
+   * Returns unmodifiable list of domain events.
+   */
+  public List<DomainEvent> getDomainEvents() {
+    return Collections.unmodifiableList(domainEvents);
+  }
+
+  /**
+   * Clears all domain events. Should be called after events are published.
+   */
+  public void clearDomainEvents() {
+    domainEvents.clear();
   }
 }

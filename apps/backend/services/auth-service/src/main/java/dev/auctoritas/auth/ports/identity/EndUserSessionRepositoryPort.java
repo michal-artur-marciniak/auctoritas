@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.ports.identity;
 
-import dev.auctoritas.auth.entity.enduser.EndUserSession;
+import dev.auctoritas.auth.domain.model.enduser.EndUserSession;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;

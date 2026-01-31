@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.repository;
 
-import dev.auctoritas.auth.entity.enduser.EndUserPasswordResetToken;
+import dev.auctoritas.auth.domain.model.enduser.EndUserPasswordResetToken;
 import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.Optional;

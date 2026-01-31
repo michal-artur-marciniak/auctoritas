@@ -2,9 +2,9 @@ package dev.auctoritas.auth.service;
 
 import dev.auctoritas.auth.api.OrgRegistrationRequest;
 import dev.auctoritas.auth.api.OrgRegistrationResponse;
-import dev.auctoritas.auth.entity.organization.OrgMemberRefreshToken;
-import dev.auctoritas.auth.entity.organization.Organization;
-import dev.auctoritas.auth.entity.organization.OrganizationMember;
+import dev.auctoritas.auth.domain.model.organization.OrgMemberRefreshToken;
+import dev.auctoritas.auth.domain.model.organization.Organization;
+import dev.auctoritas.auth.domain.model.organization.OrganizationMember;
 import dev.auctoritas.auth.ports.organization.OrgMemberRefreshTokenRepositoryPort;
 import dev.auctoritas.auth.ports.organization.OrganizationMemberRepositoryPort;
 import dev.auctoritas.auth.ports.organization.OrganizationRepositoryPort;

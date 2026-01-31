@@ -1,10 +1,10 @@
 package dev.auctoritas.auth.repository;
 
 import dev.auctoritas.auth.config.JpaConfig;
-import dev.auctoritas.auth.entity.organization.Organization;
-import dev.auctoritas.auth.entity.project.ApiKey;
-import dev.auctoritas.auth.entity.project.Project;
-import dev.auctoritas.auth.entity.project.ProjectSettings;
+import dev.auctoritas.auth.domain.model.organization.Organization;
+import dev.auctoritas.auth.domain.model.project.ApiKey;
+import dev.auctoritas.auth.domain.model.project.Project;
+import dev.auctoritas.auth.domain.model.project.ProjectSettings;
 import dev.auctoritas.auth.domain.apikey.ApiKeyStatus;
 import dev.auctoritas.auth.domain.organization.OrganizationStatus;
 import dev.auctoritas.auth.domain.project.ProjectStatus;

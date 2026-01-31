@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.ports.oauth;
 
-import dev.auctoritas.auth.entity.project.ProjectSettings;
+import dev.auctoritas.auth.domain.model.project.ProjectSettings;
 import dev.auctoritas.auth.service.oauth.OAuthAuthorizeDetails;
 import dev.auctoritas.auth.service.oauth.OAuthAuthorizeUrlRequest;
 import dev.auctoritas.auth.service.oauth.OAuthTokenExchangeRequest;

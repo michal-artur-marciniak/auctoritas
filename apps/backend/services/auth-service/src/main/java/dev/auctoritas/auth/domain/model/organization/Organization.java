@@ -1,4 +1,4 @@
-package dev.auctoritas.auth.entity.organization;
+package dev.auctoritas.auth.domain.model.organization;
 
 import dev.auctoritas.auth.shared.persistence.BaseAuditEntity;
 import dev.auctoritas.auth.domain.organization.OrganizationStatus;

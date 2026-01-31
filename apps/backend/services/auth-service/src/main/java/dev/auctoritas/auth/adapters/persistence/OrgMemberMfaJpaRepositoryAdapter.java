@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.adapters.persistence;
 
-import dev.auctoritas.auth.entity.organization.OrgMemberMfa;
+import dev.auctoritas.auth.domain.model.organization.OrgMemberMfa;
 import dev.auctoritas.auth.ports.organization.OrgMemberMfaRepositoryPort;
 import dev.auctoritas.auth.repository.OrgMemberMfaRepository;
 import java.util.Optional;

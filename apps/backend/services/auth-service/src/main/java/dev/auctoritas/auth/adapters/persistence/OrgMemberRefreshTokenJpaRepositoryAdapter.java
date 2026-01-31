@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.adapters.persistence;
 
-import dev.auctoritas.auth.entity.organization.OrgMemberRefreshToken;
+import dev.auctoritas.auth.domain.model.organization.OrgMemberRefreshToken;
 import dev.auctoritas.auth.ports.organization.OrgMemberRefreshTokenRepositoryPort;
 import dev.auctoritas.auth.repository.OrgMemberRefreshTokenRepository;
 import java.time.Instant;

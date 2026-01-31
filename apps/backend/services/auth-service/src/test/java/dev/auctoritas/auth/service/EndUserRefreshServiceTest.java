@@ -5,12 +5,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.auctoritas.auth.api.EndUserRefreshRequest;
 import dev.auctoritas.auth.api.EndUserRefreshResponse;
-import dev.auctoritas.auth.entity.enduser.EndUser;
-import dev.auctoritas.auth.entity.enduser.EndUserRefreshToken;
-import dev.auctoritas.auth.entity.organization.Organization;
-import dev.auctoritas.auth.entity.project.ApiKey;
-import dev.auctoritas.auth.entity.project.Project;
-import dev.auctoritas.auth.entity.project.ProjectSettings;
+import dev.auctoritas.auth.domain.model.enduser.EndUser;
+import dev.auctoritas.auth.domain.model.enduser.EndUserRefreshToken;
+import dev.auctoritas.auth.domain.model.organization.Organization;
+import dev.auctoritas.auth.domain.model.project.ApiKey;
+import dev.auctoritas.auth.domain.model.project.Project;
+import dev.auctoritas.auth.domain.model.project.ProjectSettings;
 import dev.auctoritas.auth.repository.EndUserRefreshTokenRepository;
 import dev.auctoritas.auth.domain.apikey.ApiKeyStatus;
 import dev.auctoritas.auth.domain.organization.OrganizationStatus;

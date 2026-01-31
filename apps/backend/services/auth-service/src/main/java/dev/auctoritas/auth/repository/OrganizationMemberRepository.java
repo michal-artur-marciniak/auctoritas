@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.repository;
 
-import dev.auctoritas.auth.entity.organization.OrganizationMember;
+import dev.auctoritas.auth.domain.model.organization.OrganizationMember;
 import dev.auctoritas.auth.domain.organization.OrgMemberStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

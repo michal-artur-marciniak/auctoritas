@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.ports.organization;
 
-import dev.auctoritas.auth.entity.organization.OrgMemberMfa;
+import dev.auctoritas.auth.domain.model.organization.OrgMemberMfa;
 import java.util.Optional;
 import java.util.UUID;
 

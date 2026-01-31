@@ -1,8 +1,8 @@
 package dev.auctoritas.auth.service.oauth;
 
-import dev.auctoritas.auth.entity.project.ApiKey;
-import dev.auctoritas.auth.entity.project.Project;
-import dev.auctoritas.auth.entity.project.ProjectSettings;
+import dev.auctoritas.auth.domain.model.project.ApiKey;
+import dev.auctoritas.auth.domain.model.project.Project;
+import dev.auctoritas.auth.domain.model.project.ProjectSettings;
 import dev.auctoritas.auth.ports.oauth.OAuthProviderPort;
 import dev.auctoritas.auth.ports.project.ProjectRepositoryPort;
 import dev.auctoritas.auth.service.ApiKeyService;

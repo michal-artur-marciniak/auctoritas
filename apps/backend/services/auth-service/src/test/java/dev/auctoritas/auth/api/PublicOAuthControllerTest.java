@@ -11,9 +11,9 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import dev.auctoritas.auth.entity.project.ApiKey;
-import dev.auctoritas.auth.entity.project.Project;
-import dev.auctoritas.auth.entity.project.ProjectSettings;
+import dev.auctoritas.auth.domain.model.project.ApiKey;
+import dev.auctoritas.auth.domain.model.project.Project;
+import dev.auctoritas.auth.domain.model.project.ProjectSettings;
 import dev.auctoritas.auth.repository.ProjectRepository;
 import dev.auctoritas.auth.service.ApiKeyService;
 import dev.auctoritas.auth.adapters.external.oauth.OAuthAppleAuthorizationService;

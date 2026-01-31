@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.service;
 
 import dev.auctoritas.auth.api.OrgMemberProfileResponse;
-import dev.auctoritas.auth.entity.organization.OrganizationMember;
+import dev.auctoritas.auth.domain.model.organization.OrganizationMember;
 import dev.auctoritas.auth.ports.organization.OrganizationMemberRepositoryPort;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.UUID;

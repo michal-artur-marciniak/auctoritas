@@ -4,12 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.auctoritas.auth.application.enduser.EndUserRegistrationCommand;
 import dev.auctoritas.auth.application.enduser.EndUserRegistrationResult;
-import dev.auctoritas.auth.entity.enduser.EndUser;
-import dev.auctoritas.auth.entity.enduser.EndUserEmailVerificationToken;
-import dev.auctoritas.auth.entity.organization.Organization;
-import dev.auctoritas.auth.entity.project.ApiKey;
-import dev.auctoritas.auth.entity.project.Project;
-import dev.auctoritas.auth.entity.project.ProjectSettings;
+import dev.auctoritas.auth.domain.model.enduser.EndUser;
+import dev.auctoritas.auth.domain.model.enduser.EndUserEmailVerificationToken;
+import dev.auctoritas.auth.domain.model.organization.Organization;
+import dev.auctoritas.auth.domain.model.project.ApiKey;
+import dev.auctoritas.auth.domain.model.project.Project;
+import dev.auctoritas.auth.domain.model.project.ProjectSettings;
 import dev.auctoritas.auth.messaging.DomainEventPublisher;
 import dev.auctoritas.auth.messaging.UserRegisteredEvent;
 import dev.auctoritas.auth.ports.identity.EndUserEmailVerificationTokenRepositoryPort;

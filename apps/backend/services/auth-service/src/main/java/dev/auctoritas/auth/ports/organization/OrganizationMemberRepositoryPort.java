@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.ports.organization;
 
 import dev.auctoritas.auth.domain.organization.OrgMemberStatus;
-import dev.auctoritas.auth.entity.organization.OrganizationMember;
+import dev.auctoritas.auth.domain.model.organization.OrganizationMember;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;

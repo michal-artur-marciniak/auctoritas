@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
-import dev.auctoritas.auth.entity.project.ProjectSettings;
+import dev.auctoritas.auth.domain.model.project.ProjectSettings;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;

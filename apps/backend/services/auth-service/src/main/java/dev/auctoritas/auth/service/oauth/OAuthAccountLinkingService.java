@@ -2,9 +2,9 @@ package dev.auctoritas.auth.service.oauth;
 
 import dev.auctoritas.auth.domain.valueobject.Email;
 import dev.auctoritas.auth.domain.valueobject.Password;
-import dev.auctoritas.auth.entity.enduser.EndUser;
-import dev.auctoritas.auth.entity.oauth.OAuthConnection;
-import dev.auctoritas.auth.entity.project.Project;
+import dev.auctoritas.auth.domain.model.enduser.EndUser;
+import dev.auctoritas.auth.domain.model.oauth.OAuthConnection;
+import dev.auctoritas.auth.domain.model.project.Project;
 import dev.auctoritas.auth.ports.identity.EndUserRepositoryPort;
 import dev.auctoritas.auth.ports.oauth.OAuthConnectionRepositoryPort;
 import dev.auctoritas.auth.service.TokenService;

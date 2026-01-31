@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.ports.identity;
 
-import dev.auctoritas.auth.entity.enduser.EndUser;
+import dev.auctoritas.auth.domain.model.enduser.EndUser;
 import java.util.Optional;
 import java.util.UUID;
 

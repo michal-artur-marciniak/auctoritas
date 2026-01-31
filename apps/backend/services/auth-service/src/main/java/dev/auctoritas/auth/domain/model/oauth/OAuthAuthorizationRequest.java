@@ -1,6 +1,6 @@
-package dev.auctoritas.auth.entity.oauth;
+package dev.auctoritas.auth.domain.model.oauth;
 
-import dev.auctoritas.auth.entity.project.Project;
+import dev.auctoritas.auth.domain.model.project.Project;
 import dev.auctoritas.auth.shared.persistence.BaseAuditEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

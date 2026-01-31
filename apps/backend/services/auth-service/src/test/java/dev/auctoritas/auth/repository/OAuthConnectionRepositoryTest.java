@@ -4,11 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.auctoritas.auth.config.JpaConfig;
-import dev.auctoritas.auth.entity.enduser.EndUser;
-import dev.auctoritas.auth.entity.oauth.OAuthConnection;
-import dev.auctoritas.auth.entity.organization.Organization;
-import dev.auctoritas.auth.entity.project.Project;
-import dev.auctoritas.auth.entity.project.ProjectSettings;
+import dev.auctoritas.auth.domain.model.enduser.EndUser;
+import dev.auctoritas.auth.domain.model.oauth.OAuthConnection;
+import dev.auctoritas.auth.domain.model.organization.Organization;
+import dev.auctoritas.auth.domain.model.project.Project;
+import dev.auctoritas.auth.domain.model.project.ProjectSettings;
 import dev.auctoritas.auth.domain.organization.OrganizationStatus;
 import dev.auctoritas.auth.domain.project.ProjectStatus;
 import jakarta.persistence.EntityManager;

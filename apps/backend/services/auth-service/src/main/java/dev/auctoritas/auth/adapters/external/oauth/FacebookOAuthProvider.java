@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.adapters.external.oauth;
 
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
-import dev.auctoritas.auth.entity.project.ProjectSettings;
+import dev.auctoritas.auth.domain.model.project.ProjectSettings;
 import dev.auctoritas.auth.ports.oauth.OAuthProviderPort;
 import dev.auctoritas.auth.service.oauth.OAuthAuthorizeDetails;
 import dev.auctoritas.auth.service.oauth.OAuthAuthorizeUrlRequest;

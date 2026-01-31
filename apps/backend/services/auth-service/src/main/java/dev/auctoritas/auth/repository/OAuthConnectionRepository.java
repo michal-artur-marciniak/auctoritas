@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.repository;
 
-import dev.auctoritas.auth.entity.oauth.OAuthConnection;
+import dev.auctoritas.auth.domain.model.oauth.OAuthConnection;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;

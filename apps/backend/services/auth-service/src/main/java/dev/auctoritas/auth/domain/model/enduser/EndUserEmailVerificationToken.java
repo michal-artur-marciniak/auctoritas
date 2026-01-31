@@ -1,12 +1,12 @@
-package dev.auctoritas.auth.entity.organization;
+package dev.auctoritas.auth.domain.model.enduser;
 
+import dev.auctoritas.auth.domain.model.project.Project;
 import dev.auctoritas.auth.shared.persistence.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import lombok.Getter;
@@ -14,31 +14,28 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "org_member_refresh_tokens")
+@Table(name = "email_verification_tokens")
 @Getter
 @Setter
 @NoArgsConstructor
-public class OrgMemberRefreshToken extends BaseEntity {
+public class EndUserEmailVerificationToken extends BaseEntity {
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "member_id", nullable = false)
-  private OrganizationMember member;
+  @JoinColumn(name = "project_id", nullable = false)
+  private Project project;
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "user_id", nullable = false)
+  private EndUser user;
 
   @Column(name = "token_hash", nullable = false, length = 128)
   private String tokenHash;
 
+  @Column(name = "code_hash", nullable = false, length = 128)
+  private String codeHash;
+
   @Column(name = "expires_at", nullable = false)
   private Instant expiresAt;
 
-  @Column(nullable = false)
-  private boolean revoked = false;
-
-  @OneToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "replaced_by_id")
-  private OrgMemberRefreshToken replacedBy;
-
-  @Column(name = "ip_address", length = 45)
-  private String ipAddress;
-
-  @Column(name = "user_agent", length = 500)
-  private String userAgent;
+  @Column(name = "used_at")
+  private Instant usedAt;
 }

@@ -1,4 +1,4 @@
-package dev.auctoritas.auth.entity.project;
+package dev.auctoritas.auth.domain.model.project;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

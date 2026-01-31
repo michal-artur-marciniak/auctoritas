@@ -2,12 +2,12 @@ package dev.auctoritas.auth.service;
 
 import dev.auctoritas.auth.api.EndUserRefreshRequest;
 import dev.auctoritas.auth.api.EndUserRefreshResponse;
-import dev.auctoritas.auth.entity.enduser.EndUser;
-import dev.auctoritas.auth.entity.enduser.EndUserRefreshToken;
-import dev.auctoritas.auth.entity.enduser.EndUserSession;
-import dev.auctoritas.auth.entity.project.ApiKey;
-import dev.auctoritas.auth.entity.project.Project;
-import dev.auctoritas.auth.entity.project.ProjectSettings;
+import dev.auctoritas.auth.domain.model.enduser.EndUser;
+import dev.auctoritas.auth.domain.model.enduser.EndUserRefreshToken;
+import dev.auctoritas.auth.domain.model.enduser.EndUserSession;
+import dev.auctoritas.auth.domain.model.project.ApiKey;
+import dev.auctoritas.auth.domain.model.project.Project;
+import dev.auctoritas.auth.domain.model.project.ProjectSettings;
 import dev.auctoritas.auth.ports.identity.EndUserRefreshTokenRepositoryPort;
 import dev.auctoritas.auth.ports.identity.EndUserSessionRepositoryPort;
 import jakarta.persistence.LockTimeoutException;

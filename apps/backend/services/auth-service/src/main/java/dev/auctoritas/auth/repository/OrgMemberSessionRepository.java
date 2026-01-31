@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.repository;
 
-import dev.auctoritas.auth.entity.organization.OrgMemberSession;
+import dev.auctoritas.auth.domain.model.organization.OrgMemberSession;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.time.Instant;

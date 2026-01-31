@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.repository;
 
-import dev.auctoritas.auth.entity.enduser.EndUserRefreshToken;
+import dev.auctoritas.auth.domain.model.enduser.EndUserRefreshToken;
 import jakarta.persistence.LockModeType;
 import java.util.Optional;
 import java.util.UUID;

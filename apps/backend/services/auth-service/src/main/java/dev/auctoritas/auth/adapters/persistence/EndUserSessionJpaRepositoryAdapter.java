@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.adapters.persistence;
 
-import dev.auctoritas.auth.entity.enduser.EndUserSession;
+import dev.auctoritas.auth.domain.model.enduser.EndUserSession;
 import dev.auctoritas.auth.ports.identity.EndUserSessionRepositoryPort;
 import dev.auctoritas.auth.repository.EndUserSessionRepository;
 import java.time.Instant;

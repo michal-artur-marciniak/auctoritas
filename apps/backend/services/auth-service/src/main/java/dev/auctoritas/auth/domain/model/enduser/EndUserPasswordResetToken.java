@@ -1,7 +1,6 @@
-package dev.auctoritas.auth.entity.oauth;
+package dev.auctoritas.auth.domain.model.enduser;
 
-import dev.auctoritas.auth.entity.enduser.EndUser;
-import dev.auctoritas.auth.entity.project.Project;
+import dev.auctoritas.auth.domain.model.project.Project;
 import dev.auctoritas.auth.shared.persistence.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -9,21 +8,17 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(
-    name = "oauth_exchange_codes",
-    uniqueConstraints = @UniqueConstraint(columnNames = {"code_hash"}))
+@Table(name = "password_reset_tokens")
 @Getter
 @Setter
 @NoArgsConstructor
-public class OAuthExchangeCode extends BaseEntity {
-
+public class EndUserPasswordResetToken extends BaseEntity {
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "project_id", nullable = false)
   private Project project;
@@ -32,15 +27,18 @@ public class OAuthExchangeCode extends BaseEntity {
   @JoinColumn(name = "user_id", nullable = false)
   private EndUser user;
 
-  @Column(nullable = false, length = 50)
-  private String provider;
-
-  @Column(name = "code_hash", nullable = false, length = 128)
-  private String codeHash;
+  @Column(name = "token_hash", nullable = false, length = 128)
+  private String tokenHash;
 
   @Column(name = "expires_at", nullable = false)
   private Instant expiresAt;
 
   @Column(name = "used_at")
   private Instant usedAt;
+
+  @Column(name = "ip_address", length = 45)
+  private String ipAddress;
+
+  @Column(name = "user_agent", length = 500)
+  private String userAgent;
 }

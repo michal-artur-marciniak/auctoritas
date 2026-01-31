@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.ports.organization;
 
-import dev.auctoritas.auth.entity.organization.OrgMemberSession;
+import dev.auctoritas.auth.domain.model.organization.OrgMemberSession;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;

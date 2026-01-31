@@ -1,4 +1,4 @@
-package dev.auctoritas.auth.entity.project;
+package dev.auctoritas.auth.domain.model.project;
 
 import dev.auctoritas.auth.shared.persistence.BaseAuditEntity;
 import dev.auctoritas.auth.domain.apikey.ApiKeyStatus;

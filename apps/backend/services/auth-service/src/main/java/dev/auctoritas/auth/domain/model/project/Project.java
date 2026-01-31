@@ -1,9 +1,10 @@
-package dev.auctoritas.auth.entity.project;
+package dev.auctoritas.auth.domain.model.project;
 
+import dev.auctoritas.auth.domain.event.DomainEvent;
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
+import dev.auctoritas.auth.domain.model.organization.Organization;
 import dev.auctoritas.auth.domain.project.ProjectStatus;
 import dev.auctoritas.auth.domain.valueobject.Slug;
-import dev.auctoritas.auth.entity.organization.Organization;
 import dev.auctoritas.auth.shared.persistence.BaseAuditEntity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -15,9 +16,18 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import jakarta.persistence.UniqueConstraint;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
 import lombok.Getter;
 
+/**
+ * Aggregate root representing a project in the auth domain.
+ */
 @Entity
 @Table(
     name = "projects",
@@ -41,11 +51,15 @@ public class Project extends BaseAuditEntity {
   @OneToOne(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
   private ProjectSettings settings;
 
+  @Transient
+  private final List<DomainEvent> domainEvents = new ArrayList<>();
+
   protected Project() {
   }
 
   /**
    * Factory method to create a new Project.
+   * Publishes ProjectCreatedEvent.
    */
   public static Project create(Organization organization, String name, Slug slug) {
     if (organization == null) {
@@ -61,6 +75,16 @@ public class Project extends BaseAuditEntity {
     ProjectSettings settings = new ProjectSettings();
     settings.setProjectInternal(project);
     project.settings = settings;
+
+    // Register domain event
+    project.registerEvent(new ProjectCreatedEvent(
+        UUID.randomUUID(),
+        project.getId(),
+        organization.getId(),
+        project.name,
+        project.slug,
+        Instant.now()
+    ));
 
     return project;
   }
@@ -78,10 +102,20 @@ public class Project extends BaseAuditEntity {
 
   /**
    * Renames the project.
+   * Publishes ProjectRenamedEvent.
    */
   public void rename(String newName) {
     ensureNotDeleted();
+    String oldName = this.name;
     setName(newName);
+    
+    registerEvent(new ProjectRenamedEvent(
+        UUID.randomUUID(),
+        getId(),
+        oldName,
+        this.name,
+        Instant.now()
+    ));
   }
 
   /**
@@ -94,18 +128,36 @@ public class Project extends BaseAuditEntity {
 
   /**
    * Archives the project.
+   * Publishes ProjectArchivedEvent.
    */
   public void archive() {
     ensureNotDeleted();
     this.status = ProjectStatus.ARCHIVED;
+    
+    registerEvent(new ProjectStatusChangedEvent(
+        UUID.randomUUID(),
+        getId(),
+        ProjectStatus.ACTIVE,
+        ProjectStatus.ARCHIVED,
+        Instant.now()
+    ));
   }
 
   /**
    * Suspends the project.
+   * Publishes ProjectSuspendedEvent.
    */
   public void suspend() {
     ensureNotDeleted();
     this.status = ProjectStatus.SUSPENDED;
+    
+    registerEvent(new ProjectStatusChangedEvent(
+        UUID.randomUUID(),
+        getId(),
+        ProjectStatus.ACTIVE,
+        ProjectStatus.SUSPENDED,
+        Instant.now()
+    ));
   }
 
   /**
@@ -113,20 +165,36 @@ public class Project extends BaseAuditEntity {
    */
   public void reactivate() {
     ensureNotDeleted();
+    ProjectStatus previousStatus = this.status;
     if (status == ProjectStatus.ACTIVE) {
       throw new DomainValidationException("project_already_active");
     }
     this.status = ProjectStatus.ACTIVE;
+    
+    registerEvent(new ProjectStatusChangedEvent(
+        UUID.randomUUID(),
+        getId(),
+        previousStatus,
+        ProjectStatus.ACTIVE,
+        Instant.now()
+    ));
   }
 
   /**
    * Marks the project as deleted.
+   * Publishes ProjectDeletedEvent.
    */
   public void markDeleted() {
     if (status == ProjectStatus.DELETED) {
       throw new DomainValidationException("project_already_deleted");
     }
     this.status = ProjectStatus.DELETED;
+    
+    registerEvent(new ProjectDeletedEvent(
+        UUID.randomUUID(),
+        getId(),
+        Instant.now()
+    ));
   }
 
   /**
@@ -147,5 +215,26 @@ public class Project extends BaseAuditEntity {
     if (status == ProjectStatus.DELETED) {
       throw new DomainValidationException("project_deleted");
     }
+  }
+
+  /**
+   * Registers a domain event.
+   */
+  protected void registerEvent(DomainEvent event) {
+    domainEvents.add(event);
+  }
+
+  /**
+   * Returns unmodifiable list of domain events.
+   */
+  public List<DomainEvent> getDomainEvents() {
+    return Collections.unmodifiableList(domainEvents);
+  }
+
+  /**
+   * Clears all domain events. Should be called after events are published.
+   */
+  public void clearDomainEvents() {
+    domainEvents.clear();
   }
 }

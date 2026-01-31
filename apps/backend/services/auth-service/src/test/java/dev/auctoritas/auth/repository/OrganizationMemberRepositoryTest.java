@@ -1,9 +1,9 @@
 package dev.auctoritas.auth.repository;
 
 import dev.auctoritas.auth.config.JpaConfig;
-import dev.auctoritas.auth.entity.organization.Organization;
-import dev.auctoritas.auth.entity.organization.OrganizationMember;
-import dev.auctoritas.auth.entity.organization.OrganizationInvitation;
+import dev.auctoritas.auth.domain.model.organization.Organization;
+import dev.auctoritas.auth.domain.model.organization.OrganizationMember;
+import dev.auctoritas.auth.domain.model.organization.OrganizationInvitation;
 import dev.auctoritas.auth.domain.organization.OrgMemberRole;
 import dev.auctoritas.auth.domain.organization.OrgMemberStatus;
 import dev.auctoritas.auth.domain.organization.OrganizationStatus;

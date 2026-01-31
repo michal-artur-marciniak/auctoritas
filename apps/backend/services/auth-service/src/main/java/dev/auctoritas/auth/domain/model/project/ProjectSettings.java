@@ -1,4 +1,4 @@
-package dev.auctoritas.auth.entity.project;
+package dev.auctoritas.auth.domain.model.project;
 
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.shared.persistence.BaseEntity;

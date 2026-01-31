@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.adapters.persistence;
 
-import dev.auctoritas.auth.entity.enduser.EndUserPasswordHistory;
+import dev.auctoritas.auth.domain.model.enduser.EndUserPasswordHistory;
 import dev.auctoritas.auth.ports.identity.EndUserPasswordHistoryRepositoryPort;
 import dev.auctoritas.auth.repository.EndUserPasswordHistoryRepository;
 import java.util.List;
