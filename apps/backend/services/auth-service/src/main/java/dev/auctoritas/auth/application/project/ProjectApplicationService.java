@@ -12,8 +12,8 @@ import dev.auctoritas.auth.domain.model.organization.Organization;
 import dev.auctoritas.auth.domain.model.project.Project;
 import dev.auctoritas.auth.ports.organization.OrganizationRepositoryPort;
 import dev.auctoritas.auth.ports.project.ProjectRepositoryPort;
-import dev.auctoritas.auth.security.OrgMemberPrincipal;
-import dev.auctoritas.auth.domain.organization.OrgMemberRole;
+import dev.auctoritas.auth.security.OrganizationMemberPrincipal;
+import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -43,7 +43,7 @@ public class ProjectApplicationService {
 
   @Transactional
   public ProjectCreateResponse createProject(
-      UUID orgId, OrgMemberPrincipal principal, ProjectCreateRequest request) {
+      UUID orgId, OrganizationMemberPrincipal principal, ProjectCreateRequest request) {
     enforceOrgAccess(orgId, principal);
 
     String name = requireValue(request.name(), "project_name_required");
@@ -70,7 +70,7 @@ public class ProjectApplicationService {
   }
 
   @Transactional(readOnly = true)
-  public List<ProjectSummaryResponse> listProjects(UUID orgId, OrgMemberPrincipal principal) {
+  public List<ProjectSummaryResponse> listProjects(UUID orgId, OrganizationMemberPrincipal principal) {
     enforceOrgAccess(orgId, principal);
     return projectRepository.findAllByOrganizationId(orgId).stream()
         .filter(project -> project.getStatus() != ProjectStatus.DELETED)
@@ -80,7 +80,7 @@ public class ProjectApplicationService {
 
   @Transactional
   public ProjectSummaryResponse updateProject(
-      UUID orgId, UUID projectId, OrgMemberPrincipal principal, ProjectUpdateRequest request) {
+      UUID orgId, UUID projectId, OrganizationMemberPrincipal principal, ProjectUpdateRequest request) {
     enforceOrgAccess(orgId, principal);
     Project project = loadProject(orgId, projectId);
 
@@ -114,7 +114,7 @@ public class ProjectApplicationService {
   }
 
   @Transactional
-  public void deleteProject(UUID orgId, UUID projectId, OrgMemberPrincipal principal) {
+  public void deleteProject(UUID orgId, UUID projectId, OrganizationMemberPrincipal principal) {
     enforceOrgAccess(orgId, principal);
     enforceAdminAccess(principal);
     Project project = loadProject(orgId, projectId);
@@ -133,7 +133,7 @@ public class ProjectApplicationService {
         project.getUpdatedAt());
   }
 
-  private void enforceOrgAccess(UUID orgId, OrgMemberPrincipal principal) {
+  private void enforceOrgAccess(UUID orgId, OrganizationMemberPrincipal principal) {
     if (principal == null) {
       throw new IllegalStateException("Authenticated org member principal is required.");
     }
@@ -142,9 +142,9 @@ public class ProjectApplicationService {
     }
   }
 
-  private void enforceAdminAccess(OrgMemberPrincipal principal) {
-    OrgMemberRole role = principal.role();
-    if (role != OrgMemberRole.OWNER && role != OrgMemberRole.ADMIN) {
+  private void enforceAdminAccess(OrganizationMemberPrincipal principal) {
+    OrganizationMemberRole role = principal.role();
+    if (role != OrganizationMemberRole.OWNER && role != OrganizationMemberRole.ADMIN) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "insufficient_role");
     }
   }

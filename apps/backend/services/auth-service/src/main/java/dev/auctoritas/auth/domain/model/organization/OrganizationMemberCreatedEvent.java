@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.domain.model.organization;
 
 import dev.auctoritas.auth.domain.event.DomainEvent;
-import dev.auctoritas.auth.domain.organization.OrgMemberRole;
+import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -14,7 +14,7 @@ public record OrganizationMemberCreatedEvent(
     UUID organizationId,
     String email,
     String name,
-    OrgMemberRole role,
+    OrganizationMemberRole role,
     boolean emailVerified,
     Instant occurredAt
 ) implements DomainEvent {

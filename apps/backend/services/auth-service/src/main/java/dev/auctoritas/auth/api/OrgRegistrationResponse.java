@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.api;
 
-import dev.auctoritas.auth.domain.organization.OrgMemberRole;
+import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
 import java.util.UUID;
 
 public record OrgRegistrationResponse(
@@ -11,5 +11,5 @@ public record OrgRegistrationResponse(
 
   public record OrganizationSummary(UUID id, String name, String slug) {}
 
-  public record MemberSummary(UUID id, String email, OrgMemberRole role) {}
+  public record MemberSummary(UUID id, String email, OrganizationMemberRole role) {}
 }

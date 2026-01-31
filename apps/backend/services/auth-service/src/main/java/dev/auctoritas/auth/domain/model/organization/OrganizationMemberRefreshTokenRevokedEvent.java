@@ -5,22 +5,22 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Event emitted when a new organization member session is created.
+ * Event emitted when an organization member refresh token is revoked.
  */
-public record OrgMemberSessionCreatedEvent(
+public record OrganizationMemberRefreshTokenRevokedEvent(
     UUID eventId,
     UUID aggregateId,
     UUID memberId,
-    String ipAddress,
+    String reason,
     Instant occurredAt
 ) implements DomainEvent {
   
   @Override
   public String eventType() {
-    return "orgmember.session.created";
+    return "orgmember.refreshtoken.revoked";
   }
   
-  public UUID sessionId() {
+  public UUID tokenId() {
     return aggregateId;
   }
 }

@@ -5,9 +5,9 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Event emitted when an organization member refresh token is revoked.
+ * Event emitted when an organization member session is invalidated/logged out.
  */
-public record OrgMemberRefreshTokenRevokedEvent(
+public record OrganizationMemberSessionInvalidatedEvent(
     UUID eventId,
     UUID aggregateId,
     UUID memberId,
@@ -17,10 +17,10 @@ public record OrgMemberRefreshTokenRevokedEvent(
   
   @Override
   public String eventType() {
-    return "orgmember.refreshtoken.revoked";
+    return "orgmember.session.invalidated";
   }
   
-  public UUID tokenId() {
+  public UUID sessionId() {
     return aggregateId;
   }
 }

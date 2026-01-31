@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.service;
 
-import dev.auctoritas.auth.api.OrgMemberProfileResponse;
+import dev.auctoritas.auth.api.OrganizationMemberProfileResponse;
 import dev.auctoritas.auth.domain.model.organization.OrganizationMember;
 import dev.auctoritas.auth.ports.organization.OrganizationMemberRepositoryPort;
 import jakarta.persistence.EntityNotFoundException;
@@ -12,10 +12,10 @@ import org.springframework.transaction.annotation.Transactional;
  * Service for org member profile operations.
  */
 @Service
-public class OrgMemberProfileService {
+public class OrganizationMemberProfileService {
   private final OrganizationMemberRepositoryPort memberRepository;
 
-  public OrgMemberProfileService(OrganizationMemberRepositoryPort memberRepository) {
+  public OrganizationMemberProfileService(OrganizationMemberRepositoryPort memberRepository) {
     this.memberRepository = memberRepository;
   }
 
@@ -27,13 +27,13 @@ public class OrgMemberProfileService {
    * @throws EntityNotFoundException if member not found
    */
   @Transactional(readOnly = true)
-  public OrgMemberProfileResponse getProfile(UUID memberId) {
+  public OrganizationMemberProfileResponse getProfile(UUID memberId) {
     OrganizationMember member =
         memberRepository
             .findByIdWithOrganization(memberId)
             .orElseThrow(() -> new EntityNotFoundException("Member not found: " + memberId));
 
-    return new OrgMemberProfileResponse(
+    return new OrganizationMemberProfileResponse(
         member.getId(),
         member.getEmail(),
         member.getName(),
@@ -43,7 +43,7 @@ public class OrgMemberProfileService {
         member.getEmailVerified(),
         member.getMfa() != null && member.getMfa().getEnabled(),
         member.getCreatedAt(),
-        new OrgMemberProfileResponse.OrganizationInfo(
+        new OrganizationMemberProfileResponse.OrganizationInfo(
             member.getOrganization().getId(),
             member.getOrganization().getName(),
             member.getOrganization().getSlug()));

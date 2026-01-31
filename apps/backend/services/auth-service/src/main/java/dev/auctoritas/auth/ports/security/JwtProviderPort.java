@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.ports.security;
 
-import dev.auctoritas.auth.domain.organization.OrgMemberRole;
+import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
 import io.jsonwebtoken.Claims;
 import java.security.PublicKey;
 import java.util.UUID;
@@ -9,7 +9,7 @@ import java.util.UUID;
  * Port for issuing and validating JWTs for auth flows.
  */
 public interface JwtProviderPort {
-  String generateAccessToken(UUID orgMemberId, UUID orgId, String email, OrgMemberRole role);
+  String generateAccessToken(UUID orgMemberId, UUID orgId, String email, OrganizationMemberRole role);
 
   String generateEndUserAccessToken(
       UUID endUserId,

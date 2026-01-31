@@ -5,22 +5,22 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Event emitted when a new organization member refresh token is created.
+ * Event emitted when an organization member session is extended/refreshed.
  */
-public record OrgMemberRefreshTokenCreatedEvent(
+public record OrganizationMemberSessionExtendedEvent(
     UUID eventId,
     UUID aggregateId,
     UUID memberId,
-    Instant expiresAt,
+    Instant newExpiresAt,
     Instant occurredAt
 ) implements DomainEvent {
   
   @Override
   public String eventType() {
-    return "orgmember.refreshtoken.created";
+    return "orgmember.session.extended";
   }
   
-  public UUID tokenId() {
+  public UUID sessionId() {
     return aggregateId;
   }
 }

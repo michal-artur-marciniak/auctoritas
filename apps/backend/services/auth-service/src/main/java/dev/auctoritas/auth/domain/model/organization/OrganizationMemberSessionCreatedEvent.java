@@ -5,19 +5,19 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Event emitted when an organization member session is invalidated/logged out.
+ * Event emitted when a new organization member session is created.
  */
-public record OrgMemberSessionInvalidatedEvent(
+public record OrganizationMemberSessionCreatedEvent(
     UUID eventId,
     UUID aggregateId,
     UUID memberId,
-    String reason,
+    String ipAddress,
     Instant occurredAt
 ) implements DomainEvent {
   
   @Override
   public String eventType() {
-    return "orgmember.session.invalidated";
+    return "orgmember.session.created";
   }
   
   public UUID sessionId() {

@@ -19,7 +19,7 @@ import org.hibernate.type.SqlTypes;
 @Getter
 @Setter
 @NoArgsConstructor
-public class OrgMemberMfa extends BaseEntity {
+public class OrganizationMemberMfa extends BaseEntity {
   @OneToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "member_id", nullable = false, unique = true)
   private OrganizationMember member;

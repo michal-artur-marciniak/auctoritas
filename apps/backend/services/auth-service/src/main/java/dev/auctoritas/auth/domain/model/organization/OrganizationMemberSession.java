@@ -31,7 +31,7 @@ import org.hibernate.type.SqlTypes;
 @Table(name = "org_member_sessions")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class OrgMemberSession extends BaseEntity {
+public class OrganizationMemberSession extends BaseEntity {
 
   @Transient
   private final List<DomainEvent> domainEvents = new ArrayList<>();
@@ -63,15 +63,15 @@ public class OrgMemberSession extends BaseEntity {
    * @param ipAddress the IP address of the client
    * @param deviceInfo device information map
    * @param ttl time-to-live duration for the session
-   * @return a new OrgMemberSession instance
+   * @return a new OrganizationMemberSession instance
    * @throws IllegalArgumentException if member is null or ttl is null
    */
-  public static OrgMemberSession create(
+  public static OrganizationMemberSession create(
       OrganizationMember member, String ipAddress, Map<String, Object> deviceInfo, Duration ttl) {
     Objects.requireNonNull(member, "member_required");
     Objects.requireNonNull(ttl, "ttl_required");
 
-    OrgMemberSession session = new OrgMemberSession();
+    OrganizationMemberSession session = new OrganizationMemberSession();
     session.member = member;
     session.ipAddress = ipAddress;
     session.deviceInfo = deviceInfo != null ? Map.copyOf(deviceInfo) : null;
@@ -79,7 +79,7 @@ public class OrgMemberSession extends BaseEntity {
     session.invalidated = false;
 
     session.registerEvent(
-        new OrgMemberSessionCreatedEvent(
+        new OrganizationMemberSessionCreatedEvent(
             UUID.randomUUID(),
             session.getId(),
             member.getId(),
@@ -103,7 +103,7 @@ public class OrgMemberSession extends BaseEntity {
     this.expiresAt = Instant.now().plus(extension);
 
     registerEvent(
-        new OrgMemberSessionExtendedEvent(
+        new OrganizationMemberSessionExtendedEvent(
             UUID.randomUUID(),
             getId(),
             member.getId(),
@@ -137,7 +137,7 @@ public class OrgMemberSession extends BaseEntity {
     this.invalidatedAt = Instant.now();
 
     registerEvent(
-        new OrgMemberSessionInvalidatedEvent(
+        new OrganizationMemberSessionInvalidatedEvent(
             UUID.randomUUID(),
             getId(),
             member.getId(),

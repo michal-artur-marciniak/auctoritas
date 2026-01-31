@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.service;
 
 import dev.auctoritas.auth.config.JwtProperties;
-import dev.auctoritas.auth.domain.organization.OrgMemberRole;
+import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -42,7 +42,7 @@ public class JwtService {
   }
 
   public String generateAccessToken(
-      UUID orgMemberId, UUID orgId, String email, OrgMemberRole role) {
+      UUID orgMemberId, UUID orgId, String email, OrganizationMemberRole role) {
     Instant now = Instant.now();
     Instant expiresAt = now.plusSeconds(jwtProperties.accessTokenTtlSeconds());
 

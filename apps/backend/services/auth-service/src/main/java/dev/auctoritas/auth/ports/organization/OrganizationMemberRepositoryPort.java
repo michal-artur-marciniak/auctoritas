@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.ports.organization;
 
-import dev.auctoritas.auth.domain.organization.OrgMemberStatus;
+import dev.auctoritas.auth.domain.organization.OrganizationMemberStatus;
 import dev.auctoritas.auth.domain.model.organization.OrganizationMember;
 import java.util.List;
 import java.util.Optional;
@@ -17,7 +17,7 @@ public interface OrganizationMemberRepositoryPort {
 
   List<OrganizationMember> findByOrganizationId(UUID organizationId);
 
-  List<OrganizationMember> findByStatus(OrgMemberStatus status);
+  List<OrganizationMember> findByStatus(OrganizationMemberStatus status);
 
   Optional<OrganizationMember> findByIdWithOrganization(UUID id);
 

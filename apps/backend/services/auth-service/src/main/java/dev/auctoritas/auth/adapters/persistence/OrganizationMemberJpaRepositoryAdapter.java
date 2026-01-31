@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.adapters.persistence;
 
-import dev.auctoritas.auth.domain.organization.OrgMemberStatus;
+import dev.auctoritas.auth.domain.organization.OrganizationMemberStatus;
 import dev.auctoritas.auth.domain.model.organization.OrganizationMember;
 import dev.auctoritas.auth.ports.organization.OrganizationMemberRepositoryPort;
 import dev.auctoritas.auth.repository.OrganizationMemberRepository;
@@ -37,7 +37,7 @@ public class OrganizationMemberJpaRepositoryAdapter implements OrganizationMembe
   }
 
   @Override
-  public List<OrganizationMember> findByStatus(OrgMemberStatus status) {
+  public List<OrganizationMember> findByStatus(OrganizationMemberStatus status) {
     return organizationMemberRepository.findByStatus(status);
   }
 

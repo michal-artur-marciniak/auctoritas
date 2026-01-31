@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.domain.model.organization;
 
 import dev.auctoritas.auth.shared.persistence.BaseEntity;
-import dev.auctoritas.auth.domain.organization.OrgMemberRole;
+import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -30,7 +30,7 @@ public class OrganizationInvitation extends BaseEntity {
 
   @Enumerated(EnumType.STRING)
   @Column(nullable = false, length = 20)
-  private OrgMemberRole role;
+  private OrganizationMemberRole role;
 
   @Column(nullable = false, unique = true, length = 255)
   private String token;

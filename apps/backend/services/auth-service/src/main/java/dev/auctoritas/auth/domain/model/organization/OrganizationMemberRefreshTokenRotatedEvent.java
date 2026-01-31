@@ -7,7 +7,7 @@ import java.util.UUID;
 /**
  * Event emitted when an organization member refresh token is rotated (replaced by a new one).
  */
-public record OrgMemberRefreshTokenRotatedEvent(
+public record OrganizationMemberRefreshTokenRotatedEvent(
     UUID eventId,
     UUID aggregateId,
     UUID memberId,

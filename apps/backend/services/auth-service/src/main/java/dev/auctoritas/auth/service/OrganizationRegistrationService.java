@@ -3,15 +3,15 @@ package dev.auctoritas.auth.service;
 import dev.auctoritas.auth.api.OrgRegistrationRequest;
 import dev.auctoritas.auth.api.OrgRegistrationResponse;
 import dev.auctoritas.auth.domain.exception.DomainConflictException;
-import dev.auctoritas.auth.domain.model.organization.OrgMemberRefreshToken;
+import dev.auctoritas.auth.domain.model.organization.OrganizationMemberRefreshToken;
 import dev.auctoritas.auth.domain.model.organization.Organization;
 import dev.auctoritas.auth.domain.model.organization.OrganizationMember;
 import dev.auctoritas.auth.domain.model.organization.service.OrganizationRegistrationDomainService;
 import dev.auctoritas.auth.domain.model.organization.service.OrganizationRegistrationDomainService.OwnerSpec;
 import dev.auctoritas.auth.domain.model.organization.service.OrganizationRegistrationDomainService.RegistrationResult;
-import dev.auctoritas.auth.domain.organization.OrgMemberRole;
+import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
 import dev.auctoritas.auth.ports.messaging.DomainEventPublisherPort;
-import dev.auctoritas.auth.ports.organization.OrgMemberRefreshTokenRepositoryPort;
+import dev.auctoritas.auth.ports.organization.OrganizationMemberRefreshTokenRepositoryPort;
 import dev.auctoritas.auth.ports.organization.OrganizationMemberRepositoryPort;
 import dev.auctoritas.auth.ports.organization.OrganizationRepositoryPort;
 import org.slf4j.Logger;
@@ -26,7 +26,7 @@ public class OrganizationRegistrationService {
 
   private final OrganizationRepositoryPort organizationRepository;
   private final OrganizationMemberRepositoryPort organizationMemberRepository;
-  private final OrgMemberRefreshTokenRepositoryPort refreshTokenRepository;
+  private final OrganizationMemberRefreshTokenRepositoryPort refreshTokenRepository;
   private final PasswordEncoder passwordEncoder;
   private final TokenService tokenService;
   private final JwtService jwtService;
@@ -36,7 +36,7 @@ public class OrganizationRegistrationService {
   public OrganizationRegistrationService(
       OrganizationRepositoryPort organizationRepository,
       OrganizationMemberRepositoryPort organizationMemberRepository,
-      OrgMemberRefreshTokenRepositoryPort refreshTokenRepository,
+      OrganizationMemberRefreshTokenRepositoryPort refreshTokenRepository,
       PasswordEncoder passwordEncoder,
       TokenService tokenService,
       JwtService jwtService,
@@ -76,7 +76,7 @@ public class OrganizationRegistrationService {
         ownerSpec.email(),
         passwordHash,
         ownerSpec.name(),
-        OrgMemberRole.OWNER,
+        OrganizationMemberRole.OWNER,
         true);
 
     // Add owner to organization
@@ -115,8 +115,8 @@ public class OrganizationRegistrationService {
   }
 
   private void persistRefreshToken(OrganizationMember member, String rawToken) {
-    OrgMemberRefreshToken token =
-        OrgMemberRefreshToken.create(
+    OrganizationMemberRefreshToken token =
+        OrganizationMemberRefreshToken.create(
             member,
             tokenService.hashToken(rawToken),
             java.time.Duration.ofHours(720), // 30 days default

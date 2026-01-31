@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.api;
 
-import dev.auctoritas.auth.security.OrgMemberPrincipal;
+import dev.auctoritas.auth.security.OrganizationMemberPrincipal;
 import dev.auctoritas.auth.service.ProjectService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -32,7 +32,7 @@ public class ProjectController {
   public ResponseEntity<ProjectCreateResponse> createProject(
       @PathVariable UUID orgId,
       @Valid @RequestBody ProjectCreateRequest request,
-      @AuthenticationPrincipal OrgMemberPrincipal principal) {
+      @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(projectService.createProject(orgId, principal, request));
   }
@@ -40,7 +40,7 @@ public class ProjectController {
   @PreAuthorize("isAuthenticated()")
   @GetMapping
   public ResponseEntity<List<ProjectSummaryResponse>> listProjects(
-      @PathVariable UUID orgId, @AuthenticationPrincipal OrgMemberPrincipal principal) {
+      @PathVariable UUID orgId, @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
     return ResponseEntity.ok(projectService.listProjects(orgId, principal));
   }
 
@@ -50,7 +50,7 @@ public class ProjectController {
       @PathVariable UUID orgId,
       @PathVariable UUID projectId,
       @Valid @RequestBody ProjectUpdateRequest request,
-      @AuthenticationPrincipal OrgMemberPrincipal principal) {
+      @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
     return ResponseEntity.ok(projectService.updateProject(orgId, projectId, principal, request));
   }
 
@@ -59,7 +59,7 @@ public class ProjectController {
   public ResponseEntity<Void> deleteProject(
       @PathVariable UUID orgId,
       @PathVariable UUID projectId,
-      @AuthenticationPrincipal OrgMemberPrincipal principal) {
+      @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
     projectService.deleteProject(orgId, projectId, principal);
     return ResponseEntity.noContent().build();
   }
@@ -69,7 +69,7 @@ public class ProjectController {
   public ResponseEntity<ProjectSettingsResponse> getProjectSettings(
       @PathVariable UUID orgId,
       @PathVariable UUID projectId,
-      @AuthenticationPrincipal OrgMemberPrincipal principal) {
+      @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
     return ResponseEntity.ok(projectService.getProjectSettings(orgId, projectId, principal));
   }
 
@@ -79,7 +79,7 @@ public class ProjectController {
       @PathVariable UUID orgId,
       @PathVariable UUID projectId,
       @Valid @RequestBody ProjectPasswordSettingsRequest request,
-      @AuthenticationPrincipal OrgMemberPrincipal principal) {
+      @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
     return ResponseEntity.ok(
         projectService.updatePasswordSettings(orgId, projectId, principal, request));
   }
@@ -90,7 +90,7 @@ public class ProjectController {
       @PathVariable UUID orgId,
       @PathVariable UUID projectId,
       @Valid @RequestBody ProjectSessionSettingsRequest request,
-      @AuthenticationPrincipal OrgMemberPrincipal principal) {
+      @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
     return ResponseEntity.ok(
         projectService.updateSessionSettings(orgId, projectId, principal, request));
   }
@@ -101,7 +101,7 @@ public class ProjectController {
       @PathVariable UUID orgId,
       @PathVariable UUID projectId,
       @Valid @RequestBody ProjectAuthSettingsRequest request,
-      @AuthenticationPrincipal OrgMemberPrincipal principal) {
+      @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
     return ResponseEntity.ok(projectService.updateAuthSettings(orgId, projectId, principal, request));
   }
 
@@ -111,7 +111,7 @@ public class ProjectController {
       @PathVariable UUID orgId,
       @PathVariable UUID projectId,
       @Valid @RequestBody ProjectOAuthSettingsRequest request,
-      @AuthenticationPrincipal OrgMemberPrincipal principal) {
+      @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
     return ResponseEntity.ok(
         projectService.updateOAuthSettings(orgId, projectId, principal, request));
   }
@@ -122,7 +122,7 @@ public class ProjectController {
       @PathVariable UUID orgId,
       @PathVariable UUID projectId,
       @Valid @RequestBody ApiKeyCreateRequest request,
-      @AuthenticationPrincipal OrgMemberPrincipal principal) {
+      @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(projectService.createApiKey(orgId, projectId, principal, request));
   }
@@ -132,7 +132,7 @@ public class ProjectController {
   public ResponseEntity<List<ApiKeySummaryResponse>> listApiKeys(
       @PathVariable UUID orgId,
       @PathVariable UUID projectId,
-      @AuthenticationPrincipal OrgMemberPrincipal principal) {
+      @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
     return ResponseEntity.ok(projectService.listApiKeys(orgId, projectId, principal));
   }
 
@@ -142,7 +142,7 @@ public class ProjectController {
       @PathVariable UUID orgId,
       @PathVariable UUID projectId,
       @PathVariable UUID keyId,
-      @AuthenticationPrincipal OrgMemberPrincipal principal) {
+      @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
     projectService.revokeApiKey(orgId, projectId, keyId, principal);
     return ResponseEntity.noContent().build();
   }

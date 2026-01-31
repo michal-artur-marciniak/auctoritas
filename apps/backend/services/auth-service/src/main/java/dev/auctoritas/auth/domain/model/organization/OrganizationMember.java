@@ -2,8 +2,8 @@ package dev.auctoritas.auth.domain.model.organization;
 
 import dev.auctoritas.auth.domain.event.DomainEvent;
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
-import dev.auctoritas.auth.domain.organization.OrgMemberRole;
-import dev.auctoritas.auth.domain.organization.OrgMemberStatus;
+import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
+import dev.auctoritas.auth.domain.organization.OrganizationMemberStatus;
 import dev.auctoritas.auth.domain.valueobject.Email;
 import dev.auctoritas.auth.shared.persistence.BaseAuditEntity;
 import jakarta.persistence.CascadeType;
@@ -54,20 +54,20 @@ public class OrganizationMember extends BaseAuditEntity {
 
   @Enumerated(EnumType.STRING)
   @Column(nullable = false, length = 20)
-  private OrgMemberRole role;
+  private OrganizationMemberRole role;
 
   @Column(name = "email_verified", nullable = false)
   private Boolean emailVerified = false;
 
   @Enumerated(EnumType.STRING)
   @Column(nullable = false, length = 20)
-  private OrgMemberStatus status = OrgMemberStatus.ACTIVE;
+  private OrganizationMemberStatus status = OrganizationMemberStatus.ACTIVE;
 
   @OneToOne(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
-  private OrgMemberMfa mfa;
+  private OrganizationMemberMfa mfa;
 
   @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
-  private List<OrgMemberSession> sessions = new ArrayList<>();
+  private List<OrganizationMemberSession> sessions = new ArrayList<>();
 
   @Transient
   private final List<DomainEvent> domainEvents = new ArrayList<>();
@@ -84,7 +84,7 @@ public class OrganizationMember extends BaseAuditEntity {
       Email email,
       String passwordHash,
       String name,
-      OrgMemberRole role,
+      OrganizationMemberRole role,
       boolean emailVerified) {
 
     if (organization == null) {
@@ -107,7 +107,7 @@ public class OrganizationMember extends BaseAuditEntity {
     member.name = normalizeName(name);
     member.role = role;
     member.emailVerified = emailVerified;
-    member.status = OrgMemberStatus.ACTIVE;
+    member.status = OrganizationMemberStatus.ACTIVE;
 
     // Register domain event
     member.registerEvent(new OrganizationMemberCreatedEvent(
@@ -166,7 +166,7 @@ public class OrganizationMember extends BaseAuditEntity {
   /**
    * Changes the member's role.
    */
-  public void changeRole(OrgMemberRole newRole) {
+  public void changeRole(OrganizationMemberRole newRole) {
     ensureActive();
     if (newRole == null) {
       throw new DomainValidationException("role_required");
@@ -189,27 +189,27 @@ public class OrganizationMember extends BaseAuditEntity {
    * Suspends the member.
    */
   public void suspend() {
-    if (this.status == OrgMemberStatus.SUSPENDED) {
+    if (this.status == OrganizationMemberStatus.SUSPENDED) {
       throw new DomainValidationException("member_already_suspended");
     }
-    this.status = OrgMemberStatus.SUSPENDED;
+    this.status = OrganizationMemberStatus.SUSPENDED;
   }
 
   /**
    * Reactivates a suspended member.
    */
   public void reactivate() {
-    if (this.status != OrgMemberStatus.SUSPENDED) {
+    if (this.status != OrganizationMemberStatus.SUSPENDED) {
       throw new DomainValidationException("member_not_suspended");
     }
-    this.status = OrgMemberStatus.ACTIVE;
+    this.status = OrganizationMemberStatus.ACTIVE;
   }
 
   /**
    * Checks if the member is active.
    */
   public boolean isActive() {
-    return this.status == OrgMemberStatus.ACTIVE;
+    return this.status == OrganizationMemberStatus.ACTIVE;
   }
 
   private void ensureActive() {

@@ -29,7 +29,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "org_member_refresh_tokens")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class OrgMemberRefreshToken extends BaseEntity {
+public class OrganizationMemberRefreshToken extends BaseEntity {
 
   @Transient
   private final List<DomainEvent> domainEvents = new ArrayList<>();
@@ -49,7 +49,7 @@ public class OrgMemberRefreshToken extends BaseEntity {
 
   @OneToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "replaced_by_id")
-  private OrgMemberRefreshToken replacedBy;
+  private OrganizationMemberRefreshToken replacedBy;
 
   @Column(name = "ip_address", length = 45)
   private String ipAddress;
@@ -65,10 +65,10 @@ public class OrgMemberRefreshToken extends BaseEntity {
    * @param ttl the time-to-live duration
    * @param ipAddress the IP address of the client
    * @param userAgent the user agent string
-   * @return a new OrgMemberRefreshToken instance
+   * @return a new OrganizationMemberRefreshToken instance
    * @throws IllegalArgumentException if member, tokenHash, or ttl is null
    */
-  public static OrgMemberRefreshToken create(
+  public static OrganizationMemberRefreshToken create(
       OrganizationMember member,
       String tokenHash,
       Duration ttl,
@@ -78,7 +78,7 @@ public class OrgMemberRefreshToken extends BaseEntity {
     Objects.requireNonNull(tokenHash, "token_hash_required");
     Objects.requireNonNull(ttl, "ttl_required");
 
-    OrgMemberRefreshToken token = new OrgMemberRefreshToken();
+    OrganizationMemberRefreshToken token = new OrganizationMemberRefreshToken();
     token.member = member;
     token.tokenHash = tokenHash;
     token.expiresAt = Instant.now().plus(ttl);
@@ -87,7 +87,7 @@ public class OrgMemberRefreshToken extends BaseEntity {
     token.userAgent = userAgent;
 
     token.registerEvent(
-        new OrgMemberRefreshTokenCreatedEvent(
+        new OrganizationMemberRefreshTokenCreatedEvent(
             UUID.randomUUID(),
             token.getId(),
             member.getId(),
@@ -109,7 +109,7 @@ public class OrgMemberRefreshToken extends BaseEntity {
    * @throws IllegalStateException if this token is already revoked or expired
    * @throws IllegalArgumentException if newTokenHash or ttl is null
    */
-  public OrgMemberRefreshToken rotate(
+  public OrganizationMemberRefreshToken rotate(
       String newTokenHash,
       Duration ttl,
       String ipAddress,
@@ -121,14 +121,14 @@ public class OrgMemberRefreshToken extends BaseEntity {
     validateNotExpired();
 
     // Create new token
-    OrgMemberRefreshToken newToken = create(member, newTokenHash, ttl, ipAddress, userAgent);
+    OrganizationMemberRefreshToken newToken = create(member, newTokenHash, ttl, ipAddress, userAgent);
     
     // Mark this token as replaced and revoked
     this.replacedBy = newToken;
     this.revoked = true;
 
     registerEvent(
-        new OrgMemberRefreshTokenRotatedEvent(
+        new OrganizationMemberRefreshTokenRotatedEvent(
             UUID.randomUUID(),
             getId(),
             member.getId(),
@@ -150,7 +150,7 @@ public class OrgMemberRefreshToken extends BaseEntity {
     this.revoked = true;
 
     registerEvent(
-        new OrgMemberRefreshTokenRevokedEvent(
+        new OrganizationMemberRefreshTokenRevokedEvent(
             UUID.randomUUID(),
             getId(),
             member.getId(),

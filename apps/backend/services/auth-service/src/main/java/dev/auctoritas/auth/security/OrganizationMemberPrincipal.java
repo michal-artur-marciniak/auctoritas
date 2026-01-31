@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.security;
 
-import dev.auctoritas.auth.domain.organization.OrgMemberRole;
+import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
@@ -13,10 +13,10 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
  * Represents the authenticated org member in Spring Security context. This is used as the
  * Authentication object in SecurityContextHolder.
  */
-public record OrgMemberPrincipal(UUID orgMemberId, UUID orgId, String email, OrgMemberRole role)
+public record OrganizationMemberPrincipal(UUID orgMemberId, UUID orgId, String email, OrganizationMemberRole role)
     implements Authentication {
 
-  public OrgMemberPrincipal {
+  public OrganizationMemberPrincipal {
     Objects.requireNonNull(orgMemberId, "orgMemberId");
     Objects.requireNonNull(orgId, "orgId");
     Objects.requireNonNull(email, "email");

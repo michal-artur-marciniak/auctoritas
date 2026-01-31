@@ -4,11 +4,11 @@ import dev.auctoritas.auth.api.OrgLoginRequest;
 import dev.auctoritas.auth.api.OrgLoginResponse;
 import dev.auctoritas.auth.api.OrgRefreshRequest;
 import dev.auctoritas.auth.api.OrgRefreshResponse;
-import dev.auctoritas.auth.domain.model.organization.OrgMemberRefreshToken;
+import dev.auctoritas.auth.domain.model.organization.OrganizationMemberRefreshToken;
 import dev.auctoritas.auth.domain.model.organization.Organization;
 import dev.auctoritas.auth.domain.model.organization.OrganizationMember;
 import dev.auctoritas.auth.ports.messaging.DomainEventPublisherPort;
-import dev.auctoritas.auth.ports.organization.OrgMemberRefreshTokenRepositoryPort;
+import dev.auctoritas.auth.ports.organization.OrganizationMemberRefreshTokenRepositoryPort;
 import dev.auctoritas.auth.ports.organization.OrganizationMemberRepositoryPort;
 import dev.auctoritas.auth.ports.organization.OrganizationRepositoryPort;
 import jakarta.persistence.LockTimeoutException;
@@ -26,7 +26,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class OrgAuthService {
   private final OrganizationRepositoryPort organizationRepository;
   private final OrganizationMemberRepositoryPort organizationMemberRepository;
-  private final OrgMemberRefreshTokenRepositoryPort refreshTokenRepository;
+  private final OrganizationMemberRefreshTokenRepositoryPort refreshTokenRepository;
   private final PasswordEncoder passwordEncoder;
   private final TokenService tokenService;
   private final JwtService jwtService;
@@ -35,7 +35,7 @@ public class OrgAuthService {
   public OrgAuthService(
       OrganizationRepositoryPort organizationRepository,
       OrganizationMemberRepositoryPort organizationMemberRepository,
-      OrgMemberRefreshTokenRepositoryPort refreshTokenRepository,
+      OrganizationMemberRefreshTokenRepositoryPort refreshTokenRepository,
       PasswordEncoder passwordEncoder,
       TokenService tokenService,
       JwtService jwtService,
@@ -95,7 +95,7 @@ public class OrgAuthService {
     String rawToken = requireValue(request.refreshToken(), "refresh_token_required");
     String tokenHash = tokenService.hashToken(rawToken);
 
-    OrgMemberRefreshToken existingToken;
+    OrganizationMemberRefreshToken existingToken;
     try {
       existingToken =
           refreshTokenRepository
@@ -117,7 +117,7 @@ public class OrgAuthService {
 
     // Use rich domain model's rotate method
     String newRawRefreshToken = tokenService.generateRefreshToken();
-    OrgMemberRefreshToken newToken = existingToken.rotate(
+    OrganizationMemberRefreshToken newToken = existingToken.rotate(
         tokenService.hashToken(newRawRefreshToken),
         Duration.ofHours(720), // 30 days default
         existingToken.getIpAddress(),
@@ -144,10 +144,10 @@ public class OrgAuthService {
     return new OrgRefreshResponse(accessToken, newRawRefreshToken);
   }
 
-  private OrgMemberRefreshToken persistRefreshToken(
+  private OrganizationMemberRefreshToken persistRefreshToken(
       OrganizationMember member, String rawToken, String ipAddress, String userAgent) {
-    OrgMemberRefreshToken token =
-        OrgMemberRefreshToken.create(
+    OrganizationMemberRefreshToken token =
+        OrganizationMemberRefreshToken.create(
             member,
             tokenService.hashToken(rawToken),
             Duration.ofHours(720), // 30 days default

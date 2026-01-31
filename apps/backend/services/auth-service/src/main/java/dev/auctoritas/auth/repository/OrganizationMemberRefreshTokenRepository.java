@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.repository;
 
-import dev.auctoritas.auth.domain.model.organization.OrgMemberRefreshToken;
+import dev.auctoritas.auth.domain.model.organization.OrganizationMemberRefreshToken;
 import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.Optional;
@@ -12,16 +12,16 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface OrgMemberRefreshTokenRepository extends JpaRepository<OrgMemberRefreshToken, UUID> {
+public interface OrganizationMemberRefreshTokenRepository extends JpaRepository<OrganizationMemberRefreshToken, UUID> {
 
   @Lock(LockModeType.PESSIMISTIC_WRITE)
-  Optional<OrgMemberRefreshToken> findByTokenHash(String tokenHash);
+  Optional<OrganizationMemberRefreshToken> findByTokenHash(String tokenHash);
 
   @Modifying(clearAutomatically = true)
-  @Query("DELETE FROM OrgMemberRefreshToken t WHERE t.expiresAt < :now")
+  @Query("DELETE FROM OrganizationMemberRefreshToken t WHERE t.expiresAt < :now")
   void deleteExpiredTokens(Instant now);
 
   @Modifying(clearAutomatically = true)
-  @Query("UPDATE OrgMemberRefreshToken t SET t.revoked = true WHERE t.member.id = :memberId")
+  @Query("UPDATE OrganizationMemberRefreshToken t SET t.revoked = true WHERE t.member.id = :memberId")
   void revokeAllByMemberId(UUID memberId);
 }

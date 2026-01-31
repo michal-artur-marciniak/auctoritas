@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.api;
 
-import dev.auctoritas.auth.domain.organization.OrgMemberRole;
-import dev.auctoritas.auth.domain.organization.OrgMemberStatus;
+import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
+import dev.auctoritas.auth.domain.organization.OrganizationMemberStatus;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -9,13 +9,13 @@ import java.util.UUID;
  * Response DTO for the /api/v1/org/me endpoint.
  * Contains the authenticated org member's profile and organization info.
  */
-public record OrgMemberProfileResponse(
+public record OrganizationMemberProfileResponse(
     UUID id,
     String email,
     String name,
     String avatarUrl,
-    OrgMemberRole role,
-    OrgMemberStatus status,
+    OrganizationMemberRole role,
+    OrganizationMemberStatus status,
     Boolean emailVerified,
     Boolean mfaEnabled,
     Instant createdAt,

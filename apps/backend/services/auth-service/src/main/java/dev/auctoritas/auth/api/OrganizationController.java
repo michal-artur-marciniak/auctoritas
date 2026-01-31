@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.api;
 
-import dev.auctoritas.auth.security.OrgMemberPrincipal;
-import dev.auctoritas.auth.service.OrgMemberProfileService;
+import dev.auctoritas.auth.security.OrganizationMemberPrincipal;
+import dev.auctoritas.auth.service.OrganizationMemberProfileService;
 import dev.auctoritas.auth.service.OrganizationRegistrationService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -18,11 +18,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/org")
 public class OrganizationController {
   private final OrganizationRegistrationService organizationRegistrationService;
-  private final OrgMemberProfileService orgMemberProfileService;
+  private final OrganizationMemberProfileService orgMemberProfileService;
 
   public OrganizationController(
       OrganizationRegistrationService organizationRegistrationService,
-      OrgMemberProfileService orgMemberProfileService) {
+      OrganizationMemberProfileService orgMemberProfileService) {
     this.organizationRegistrationService = organizationRegistrationService;
     this.orgMemberProfileService = orgMemberProfileService;
   }
@@ -40,8 +40,8 @@ public class OrganizationController {
    */
   @PreAuthorize("isAuthenticated()")
   @GetMapping("/me")
-  public ResponseEntity<OrgMemberProfileResponse> getCurrentMember(
-      @AuthenticationPrincipal OrgMemberPrincipal principal) {
+  public ResponseEntity<OrganizationMemberProfileResponse> getCurrentMember(
+      @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
     if (principal == null) {
       throw new IllegalStateException("Authenticated org member principal is required.");
     }

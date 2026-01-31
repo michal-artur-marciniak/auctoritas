@@ -20,7 +20,7 @@ import dev.auctoritas.auth.domain.model.project.Project;
 import dev.auctoritas.auth.domain.model.project.ProjectSettings;
 import dev.auctoritas.auth.ports.project.ProjectRepositoryPort;
 import dev.auctoritas.auth.ports.project.ProjectSettingsRepositoryPort;
-import dev.auctoritas.auth.security.OrgMemberPrincipal;
+import dev.auctoritas.auth.security.OrganizationMemberPrincipal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,29 +57,29 @@ public class ProjectService {
 
   @Transactional
   public ProjectCreateResponse createProject(
-      UUID orgId, OrgMemberPrincipal principal, ProjectCreateRequest request) {
+      UUID orgId, OrganizationMemberPrincipal principal, ProjectCreateRequest request) {
     return projectApplicationService.createProject(orgId, principal, request);
   }
 
   @Transactional(readOnly = true)
-  public List<ProjectSummaryResponse> listProjects(UUID orgId, OrgMemberPrincipal principal) {
+  public List<ProjectSummaryResponse> listProjects(UUID orgId, OrganizationMemberPrincipal principal) {
     return projectApplicationService.listProjects(orgId, principal);
   }
 
   @Transactional
   public ProjectSummaryResponse updateProject(
-      UUID orgId, UUID projectId, OrgMemberPrincipal principal, ProjectUpdateRequest request) {
+      UUID orgId, UUID projectId, OrganizationMemberPrincipal principal, ProjectUpdateRequest request) {
     return projectApplicationService.updateProject(orgId, projectId, principal, request);
   }
 
   @Transactional
-  public void deleteProject(UUID orgId, UUID projectId, OrgMemberPrincipal principal) {
+  public void deleteProject(UUID orgId, UUID projectId, OrganizationMemberPrincipal principal) {
     projectApplicationService.deleteProject(orgId, projectId, principal);
   }
 
   @Transactional(readOnly = true)
   public ProjectSettingsResponse getProjectSettings(
-      UUID orgId, UUID projectId, OrgMemberPrincipal principal) {
+      UUID orgId, UUID projectId, OrganizationMemberPrincipal principal) {
     enforceOrgAccess(orgId, principal);
     Project project = loadProject(orgId, projectId);
     return toSettingsResponse(project.getSettings());
@@ -89,7 +89,7 @@ public class ProjectService {
   public ProjectSettingsResponse updatePasswordSettings(
       UUID orgId,
       UUID projectId,
-      OrgMemberPrincipal principal,
+      OrganizationMemberPrincipal principal,
       ProjectPasswordSettingsRequest request) {
 
     enforceOrgAccess(orgId, principal);
@@ -110,7 +110,7 @@ public class ProjectService {
   public ProjectSettingsResponse updateSessionSettings(
       UUID orgId,
       UUID projectId,
-      OrgMemberPrincipal principal,
+      OrganizationMemberPrincipal principal,
       ProjectSessionSettingsRequest request) {
 
     enforceOrgAccess(orgId, principal);
@@ -130,7 +130,7 @@ public class ProjectService {
   public ProjectSettingsResponse updateAuthSettings(
       UUID orgId,
       UUID projectId,
-      OrgMemberPrincipal principal,
+      OrganizationMemberPrincipal principal,
       ProjectAuthSettingsRequest request) {
 
     enforceOrgAccess(orgId, principal);
@@ -145,7 +145,7 @@ public class ProjectService {
   public ProjectSettingsResponse updateOAuthSettings(
       UUID orgId,
       UUID projectId,
-      OrgMemberPrincipal principal,
+      OrganizationMemberPrincipal principal,
       ProjectOAuthSettingsRequest request) {
 
     ProjectSettings settings =
@@ -158,20 +158,20 @@ public class ProjectService {
   public ApiKeySecretResponse createApiKey(
       UUID orgId,
       UUID projectId,
-      OrgMemberPrincipal principal,
+      OrganizationMemberPrincipal principal,
       ApiKeyCreateRequest request) {
     return apiKeyApplicationService.createApiKey(orgId, projectId, principal, request);
   }
 
   @Transactional(readOnly = true)
   public List<ApiKeySummaryResponse> listApiKeys(
-      UUID orgId, UUID projectId, OrgMemberPrincipal principal) {
+      UUID orgId, UUID projectId, OrganizationMemberPrincipal principal) {
     return apiKeyApplicationService.listApiKeys(orgId, projectId, principal);
   }
 
   @Transactional
   public void revokeApiKey(
-      UUID orgId, UUID projectId, UUID keyId, OrgMemberPrincipal principal) {
+      UUID orgId, UUID projectId, UUID keyId, OrganizationMemberPrincipal principal) {
     apiKeyApplicationService.revokeApiKey(orgId, projectId, keyId, principal);
   }
 
@@ -287,7 +287,7 @@ public class ProjectService {
     return new HashMap<>();
   }
 
-  private void enforceOrgAccess(UUID orgId, OrgMemberPrincipal principal) {
+  private void enforceOrgAccess(UUID orgId, OrganizationMemberPrincipal principal) {
     if (principal == null) {
       throw new IllegalStateException("Authenticated org member principal is required.");
     }

@@ -3,7 +3,7 @@ package dev.auctoritas.auth.security;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.auctoritas.auth.service.JwtService;
 import dev.auctoritas.auth.service.JwtService.JwtValidationResult;
-import dev.auctoritas.auth.domain.organization.OrgMemberRole;
+import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -75,7 +75,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
     String orgMemberId = claims.get(JwtService.CLAIM_ORG_MEMBER_ID, String.class);
     if (orgMemberId != null && !orgMemberId.isBlank()) {
-      return extractOrgMemberPrincipal(claims);
+      return extractOrganizationMemberPrincipal(claims);
     }
     throw new IllegalArgumentException("Unsupported token claims");
   }
@@ -88,13 +88,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     return new EndUserPrincipal(endUserId, projectId, email);
   }
 
-  private OrgMemberPrincipal extractOrgMemberPrincipal(Claims claims) {
+  private OrganizationMemberPrincipal extractOrganizationMemberPrincipal(Claims claims) {
     UUID orgMemberId = parseRequiredUuid(claims, JwtService.CLAIM_ORG_MEMBER_ID);
     UUID orgId = parseRequiredUuid(claims, JwtService.CLAIM_ORG_ID);
     String email = requireClaim(claims, JwtService.CLAIM_EMAIL);
-    OrgMemberRole role = parseRequiredRole(claims, JwtService.CLAIM_ROLE);
+    OrganizationMemberRole role = parseRequiredRole(claims, JwtService.CLAIM_ROLE);
 
-    return new OrgMemberPrincipal(orgMemberId, orgId, email, role);
+    return new OrganizationMemberPrincipal(orgMemberId, orgId, email, role);
   }
 
   private String requireClaim(Claims claims, String name) {
@@ -109,9 +109,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     return UUID.fromString(requireClaim(claims, name));
   }
 
-  private OrgMemberRole parseRequiredRole(Claims claims, String name) {
+  private OrganizationMemberRole parseRequiredRole(Claims claims, String name) {
     String value = requireClaim(claims, name);
-    return OrgMemberRole.valueOf(value);
+    return OrganizationMemberRole.valueOf(value);
   }
 
   private void writeErrorResponse(HttpServletResponse response, String errorCode)

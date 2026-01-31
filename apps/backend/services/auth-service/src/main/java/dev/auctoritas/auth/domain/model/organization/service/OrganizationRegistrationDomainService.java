@@ -2,7 +2,7 @@ package dev.auctoritas.auth.domain.model.organization.service;
 
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.model.organization.Organization;
-import dev.auctoritas.auth.domain.organization.OrgMemberRole;
+import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
 import dev.auctoritas.auth.domain.valueobject.Email;
 import dev.auctoritas.auth.domain.valueobject.Slug;
 import java.util.Objects;
@@ -47,13 +47,13 @@ public class OrganizationRegistrationDomainService {
       Email email,
       String plainPassword,
       String name,
-      OrgMemberRole role) {
+      OrganizationMemberRole role) {
 
     public OwnerSpec {
       Objects.requireNonNull(email, "email cannot be null");
       Objects.requireNonNull(plainPassword, "plainPassword cannot be null");
       Objects.requireNonNull(role, "role cannot be null");
-      if (role != OrgMemberRole.OWNER) {
+      if (role != OrganizationMemberRole.OWNER) {
         throw new DomainValidationException("initial_member_must_be_owner");
       }
     }
@@ -127,7 +127,7 @@ public class OrganizationRegistrationDomainService {
     String trimmedPassword = password.trim();
     String trimmedName = trimToNull(name);
 
-    return new OwnerSpec(validatedEmail, trimmedPassword, trimmedName, OrgMemberRole.OWNER);
+    return new OwnerSpec(validatedEmail, trimmedPassword, trimmedName, OrganizationMemberRole.OWNER);
   }
 
   private String trimToNull(String value) {
