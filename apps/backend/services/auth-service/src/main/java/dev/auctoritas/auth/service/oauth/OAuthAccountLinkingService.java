@@ -1,26 +1,32 @@
 package dev.auctoritas.auth.service.oauth;
 
-import dev.auctoritas.auth.domain.valueobject.Email;
-import dev.auctoritas.auth.domain.valueobject.Password;
+import dev.auctoritas.auth.domain.exception.DomainConflictException;
+import dev.auctoritas.auth.domain.exception.DomainNotFoundException;
 import dev.auctoritas.auth.domain.model.enduser.EndUser;
 import dev.auctoritas.auth.domain.model.oauth.OAuthConnection;
+import dev.auctoritas.auth.domain.model.oauth.service.OAuthAccountLinkingDomainService;
+import dev.auctoritas.auth.domain.model.oauth.service.OAuthAccountLinkingDomainService.EndUserUpdate;
+import dev.auctoritas.auth.domain.model.oauth.service.OAuthAccountLinkingDomainService.LinkingResult;
+import dev.auctoritas.auth.domain.model.oauth.service.OAuthAccountLinkingDomainService.OAuthConnectionUpdate;
+import dev.auctoritas.auth.domain.model.oauth.service.OAuthAccountLinkingDomainService.UserCreationSpec;
 import dev.auctoritas.auth.domain.model.project.Project;
+import dev.auctoritas.auth.domain.valueobject.Email;
+import dev.auctoritas.auth.domain.valueobject.Password;
 import dev.auctoritas.auth.ports.identity.EndUserRepositoryPort;
 import dev.auctoritas.auth.ports.oauth.OAuthConnectionRepositoryPort;
 import dev.auctoritas.auth.service.TokenService;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
- * Links OAuth connections to EndUsers.
- * Thin application service - delegates business logic to domain entities.
+ * Application service for OAuth account linking.
+ *
+ * Orchestrates OAuth linking operations by delegating business logic to the domain service
+ * and handling infrastructure concerns like repositories, transactions, and locking.
  */
 @Service
 public class OAuthAccountLinkingService {
@@ -28,6 +34,7 @@ public class OAuthAccountLinkingService {
   private final OAuthConnectionRepositoryPort oauthConnectionRepository;
   private final PasswordEncoder passwordEncoder;
   private final TokenService tokenService;
+  private final OAuthAccountLinkingDomainService domainService;
 
   public OAuthAccountLinkingService(
       EndUserRepositoryPort endUserRepository,
@@ -38,6 +45,7 @@ public class OAuthAccountLinkingService {
     this.oauthConnectionRepository = oauthConnectionRepository;
     this.passwordEncoder = passwordEncoder;
     this.tokenService = tokenService;
+    this.domainService = new OAuthAccountLinkingDomainService();
   }
 
   @Transactional
@@ -50,97 +58,119 @@ public class OAuthAccountLinkingService {
       String name,
       String userInfoErrorCode) {
 
-    if (project == null || project.getId() == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "project_not_found");
-    }
-
-    String resolvedProvider = requireValue(provider, "oauth_provider_invalid");
-    String resolvedProviderUserId = requireValue(providerUserId, userInfoErrorCode);
     UUID projectId = project.getId();
 
-    String normalizedEmail = normalizeEmailOrNull(email);
-    String normalizedName = trimToNull(name);
-    boolean isEmailVerified = Boolean.TRUE.equals(emailVerified);
-
+    // Query existing data
     Optional<OAuthConnection> existingConn =
         oauthConnectionRepository.findByProjectIdAndProviderAndProviderUserId(
-            projectId, resolvedProvider, resolvedProviderUserId);
+            projectId, provider, providerUserId);
 
-    if (existingConn.isPresent()) {
-      OAuthConnection conn = existingConn.get();
-      if (normalizedEmail != null && !normalizedEmail.equals(conn.getEmail())) {
-        conn.setEmail(normalizedEmail);
-        oauthConnectionRepository.save(conn);
-      }
-      EndUser user = lockUser(projectId, conn.getUser());
-      updateUserIfNeeded(user, normalizedName, isEmailVerified);
-      return user;
+    Optional<EndUser> existingVerifiedUser = findVerifiedUserByEmail(projectId, email, emailVerified);
+
+    // Delegate to domain service for decision
+    LinkingResult result = domainService.evaluateLinking(
+        project,
+        provider,
+        providerUserId,
+        email,
+        emailVerified,
+        name,
+        existingConn,
+        existingVerifiedUser);
+
+    // Execute based on result type
+    return switch (result.type()) {
+      case EXISTING_CONNECTION -> handleExistingConnection(
+          projectId, result, provider, providerUserId);
+      case EXISTING_USER_LINKED -> handleExistingUserLinked(
+          projectId, result, provider, providerUserId, email);
+      case NEW_USER_CREATED -> handleNewUserCreated(
+          project, provider, providerUserId, email, emailVerified, name);
+    };
+  }
+
+  private Optional<EndUser> findVerifiedUserByEmail(UUID projectId, String email, Boolean emailVerified) {
+    if (!Boolean.TRUE.equals(emailVerified) || email == null) {
+      return Optional.empty();
     }
+    return endUserRepository.findByEmailAndProjectIdForUpdate(
+        email.trim().toLowerCase(), projectId);
+  }
 
-    String resolvedEmail = requireValue(normalizedEmail, userInfoErrorCode);
+  private EndUser handleExistingConnection(
+      UUID projectId,
+      LinkingResult result,
+      String provider,
+      String providerUserId) {
 
-    if (!isEmailVerified && endUserRepository.existsByEmailAndProjectId(resolvedEmail, projectId)) {
-      throw new ResponseStatusException(HttpStatus.CONFLICT, "oauth_email_unverified_conflict");
-    }
+    // Update OAuth connection email if needed
+    result.connectionUpdate().ifPresent(update -> {
+      OAuthConnection conn = update.connection();
+      conn.setEmail(update.newEmail());
+      oauthConnectionRepository.save(conn);
+    });
 
-    EndUser user = findOrCreateEndUser(project, resolvedEmail, normalizedName, isEmailVerified);
+    // Lock and update user if needed
+    EndUser user = lockUser(projectId, result.user());
+    result.userUpdate().ifPresent(update -> applyUserUpdate(user, update));
+    return user;
+  }
+
+  private EndUser handleExistingUserLinked(
+      UUID projectId,
+      LinkingResult result,
+      String provider,
+      String providerUserId,
+      String email) {
+
+    EndUser user = lockUser(projectId, result.user());
+
+    // Apply user updates
+    result.userUpdate().ifPresent(update -> applyUserUpdate(user, update));
+
+    // Create OAuth connection with retry for race conditions
+    return createConnectionWithRetry(projectId, provider, providerUserId, email, user);
+  }
+
+  private EndUser handleNewUserCreated(
+      Project project,
+      String provider,
+      String providerUserId,
+      String email,
+      Boolean emailVerified,
+      String name) {
+
+    // Handle null emailVerified - default to false
+    boolean isEmailVerified = emailVerified != null && emailVerified;
+
+    // Create new user
+    EndUser user = createOAuthEndUser(project, email, name, isEmailVerified);
+
+    // Create OAuth connection with retry for race conditions
+    return createConnectionWithRetry(project.getId(), provider, providerUserId, email, user);
+  }
+
+  private EndUser createConnectionWithRetry(
+      UUID projectId,
+      String provider,
+      String providerUserId,
+      String email,
+      EndUser user) {
 
     OAuthConnection connection = new OAuthConnection();
-    connection.setProject(project);
+    connection.setProject(user.getProject());
     connection.setUser(user);
-    connection.setProvider(resolvedProvider);
-    connection.setProviderUserId(resolvedProviderUserId);
-    connection.setEmail(resolvedEmail);
+    connection.setProvider(provider);
+    connection.setProviderUserId(providerUserId);
+    connection.setEmail(email);
 
     try {
       oauthConnectionRepository.save(connection);
       return user;
     } catch (DataIntegrityViolationException ex) {
-      return handleDuplicateConnection(projectId, resolvedProvider, resolvedProviderUserId, resolvedEmail, normalizedName, isEmailVerified);
+      // Race condition: another request created the connection
+      return handleDuplicateConnection(projectId, provider, providerUserId, email, user);
     }
-  }
-
-  private EndUser findOrCreateEndUser(
-      Project project, String email, String name, boolean emailVerified) {
-
-    UUID projectId = project.getId();
-
-    if (emailVerified) {
-      Optional<EndUser> existing = endUserRepository.findByEmailAndProjectIdForUpdate(email, projectId);
-      if (existing.isPresent()) {
-        EndUser user = existing.get();
-        boolean changed = false;
-        if (!user.isEmailVerified()) {
-          user.verifyEmail();
-          changed = true;
-        }
-        if (user.getName() == null && name != null) {
-          user.updateName(name);
-          changed = true;
-        }
-        return changed ? endUserRepository.save(user) : user;
-      }
-    }
-
-    return createOAuthEndUser(project, email, name, emailVerified);
-  }
-
-  private EndUser createOAuthEndUser(Project project, String email, String name, boolean emailVerified) {
-    Email validatedEmail = Email.of(email);
-    String randomPassword = tokenService.generateRefreshToken();
-    String hashedPassword = passwordEncoder.encode(randomPassword);
-
-    EndUser user = EndUser.create(
-        project,
-        validatedEmail,
-        Password.fromHash(hashedPassword),
-        name);
-
-    if (emailVerified) {
-      user.verifyEmail();
-    }
-
-    return endUserRepository.save(user);
   }
 
   private EndUser handleDuplicateConnection(
@@ -148,67 +178,60 @@ public class OAuthAccountLinkingService {
       String provider,
       String providerUserId,
       String email,
-      String name,
-      boolean emailVerified) {
+      EndUser user) {
 
     OAuthConnection conn =
         oauthConnectionRepository
             .findByProjectIdAndProviderAndProviderUserId(projectId, provider, providerUserId)
-            .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.CONFLICT, "oauth_connection_conflict"));
+            .orElseThrow(() -> new DomainConflictException("oauth_connection_conflict"));
 
     if (!email.equals(conn.getEmail())) {
       conn.setEmail(email);
       oauthConnectionRepository.save(conn);
     }
 
-    EndUser locked = lockUser(projectId, conn.getUser());
-    updateUserIfNeeded(locked, name, emailVerified);
-    return locked;
+    return lockUser(projectId, conn.getUser());
+  }
+
+  private EndUser createOAuthEndUser(Project project, String email, String name, boolean emailVerified) {
+    UserCreationSpec spec = domainService.createUserSpec(project, email, name, emailVerified);
+
+    String randomPassword = tokenService.generateRefreshToken();
+    String hashedPassword = passwordEncoder.encode(randomPassword);
+
+    EndUser user = EndUser.create(
+        spec.project(),
+        spec.email(),
+        Password.fromHash(hashedPassword),
+        spec.name());
+
+    if (spec.emailVerified()) {
+      user.verifyEmail();
+    }
+
+    return endUserRepository.save(user);
+  }
+
+  private void applyUserUpdate(EndUser user, EndUserUpdate update) {
+    if (update.verifyEmail() && !user.isEmailVerified()) {
+      user.verifyEmail();
+    }
+
+    update.newName().ifPresent(name -> {
+      if (user.getName() == null && name != null) {
+        user.updateName(name);
+      }
+    });
+
+    endUserRepository.save(user);
   }
 
   private EndUser lockUser(UUID projectId, EndUser user) {
     if (user == null || user.getId() == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "user_not_found");
+      throw new DomainNotFoundException("user_not_found");
     }
     return endUserRepository
         .findByIdAndProjectIdForUpdate(user.getId(), projectId)
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "user_not_found"));
-  }
-
-  private void updateUserIfNeeded(EndUser user, String normalizedName, boolean isEmailVerified) {
-    boolean changed = false;
-    if (isEmailVerified && !user.isEmailVerified()) {
-      user.verifyEmail();
-      changed = true;
-    }
-    if (user.getName() == null && normalizedName != null) {
-      user.updateName(normalizedName);
-      changed = true;
-    }
-    if (changed) {
-      endUserRepository.save(user);
-    }
-  }
-
-  private static String normalizeEmailOrNull(String email) {
-    String trimmed = trimToNull(email);
-    return trimmed == null ? null : trimmed.toLowerCase(Locale.ROOT);
-  }
-
-  private static String requireValue(String value, String errorCode) {
-    String trimmed = trimToNull(value);
-    if (trimmed == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
-    }
-    return trimmed;
-  }
-
-  private static String trimToNull(String value) {
-    if (value == null) {
-      return null;
-    }
-    String trimmed = value.trim();
-    return trimmed.isEmpty() ? null : trimmed;
+        .orElseThrow(() -> new DomainNotFoundException("user_not_found"));
   }
 }
