@@ -13,7 +13,7 @@ import dev.auctoritas.auth.domain.project.Project;
 import dev.auctoritas.auth.application.port.out.messaging.DomainEventPublisherPort;
 import dev.auctoritas.auth.domain.project.ProjectRepositoryPort;
 import dev.auctoritas.auth.application.port.out.security.TokenHasherPort;
-import dev.auctoritas.auth.security.OrganizationMemberPrincipal;
+import dev.auctoritas.auth.infrastructure.security.OrganizationMemberPrincipal;
 import dev.auctoritas.auth.service.ApiKeyService;
 import dev.auctoritas.auth.domain.project.ApiKeyEnvironment;
 import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;

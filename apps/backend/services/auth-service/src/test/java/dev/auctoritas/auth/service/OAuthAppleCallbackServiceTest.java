@@ -2,12 +2,12 @@ package dev.auctoritas.auth.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import dev.auctoritas.auth.adapters.external.oauth.OAuthAppleCallbackService;
-import dev.auctoritas.auth.adapters.infra.jpa.EndUserJpaRepositoryAdapter;
-import dev.auctoritas.auth.adapters.persistence.OAuthAuthorizationRequestJpaRepositoryAdapter;
-import dev.auctoritas.auth.adapters.persistence.OAuthConnectionJpaRepositoryAdapter;
-import dev.auctoritas.auth.adapters.persistence.OAuthExchangeCodeJpaRepositoryAdapter;
-import dev.auctoritas.auth.config.JpaConfig;
+import dev.auctoritas.auth.infrastructure.oauth.OAuthAppleCallbackService;
+import dev.auctoritas.auth.infrastructure.persistence.EndUserJpaRepositoryAdapter;
+import dev.auctoritas.auth.infrastructure.persistence.OAuthAuthorizationRequestJpaRepositoryAdapter;
+import dev.auctoritas.auth.infrastructure.persistence.OAuthConnectionJpaRepositoryAdapter;
+import dev.auctoritas.auth.infrastructure.persistence.OAuthExchangeCodeJpaRepositoryAdapter;
+import dev.auctoritas.auth.infrastructure.config.JpaConfig;
 import dev.auctoritas.auth.domain.enduser.EndUser;
 import dev.auctoritas.auth.domain.oauth.OAuthAuthorizationRequest;
 import dev.auctoritas.auth.domain.oauth.OAuthConnection;

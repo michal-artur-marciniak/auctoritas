@@ -16,7 +16,7 @@ import dev.auctoritas.auth.domain.organization.Organization;
 import dev.auctoritas.auth.domain.project.Project;
 import dev.auctoritas.auth.domain.organization.OrganizationRepositoryPort;
 import dev.auctoritas.auth.domain.project.ProjectRepositoryPort;
-import dev.auctoritas.auth.security.OrganizationMemberPrincipal;
+import dev.auctoritas.auth.infrastructure.security.OrganizationMemberPrincipal;
 import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
 import java.util.List;
 import java.util.UUID;

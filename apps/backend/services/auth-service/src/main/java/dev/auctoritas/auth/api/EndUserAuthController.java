@@ -2,7 +2,7 @@ package dev.auctoritas.auth.api;
 
 import dev.auctoritas.auth.application.enduser.EndUserRegistrationCommand;
 import dev.auctoritas.auth.application.enduser.EndUserRegistrationResult;
-import dev.auctoritas.auth.security.EndUserPrincipal;
+import dev.auctoritas.auth.infrastructure.security.EndUserPrincipal;
 import dev.auctoritas.auth.service.EndUserEmailVerificationService;
 import dev.auctoritas.auth.service.EndUserLoginService;
 import dev.auctoritas.auth.service.EndUserLogoutService;

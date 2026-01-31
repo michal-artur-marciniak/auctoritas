@@ -17,7 +17,7 @@ import dev.auctoritas.auth.domain.enduser.EndUserPasswordHistoryRepositoryPort;
 import dev.auctoritas.auth.domain.enduser.EndUserRefreshTokenRepositoryPort;
 import dev.auctoritas.auth.domain.enduser.EndUserRepositoryPort;
 import dev.auctoritas.auth.domain.enduser.EndUserSessionRepositoryPort;
-import dev.auctoritas.auth.security.EndUserPrincipal;
+import dev.auctoritas.auth.infrastructure.security.EndUserPrincipal;
 import java.util.UUID;
 
 import org.springframework.security.crypto.password.PasswordEncoder;

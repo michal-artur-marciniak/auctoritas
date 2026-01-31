@@ -10,7 +10,7 @@ import dev.auctoritas.auth.domain.project.Project;
 import dev.auctoritas.auth.domain.project.ProjectSettings;
 import dev.auctoritas.auth.domain.project.ProjectRepositoryPort;
 import dev.auctoritas.auth.domain.project.ProjectSettingsRepositoryPort;
-import dev.auctoritas.auth.security.OrganizationMemberPrincipal;
+import dev.auctoritas.auth.infrastructure.security.OrganizationMemberPrincipal;
 import java.util.UUID;
 import java.util.function.Consumer;
 import org.springframework.security.crypto.encrypt.TextEncryptor;

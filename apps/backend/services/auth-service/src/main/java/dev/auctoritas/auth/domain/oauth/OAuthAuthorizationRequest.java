@@ -15,6 +15,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.security.crypto.encrypt.TextEncryptor;
+import dev.auctoritas.auth.infrastructure.persistence.OAuthAuthorizationRequestEntityListener;
 
 @Entity
 @Table(

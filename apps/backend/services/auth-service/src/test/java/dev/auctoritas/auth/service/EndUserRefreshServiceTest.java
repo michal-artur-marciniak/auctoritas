@@ -11,7 +11,7 @@ import dev.auctoritas.auth.domain.organization.Organization;
 import dev.auctoritas.auth.domain.project.ApiKey;
 import dev.auctoritas.auth.domain.project.Project;
 import dev.auctoritas.auth.domain.project.ProjectSettings;
-import dev.auctoritas.auth.repository.EndUserRefreshTokenRepository;
+import dev.auctoritas.auth.infrastructure.persistence.repository.EndUserRefreshTokenRepository;
 import dev.auctoritas.auth.domain.enduser.Email;
 import dev.auctoritas.auth.domain.enduser.Password;
 import dev.auctoritas.auth.domain.project.Slug;

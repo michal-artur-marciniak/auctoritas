@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.api;
 
-import dev.auctoritas.auth.config.JwtProperties;
+import dev.auctoritas.auth.infrastructure.config.JwtProperties;
 import dev.auctoritas.auth.service.JwtService;
 import java.math.BigInteger;
 import java.security.MessageDigest;

@@ -1,0 +1,27 @@
+package dev.auctoritas.auth.infrastructure.oauth;
+
+import dev.auctoritas.auth.service.oauth.OAuthCallbackHandleRequest;
+import dev.auctoritas.auth.service.oauth.OAuthCallbackHandler;
+import org.springframework.stereotype.Component;
+
+@Component
+public class GoogleCallbackHandler implements OAuthCallbackHandler {
+  private static final String PROVIDER = "google";
+
+  private final OAuthGoogleCallbackService oauthGoogleCallbackService;
+
+  public GoogleCallbackHandler(OAuthGoogleCallbackService oauthGoogleCallbackService) {
+    this.oauthGoogleCallbackService = oauthGoogleCallbackService;
+  }
+
+  @Override
+  public String provider() {
+    return PROVIDER;
+  }
+
+  @Override
+  public String handleCallback(OAuthCallbackHandleRequest request) {
+    return oauthGoogleCallbackService.handleCallback(
+        request.code(), request.state(), request.callbackUri());
+  }
+}

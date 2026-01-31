@@ -13,7 +13,7 @@ import dev.auctoritas.auth.domain.project.Project;
 import dev.auctoritas.auth.domain.project.ProjectSettings;
 import dev.auctoritas.auth.domain.enduser.Email;
 import dev.auctoritas.auth.domain.enduser.Password;
-import dev.auctoritas.auth.messaging.UserRegisteredEvent;
+import dev.auctoritas.auth.infrastructure.messaging.UserRegisteredEvent;
 import dev.auctoritas.auth.domain.enduser.EndUserRepositoryPort;
 import dev.auctoritas.auth.application.port.out.messaging.DomainEventPublisherPort;
 import dev.auctoritas.auth.application.port.out.security.JwtProviderPort;

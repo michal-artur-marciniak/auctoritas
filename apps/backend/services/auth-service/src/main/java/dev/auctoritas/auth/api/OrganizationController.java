@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.api;
 
-import dev.auctoritas.auth.security.OrganizationMemberPrincipal;
+import dev.auctoritas.auth.infrastructure.security.OrganizationMemberPrincipal;
 import dev.auctoritas.auth.service.OrganizationMemberProfileService;
 import dev.auctoritas.auth.service.OrganizationRegistrationService;
 import jakarta.validation.Valid;

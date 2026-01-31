@@ -7,7 +7,7 @@ import dev.auctoritas.auth.api.ProjectOAuthSettingsRequest;
 import dev.auctoritas.auth.domain.organization.Organization;
 import dev.auctoritas.auth.domain.project.Project;
 import dev.auctoritas.auth.domain.project.ProjectSettings;
-import dev.auctoritas.auth.security.OrganizationMemberPrincipal;
+import dev.auctoritas.auth.infrastructure.security.OrganizationMemberPrincipal;
 import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
 import dev.auctoritas.auth.domain.project.Slug;
 import jakarta.persistence.EntityManager;
