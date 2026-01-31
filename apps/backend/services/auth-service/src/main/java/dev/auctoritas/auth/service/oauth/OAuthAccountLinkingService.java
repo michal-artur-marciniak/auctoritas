@@ -13,6 +13,7 @@ import dev.auctoritas.auth.domain.model.project.Project;
 import dev.auctoritas.auth.domain.valueobject.Email;
 import dev.auctoritas.auth.domain.valueobject.Password;
 import dev.auctoritas.auth.ports.identity.EndUserRepositoryPort;
+import dev.auctoritas.auth.ports.messaging.DomainEventPublisherPort;
 import dev.auctoritas.auth.ports.oauth.OAuthConnectionRepositoryPort;
 import dev.auctoritas.auth.service.TokenService;
 import java.util.Optional;
@@ -34,17 +35,20 @@ public class OAuthAccountLinkingService {
   private final OAuthConnectionRepositoryPort oauthConnectionRepository;
   private final PasswordEncoder passwordEncoder;
   private final TokenService tokenService;
+  private final DomainEventPublisherPort domainEventPublisherPort;
   private final OAuthAccountLinkingDomainService domainService;
 
   public OAuthAccountLinkingService(
       EndUserRepositoryPort endUserRepository,
       OAuthConnectionRepositoryPort oauthConnectionRepository,
       PasswordEncoder passwordEncoder,
-      TokenService tokenService) {
+      TokenService tokenService,
+      DomainEventPublisherPort domainEventPublisherPort) {
     this.endUserRepository = endUserRepository;
     this.oauthConnectionRepository = oauthConnectionRepository;
     this.passwordEncoder = passwordEncoder;
     this.tokenService = tokenService;
+    this.domainEventPublisherPort = domainEventPublisherPort;
     this.domainService = new OAuthAccountLinkingDomainService();
   }
 
@@ -106,8 +110,12 @@ public class OAuthAccountLinkingService {
     // Update OAuth connection email if needed
     result.connectionUpdate().ifPresent(update -> {
       OAuthConnection conn = update.connection();
-      conn.setEmail(update.newEmail());
+      conn.updateEmail(update.newEmail());
       oauthConnectionRepository.save(conn);
+
+      // Publish and clear domain events
+      conn.getDomainEvents().forEach(event -> domainEventPublisherPort.publish(event.eventType(), event));
+      conn.clearDomainEvents();
     });
 
     // Lock and update user if needed
@@ -157,15 +165,16 @@ public class OAuthAccountLinkingService {
       String email,
       EndUser user) {
 
-    OAuthConnection connection = new OAuthConnection();
-    connection.setProject(user.getProject());
-    connection.setUser(user);
-    connection.setProvider(provider);
-    connection.setProviderUserId(providerUserId);
-    connection.setEmail(email);
+    OAuthConnection connection = OAuthConnection.establish(
+        user.getProject(), user, provider, providerUserId, email);
 
     try {
       oauthConnectionRepository.save(connection);
+
+      // Publish and clear domain events
+      connection.getDomainEvents().forEach(event -> domainEventPublisherPort.publish(event.eventType(), event));
+      connection.clearDomainEvents();
+
       return user;
     } catch (DataIntegrityViolationException ex) {
       // Race condition: another request created the connection
@@ -186,8 +195,12 @@ public class OAuthAccountLinkingService {
             .orElseThrow(() -> new DomainConflictException("oauth_connection_conflict"));
 
     if (!email.equals(conn.getEmail())) {
-      conn.setEmail(email);
+      conn.updateEmail(email);
       oauthConnectionRepository.save(conn);
+
+      // Publish and clear domain events
+      conn.getDomainEvents().forEach(event -> domainEventPublisherPort.publish(event.eventType(), event));
+      conn.clearDomainEvents();
     }
 
     return lockUser(projectId, conn.getUser());
