@@ -22,7 +22,8 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 public class OAuthExchangeService {
@@ -33,6 +34,7 @@ public class OAuthExchangeService {
   private final TokenService tokenService;
   private final JwtService jwtService;
   private final DomainEventPublisherPort domainEventPublisherPort;
+  private final TransactionTemplate transactionTemplate;
 
   public OAuthExchangeService(
       ApiKeyService apiKeyService,
@@ -41,7 +43,8 @@ public class OAuthExchangeService {
       EndUserSessionRepositoryPort endUserSessionRepository,
       TokenService tokenService,
       JwtService jwtService,
-      DomainEventPublisherPort domainEventPublisherPort) {
+      DomainEventPublisherPort domainEventPublisherPort,
+      PlatformTransactionManager transactionManager) {
     this.apiKeyService = apiKeyService;
     this.oauthExchangeCodeRepository = oauthExchangeCodeRepository;
     this.refreshTokenRepository = refreshTokenRepository;
@@ -49,10 +52,34 @@ public class OAuthExchangeService {
     this.tokenService = tokenService;
     this.jwtService = jwtService;
     this.domainEventPublisherPort = domainEventPublisherPort;
+    this.transactionTemplate = new TransactionTemplate(transactionManager);
   }
 
-  @Transactional
   public EndUserLoginResponse exchange(
+      String apiKey, OAuthExchangeRequest request, String ipAddress, String userAgent) {
+    ExchangeContext context =
+        transactionTemplate.execute(
+            status -> exchangeInTransaction(apiKey, request, ipAddress, userAgent));
+    if (context == null) {
+      throw new IllegalStateException("oauth_exchange_failed");
+    }
+
+    String accessToken =
+        jwtService.generateEndUserAccessToken(
+            context.userId(),
+            context.projectId(),
+            context.email(),
+            context.emailVerified(),
+            context.accessTokenTtlSeconds());
+
+    return new EndUserLoginResponse(
+        new EndUserLoginResponse.EndUserSummary(
+            context.userId(), context.email(), context.name(), context.emailVerified()),
+        accessToken,
+        context.rawRefreshToken());
+  }
+
+  private ExchangeContext exchangeInTransaction(
       String apiKey, OAuthExchangeRequest request, String ipAddress, String userAgent) {
     ApiKey resolvedKey = apiKeyService.validateActiveKey(apiKey);
     Project project = resolvedKey.getProject();
@@ -97,20 +124,24 @@ public class OAuthExchangeService {
     persistRefreshToken(user, rawRefreshToken, refreshExpiresAt, ipAddress, userAgent);
     persistSession(user, refreshExpiresAt, ipAddress, userAgent);
 
-    String accessToken =
-        jwtService.generateEndUserAccessToken(
-            user.getId(),
-            project.getId(),
-            user.getEmail(),
-            user.isEmailVerified(),
-            settings.getAccessTokenTtlSeconds());
-
-    return new EndUserLoginResponse(
-        new EndUserLoginResponse.EndUserSummary(
-            user.getId(), user.getEmail(), user.getName(), user.isEmailVerified()),
-        accessToken,
+    return new ExchangeContext(
+        user.getId(),
+        user.getEmail(),
+        user.getName(),
+        user.isEmailVerified(),
+        project.getId(),
+        settings.getAccessTokenTtlSeconds(),
         rawRefreshToken);
   }
+
+  private record ExchangeContext(
+      java.util.UUID userId,
+      String email,
+      String name,
+      boolean emailVerified,
+      java.util.UUID projectId,
+      long accessTokenTtlSeconds,
+      String rawRefreshToken) {}
 
   private void persistRefreshToken(
       EndUser user,

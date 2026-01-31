@@ -22,7 +22,8 @@ import java.util.HashMap;
 import java.util.Map;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Handles EndUser login and session issuance.
@@ -42,6 +43,7 @@ public class EndUserLoginService {
   private final TokenHasherPort tokenHasherPort;
   private final JwtProviderPort jwtProviderPort;
   private final DomainEventPublisherPort domainEventPublisherPort;
+  private final TransactionTemplate transactionTemplate;
 
   public EndUserLoginService(
       ApiKeyService apiKeyService,
@@ -51,7 +53,8 @@ public class EndUserLoginService {
       PasswordEncoder passwordEncoder,
       TokenHasherPort tokenHasherPort,
       JwtProviderPort jwtProviderPort,
-      DomainEventPublisherPort domainEventPublisherPort) {
+      DomainEventPublisherPort domainEventPublisherPort,
+      PlatformTransactionManager transactionManager) {
     this.apiKeyService = apiKeyService;
     this.endUserRepository = endUserRepository;
     this.endUserSessionRepository = endUserSessionRepository;
@@ -60,10 +63,37 @@ public class EndUserLoginService {
     this.tokenHasherPort = tokenHasherPort;
     this.jwtProviderPort = jwtProviderPort;
     this.domainEventPublisherPort = domainEventPublisherPort;
+    this.transactionTemplate = new TransactionTemplate(transactionManager);
   }
 
-  @Transactional
   public EndUserLoginResponse login(
+      String apiKey,
+      EndUserLoginRequest request,
+      String ipAddress,
+      String userAgent) {
+    LoginContext context =
+        transactionTemplate.execute(
+            status -> loginInTransaction(apiKey, request, ipAddress, userAgent));
+    if (context == null) {
+      throw new IllegalStateException("end_user_login_failed");
+    }
+
+    String accessToken =
+        jwtProviderPort.generateEndUserAccessToken(
+            context.userId(),
+            context.projectId(),
+            context.email(),
+            context.emailVerified(),
+            context.accessTokenTtlSeconds());
+
+    return new EndUserLoginResponse(
+        new EndUserLoginResponse.EndUserSummary(
+            context.userId(), context.email(), context.name(), context.emailVerified()),
+        accessToken,
+        context.rawRefreshToken());
+  }
+
+  private LoginContext loginInTransaction(
       String apiKey,
       EndUserLoginRequest request,
       String ipAddress,
@@ -101,11 +131,20 @@ public class EndUserLoginService {
     user.validateCanLogin(settings.isRequireVerifiedEmailForLogin(), now);
     endUserRepository.save(user);
 
-    return createSession(user, project, settings, ipAddress, userAgent);
+    String rawRefreshToken = createSession(user, ipAddress, userAgent);
+
+    return new LoginContext(
+        user.getId(),
+        user.getEmail(),
+        user.getName(),
+        user.isEmailVerified(),
+        project.getId(),
+        settings.getAccessTokenTtlSeconds(),
+        rawRefreshToken);
   }
 
-  private EndUserLoginResponse createSession(
-      EndUser user, Project project, ProjectSettings settings, String ipAddress, String userAgent) {
+  private String createSession(
+      EndUser user, String ipAddress, String userAgent) {
 
     Instant refreshExpiresAt = tokenHasherPort.getRefreshTokenExpiry();
     String rawRefreshToken = tokenHasherPort.generateRefreshToken();
@@ -113,20 +152,17 @@ public class EndUserLoginService {
     persistRefreshToken(user, rawRefreshToken, refreshExpiresAt, ipAddress, userAgent);
     persistSession(user, refreshExpiresAt, ipAddress, userAgent);
 
-    String accessToken =
-        jwtProviderPort.generateEndUserAccessToken(
-            user.getId(),
-            project.getId(),
-            user.getEmail(),
-            user.isEmailVerified(),
-            settings.getAccessTokenTtlSeconds());
-
-    return new EndUserLoginResponse(
-        new EndUserLoginResponse.EndUserSummary(
-            user.getId(), user.getEmail(), user.getName(), user.isEmailVerified()),
-        accessToken,
-        rawRefreshToken);
+    return rawRefreshToken;
   }
+
+  private record LoginContext(
+      java.util.UUID userId,
+      String email,
+      String name,
+      boolean emailVerified,
+      java.util.UUID projectId,
+      long accessTokenTtlSeconds,
+      String rawRefreshToken) {}
 
   private int resolveMaxAttempts(ProjectSettings settings) {
     int configured = settings.getFailedLoginMaxAttempts();

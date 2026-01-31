@@ -22,7 +22,6 @@ import dev.auctoritas.auth.domain.model.enduser.EndUserRefreshTokenRepositoryPor
 import dev.auctoritas.auth.domain.model.enduser.EndUserSessionRepositoryPort;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -30,7 +29,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import static net.logstash.logback.argument.StructuredArguments.kv;
 
@@ -53,6 +53,7 @@ public class EndUserRegistrationService {
   private final DomainEventPublisherPort domainEventPublisherPort;
   private final EndUserRegistrationDomainService registrationDomainService;
   private final boolean logVerificationChallenge;
+  private final TransactionTemplate transactionTemplate;
 
   public EndUserRegistrationService(
       ApiKeyService apiKeyService,
@@ -65,7 +66,8 @@ public class EndUserRegistrationService {
       EndUserEmailVerificationService endUserEmailVerificationService,
       DomainEventPublisherPort domainEventPublisherPort,
       EndUserRegistrationDomainService registrationDomainService,
-      @Value("${auctoritas.auth.email-verification.log-challenge:true}") boolean logVerificationChallenge) {
+      @Value("${auctoritas.auth.email-verification.log-challenge:true}") boolean logVerificationChallenge,
+      PlatformTransactionManager transactionManager) {
     this.apiKeyService = apiKeyService;
     this.endUserRepository = endUserRepository;
     this.endUserSessionRepository = endUserSessionRepository;
@@ -77,9 +79,9 @@ public class EndUserRegistrationService {
     this.domainEventPublisherPort = domainEventPublisherPort;
     this.registrationDomainService = registrationDomainService;
     this.logVerificationChallenge = logVerificationChallenge;
+    this.transactionTemplate = new TransactionTemplate(transactionManager);
   }
 
-  @Transactional
   public EndUserRegistrationResult register(
       String apiKey,
       EndUserRegistrationCommand command,
@@ -95,6 +97,35 @@ public class EndUserRegistrationService {
   }
 
   private EndUserRegistrationResult register(
+      String apiKey,
+      String email,
+      String password,
+      String name,
+      String ipAddress,
+      String userAgent) {
+    RegistrationContext context =
+        transactionTemplate.execute(
+            status -> registerInTransaction(apiKey, email, password, name, ipAddress, userAgent));
+    if (context == null) {
+      throw new IllegalStateException("end_user_registration_failed");
+    }
+
+    String accessToken =
+        jwtProviderPort.generateEndUserAccessToken(
+            context.userId(),
+            context.projectId(),
+            context.email(),
+            context.emailVerified(),
+            context.accessTokenTtlSeconds());
+
+    return new EndUserRegistrationResult(
+        new EndUserRegistrationResult.EndUserSummary(
+            context.userId(), context.email(), context.name(), context.emailVerified()),
+        accessToken,
+        context.rawRefreshToken());
+  }
+
+  private RegistrationContext registerInTransaction(
       String apiKey,
       String email,
       String password,
@@ -148,7 +179,16 @@ public class EndUserRegistrationService {
           kv("expiresAt", verificationPayload.expiresAt()));
     }
 
-    return createInitialSession(savedUser, project, settings, ipAddress, userAgent);
+    String rawRefreshToken = createInitialSession(savedUser, ipAddress, userAgent);
+
+    return new RegistrationContext(
+        savedUser.getId(),
+        savedUser.getEmail(),
+        savedUser.getName(),
+        savedUser.isEmailVerified(),
+        project.getId(),
+        settings.getAccessTokenTtlSeconds(),
+        rawRefreshToken);
   }
 
   private void publishUserRegisteredEvent(
@@ -177,8 +217,8 @@ public class EndUserRegistrationService {
     }
   }
 
-  private EndUserRegistrationResult createInitialSession(
-      EndUser user, Project project, ProjectSettings settings, String ipAddress, String userAgent) {
+  private String createInitialSession(
+      EndUser user, String ipAddress, String userAgent) {
 
     Instant refreshExpiresAt = tokenHasherPort.getRefreshTokenExpiry();
     String rawRefreshToken = tokenHasherPort.generateRefreshToken();
@@ -186,23 +226,17 @@ public class EndUserRegistrationService {
     persistRefreshToken(user, rawRefreshToken, refreshExpiresAt, ipAddress, userAgent);
     persistSession(user, refreshExpiresAt, ipAddress, userAgent);
 
-    String accessToken =
-        jwtProviderPort.generateEndUserAccessToken(
-            user.getId(),
-            project.getId(),
-            user.getEmail(),
-            user.isEmailVerified(),
-            settings.getAccessTokenTtlSeconds());
-
-    return new EndUserRegistrationResult(
-        new EndUserRegistrationResult.EndUserSummary(
-            user.getId(),
-            user.getEmail(),
-            user.getName(),
-            user.isEmailVerified()),
-        accessToken,
-        rawRefreshToken);
+    return rawRefreshToken;
   }
+
+  private record RegistrationContext(
+      java.util.UUID userId,
+      String email,
+      String name,
+      boolean emailVerified,
+      java.util.UUID projectId,
+      long accessTokenTtlSeconds,
+      String rawRefreshToken) {}
 
   private void persistRefreshToken(
       EndUser user,

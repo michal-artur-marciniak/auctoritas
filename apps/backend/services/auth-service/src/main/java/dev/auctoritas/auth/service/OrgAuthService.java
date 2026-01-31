@@ -19,7 +19,8 @@ import java.time.Instant;
 import java.util.Locale;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 public class OrgAuthService {
@@ -30,6 +31,7 @@ public class OrgAuthService {
   private final TokenService tokenService;
   private final JwtService jwtService;
   private final DomainEventPublisherPort domainEventPublisherPort;
+  private final TransactionTemplate transactionTemplate;
 
   public OrgAuthService(
       OrganizationRepositoryPort organizationRepository,
@@ -38,7 +40,8 @@ public class OrgAuthService {
       PasswordEncoder passwordEncoder,
       TokenService tokenService,
       JwtService jwtService,
-      DomainEventPublisherPort domainEventPublisherPort) {
+      DomainEventPublisherPort domainEventPublisherPort,
+      PlatformTransactionManager transactionManager) {
     this.organizationRepository = organizationRepository;
     this.organizationMemberRepository = organizationMemberRepository;
     this.refreshTokenRepository = refreshTokenRepository;
@@ -46,10 +49,32 @@ public class OrgAuthService {
     this.tokenService = tokenService;
     this.jwtService = jwtService;
     this.domainEventPublisherPort = domainEventPublisherPort;
+    this.transactionTemplate = new TransactionTemplate(transactionManager);
   }
 
-  @Transactional
   public OrgLoginResponse login(OrgLoginRequest request) {
+    LoginContext context = transactionTemplate.execute(status -> loginInTransaction(request));
+    if (context == null) {
+      throw new IllegalStateException("org_login_failed");
+    }
+
+    String accessToken =
+        jwtService.generateAccessToken(
+            context.memberId(),
+            context.organizationId(),
+            context.memberEmail(),
+            context.memberRole());
+
+    return new OrgLoginResponse(
+        new OrgLoginResponse.OrganizationSummary(
+            context.organizationId(), context.organizationName(), context.organizationSlug()),
+        new OrgLoginResponse.MemberSummary(
+            context.memberId(), context.memberEmail(), context.memberRole()),
+        accessToken,
+        context.rawRefreshToken());
+  }
+
+  private LoginContext loginInTransaction(OrgLoginRequest request) {
     String slug = normalizeSlug(requireValue(request.orgSlug(), "org_slug_required"));
     String email = normalizeEmail(requireValue(request.email(), "email_required"));
     String password = requireValue(request.password(), "password_required");
@@ -77,20 +102,33 @@ public class OrgAuthService {
     String rawRefreshToken = tokenService.generateRefreshToken();
     persistRefreshToken(member, rawRefreshToken, null, null);
 
-    String accessToken =
-        jwtService.generateAccessToken(
-            member.getId(), organization.getId(), member.getEmail(), member.getRole());
-
-    return new OrgLoginResponse(
-        new OrgLoginResponse.OrganizationSummary(
-            organization.getId(), organization.getName(), organization.getSlug()),
-        new OrgLoginResponse.MemberSummary(member.getId(), member.getEmail(), member.getRole()),
-        accessToken,
+    return new LoginContext(
+        organization.getId(),
+        organization.getName(),
+        organization.getSlug(),
+        member.getId(),
+        member.getEmail(),
+        member.getRole(),
         rawRefreshToken);
   }
 
-  @Transactional
   public OrgRefreshResponse refresh(OrgRefreshRequest request) {
+    RefreshContext context = transactionTemplate.execute(status -> refreshInTransaction(request));
+    if (context == null) {
+      throw new IllegalStateException("org_refresh_failed");
+    }
+
+    String accessToken =
+        jwtService.generateAccessToken(
+            context.memberId(),
+            context.organizationId(),
+            context.memberEmail(),
+            context.memberRole());
+
+    return new OrgRefreshResponse(accessToken, context.rawRefreshToken());
+  }
+
+  private RefreshContext refreshInTransaction(OrgRefreshRequest request) {
     String rawToken = requireValue(request.refreshToken(), "refresh_token_required");
     String tokenHash = tokenService.hashToken(rawToken);
 
@@ -133,15 +171,31 @@ public class OrgAuthService {
     newToken.clearDomainEvents();
 
     OrganizationMember member = existingToken.getMember();
-    String accessToken =
-        jwtService.generateAccessToken(
-            member.getId(),
-            member.getOrganization().getId(),
-            member.getEmail(),
-            member.getRole());
+    Organization organization = member.getOrganization();
 
-    return new OrgRefreshResponse(accessToken, newRawRefreshToken);
+    return new RefreshContext(
+        organization.getId(),
+        member.getId(),
+        member.getEmail(),
+        member.getRole(),
+        newRawRefreshToken);
   }
+
+  private record LoginContext(
+      java.util.UUID organizationId,
+      String organizationName,
+      String organizationSlug,
+      java.util.UUID memberId,
+      String memberEmail,
+      OrganizationMemberRole memberRole,
+      String rawRefreshToken) {}
+
+  private record RefreshContext(
+      java.util.UUID organizationId,
+      java.util.UUID memberId,
+      String memberEmail,
+      OrganizationMemberRole memberRole,
+      String rawRefreshToken) {}
 
   private OrganizationMemberRefreshToken persistRefreshToken(
       OrganizationMember member, String rawToken, String ipAddress, String userAgent) {

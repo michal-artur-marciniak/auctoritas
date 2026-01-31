@@ -18,7 +18,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 public class OrganizationRegistrationService {
@@ -32,6 +33,7 @@ public class OrganizationRegistrationService {
   private final JwtService jwtService;
   private final DomainEventPublisherPort domainEventPublisherPort;
   private final OrganizationRegistrationDomainService domainService;
+  private final TransactionTemplate transactionTemplate;
 
   public OrganizationRegistrationService(
       OrganizationRepositoryPort organizationRepository,
@@ -40,7 +42,8 @@ public class OrganizationRegistrationService {
       PasswordEncoder passwordEncoder,
       TokenService tokenService,
       JwtService jwtService,
-      DomainEventPublisherPort domainEventPublisherPort) {
+      DomainEventPublisherPort domainEventPublisherPort,
+      PlatformTransactionManager transactionManager) {
     this.organizationRepository = organizationRepository;
     this.organizationMemberRepository = organizationMemberRepository;
     this.refreshTokenRepository = refreshTokenRepository;
@@ -49,10 +52,38 @@ public class OrganizationRegistrationService {
     this.jwtService = jwtService;
     this.domainEventPublisherPort = domainEventPublisherPort;
     this.domainService = new OrganizationRegistrationDomainService();
+    this.transactionTemplate = new TransactionTemplate(transactionManager);
   }
 
-  @Transactional
   public OrgRegistrationResponse register(OrgRegistrationRequest request) {
+    RegistrationContext context =
+        transactionTemplate.execute(status -> registerInTransaction(request));
+    if (context == null) {
+      throw new IllegalStateException("organization_registration_failed");
+    }
+
+    String accessToken =
+        jwtService.generateAccessToken(
+            context.memberId(),
+            context.organizationId(),
+            context.memberEmail(),
+            context.memberRole());
+
+    log.info(
+        "organization_registered organizationId={} memberId={}",
+        context.organizationId(),
+        context.memberId());
+
+    return new OrgRegistrationResponse(
+        new OrgRegistrationResponse.OrganizationSummary(
+            context.organizationId(), context.organizationName(), context.organizationSlug()),
+        new OrgRegistrationResponse.MemberSummary(
+            context.memberId(), context.memberEmail(), context.memberRole()),
+        accessToken,
+        context.rawRefreshToken());
+  }
+
+  private RegistrationContext registerInTransaction(OrgRegistrationRequest request) {
     // Check slug uniqueness before delegating to domain service
     if (organizationRepository.existsBySlug(request.slug().trim().toLowerCase())) {
       throw new DomainConflictException("org_slug_taken");
@@ -93,26 +124,24 @@ public class OrganizationRegistrationService {
     String rawRefreshToken = tokenService.generateRefreshToken();
     persistRefreshToken(savedMember, rawRefreshToken);
 
-    String accessToken =
-        jwtService.generateAccessToken(
-            savedMember.getId(),
-            savedOrganization.getId(),
-            savedMember.getEmail(),
-            savedMember.getRole());
-
-    log.info(
-        "organization_registered organizationId={} memberId={}",
+    return new RegistrationContext(
         savedOrganization.getId(),
-        savedMember.getId());
-
-    return new OrgRegistrationResponse(
-        new OrgRegistrationResponse.OrganizationSummary(
-            savedOrganization.getId(), savedOrganization.getName(), savedOrganization.getSlug()),
-        new OrgRegistrationResponse.MemberSummary(
-            savedMember.getId(), savedMember.getEmail(), savedMember.getRole()),
-        accessToken,
+        savedOrganization.getName(),
+        savedOrganization.getSlug(),
+        savedMember.getId(),
+        savedMember.getEmail(),
+        savedMember.getRole(),
         rawRefreshToken);
   }
+
+  private record RegistrationContext(
+      java.util.UUID organizationId,
+      String organizationName,
+      String organizationSlug,
+      java.util.UUID memberId,
+      String memberEmail,
+      OrganizationMemberRole memberRole,
+      String rawRefreshToken) {}
 
   private void persistRefreshToken(OrganizationMember member, String rawToken) {
     OrganizationMemberRefreshToken token =

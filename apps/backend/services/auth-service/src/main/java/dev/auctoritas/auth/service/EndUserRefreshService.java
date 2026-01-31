@@ -20,7 +20,8 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 public class EndUserRefreshService {
@@ -30,6 +31,7 @@ public class EndUserRefreshService {
   private final TokenService tokenService;
   private final JwtService jwtService;
   private final DomainEventPublisherPort domainEventPublisherPort;
+  private final TransactionTemplate transactionTemplate;
 
   public EndUserRefreshService(
       ApiKeyService apiKeyService,
@@ -37,17 +39,41 @@ public class EndUserRefreshService {
       EndUserSessionRepositoryPort endUserSessionRepository,
       TokenService tokenService,
       JwtService jwtService,
-      DomainEventPublisherPort domainEventPublisherPort) {
+      DomainEventPublisherPort domainEventPublisherPort,
+      PlatformTransactionManager transactionManager) {
     this.apiKeyService = apiKeyService;
     this.refreshTokenRepository = refreshTokenRepository;
     this.endUserSessionRepository = endUserSessionRepository;
     this.tokenService = tokenService;
     this.jwtService = jwtService;
     this.domainEventPublisherPort = domainEventPublisherPort;
+    this.transactionTemplate = new TransactionTemplate(transactionManager);
   }
 
-  @Transactional
   public EndUserRefreshResponse refresh(
+      String apiKey,
+      EndUserRefreshRequest request,
+      String ipAddress,
+      String userAgent) {
+    RefreshContext context =
+        transactionTemplate.execute(
+            status -> refreshInTransaction(apiKey, request, ipAddress, userAgent));
+    if (context == null) {
+      throw new IllegalStateException("end_user_refresh_failed");
+    }
+
+    String accessToken =
+        jwtService.generateEndUserAccessToken(
+            context.userId(),
+            context.projectId(),
+            context.email(),
+            context.emailVerified(),
+            context.accessTokenTtlSeconds());
+
+    return new EndUserRefreshResponse(accessToken, context.rawRefreshToken());
+  }
+
+  private RefreshContext refreshInTransaction(
       String apiKey,
       EndUserRefreshRequest request,
       String ipAddress,
@@ -114,16 +140,22 @@ public class EndUserRefreshService {
 
     persistSession(user, refreshExpiresAt, ipAddress, userAgent);
 
-    String accessToken =
-        jwtService.generateEndUserAccessToken(
-            user.getId(),
-            project.getId(),
-            user.getEmail(),
-            user.isEmailVerified(),
-            settings.getAccessTokenTtlSeconds());
-
-    return new EndUserRefreshResponse(accessToken, newRawRefreshToken);
+    return new RefreshContext(
+        user.getId(),
+        user.getEmail(),
+        user.isEmailVerified(),
+        project.getId(),
+        settings.getAccessTokenTtlSeconds(),
+        newRawRefreshToken);
   }
+
+  private record RefreshContext(
+      java.util.UUID userId,
+      String email,
+      boolean emailVerified,
+      java.util.UUID projectId,
+      long accessTokenTtlSeconds,
+      String rawRefreshToken) {}
 
   private void persistSession(
       EndUser user, Instant expiresAt, String ipAddress, String userAgent) {
