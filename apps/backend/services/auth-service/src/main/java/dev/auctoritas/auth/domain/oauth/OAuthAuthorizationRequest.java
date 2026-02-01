@@ -1,9 +1,11 @@
 package dev.auctoritas.auth.domain.oauth;
 
+import dev.auctoritas.auth.adapter.out.persistence.OAuthAuthorizationRequestEntityListener;
 import dev.auctoritas.auth.domain.project.Project;
 import dev.auctoritas.auth.shared.persistence.BaseAuditEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -18,6 +20,7 @@ import lombok.Setter;
 @Table(
     name = "oauth_authorization_requests",
     uniqueConstraints = @UniqueConstraint(columnNames = {"state_hash"}))
+@EntityListeners(OAuthAuthorizationRequestEntityListener.class)
 @Getter
 @Setter
 @NoArgsConstructor
