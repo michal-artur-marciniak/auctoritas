@@ -16,7 +16,7 @@ public interface RecoveryCodeRepositoryPort {
    * @param userId the user ID
    * @return list of recovery codes
    */
-  List<RecoveryCodeEntity> findByUserId(UUID userId);
+  List<MfaRecoveryCode> findByUserId(UUID userId);
 
   /**
    * Find all recovery codes for an organization member.
@@ -24,7 +24,7 @@ public interface RecoveryCodeRepositoryPort {
    * @param memberId the member ID
    * @return list of recovery codes
    */
-  List<RecoveryCodeEntity> findByMemberId(UUID memberId);
+  List<MfaRecoveryCode> findByMemberId(UUID memberId);
 
   /**
    * Find a recovery code by its hash.
@@ -32,7 +32,7 @@ public interface RecoveryCodeRepositoryPort {
    * @param codeHash the SHA-256 hash of the code
    * @return optional containing the recovery code if found
    */
-  Optional<RecoveryCodeEntity> findByCodeHash(String codeHash);
+  Optional<MfaRecoveryCode> findByCodeHash(String codeHash);
 
   /**
    * Save all recovery codes.
@@ -40,7 +40,7 @@ public interface RecoveryCodeRepositoryPort {
    * @param codes the recovery codes to save
    * @return the saved recovery codes
    */
-  List<RecoveryCodeEntity> saveAll(List<RecoveryCodeEntity> codes);
+  List<MfaRecoveryCode> saveAll(List<MfaRecoveryCode> codes);
 
   /**
    * Delete all recovery codes for a user.
@@ -62,47 +62,4 @@ public interface RecoveryCodeRepositoryPort {
    * @param id the recovery code ID
    */
   void markAsUsed(UUID id);
-
-  /**
-   * Entity class for recovery code persistence.
-   * Separate from domain RecoveryCode value object to handle JPA requirements.
-   */
-  class RecoveryCodeEntity {
-    private UUID id;
-    private UUID userId;
-    private UUID memberId;
-    private String codeHash;
-    private boolean used;
-    private java.time.Instant usedAt;
-    private java.time.Instant createdAt;
-
-    public RecoveryCodeEntity() {}
-
-    public RecoveryCodeEntity(UUID id, UUID userId, UUID memberId, String codeHash, boolean used,
-        java.time.Instant usedAt, java.time.Instant createdAt) {
-      this.id = id;
-      this.userId = userId;
-      this.memberId = memberId;
-      this.codeHash = codeHash;
-      this.used = used;
-      this.usedAt = usedAt;
-      this.createdAt = createdAt;
-    }
-
-    // Getters and setters
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
-    public UUID getUserId() { return userId; }
-    public void setUserId(UUID userId) { this.userId = userId; }
-    public UUID getMemberId() { return memberId; }
-    public void setMemberId(UUID memberId) { this.memberId = memberId; }
-    public String getCodeHash() { return codeHash; }
-    public void setCodeHash(String codeHash) { this.codeHash = codeHash; }
-    public boolean isUsed() { return used; }
-    public void setUsed(boolean used) { this.used = used; }
-    public java.time.Instant getUsedAt() { return usedAt; }
-    public void setUsedAt(java.time.Instant usedAt) { this.usedAt = usedAt; }
-    public java.time.Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(java.time.Instant createdAt) { this.createdAt = createdAt; }
-  }
 }
