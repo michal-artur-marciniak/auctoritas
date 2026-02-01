@@ -9,6 +9,7 @@ import dev.auctoritas.auth.domain.enduser.EndUser;
 import dev.auctoritas.auth.domain.enduser.EndUserRefreshToken;
 import dev.auctoritas.auth.domain.enduser.EndUserSession;
 import dev.auctoritas.auth.domain.project.ApiKey;
+import dev.auctoritas.auth.domain.project.MfaPolicy;
 import dev.auctoritas.auth.domain.project.Project;
 import dev.auctoritas.auth.domain.project.ProjectSettings;
 import dev.auctoritas.auth.domain.enduser.EndUserRepositoryPort;
@@ -151,9 +152,17 @@ public class EndUserLoginService implements dev.auctoritas.auth.application.port
     endUserRepository.save(user);
     publishUserDomainEvents(user);
 
-    // Check if MFA is enabled for this user
-    boolean mfaEnabled = endUserMfaRepository.isEnabledByUserId(user.getId());
-    if (mfaEnabled) {
+    // Check MFA policy and user MFA status
+    boolean userMfaEnabled = endUserMfaRepository.isEnabledByUserId(user.getId());
+    MfaPolicy mfaPolicy = MfaPolicy.of(settings.isMfaEnabled(), settings.isMfaRequired());
+
+    // Check if MFA setup is required but user is not enrolled
+    if (mfaPolicy.requiresMfaSetup(userMfaEnabled)) {
+      throw new DomainValidationException("mfa_setup_required");
+    }
+
+    // Check if MFA verification is required
+    if (mfaPolicy.requiresMfaVerification(userMfaEnabled)) {
       // Create MFA challenge
       String mfaToken = tokenHasherPort.generateMfaChallengeToken();
       Instant expiresAt = tokenHasherPort.getMfaChallengeTokenExpiry();
