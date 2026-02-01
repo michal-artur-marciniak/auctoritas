@@ -21,6 +21,9 @@ public class TokenService {
   private static final int OAUTH_EXCHANGE_CODE_BYTES = 32;
   private static final Duration OAUTH_EXCHANGE_CODE_TTL = Duration.ofMinutes(2);
 
+  private static final int MFA_CHALLENGE_TOKEN_BYTES = 32;
+  private static final Duration MFA_CHALLENGE_TOKEN_TTL = Duration.ofMinutes(5);
+
   private static final int OAUTH_STATE_BYTES = 32;
   private static final int OAUTH_CODE_VERIFIER_BYTES = 48;
 
@@ -79,6 +82,14 @@ public class TokenService {
 
   public Instant getOAuthExchangeCodeExpiry() {
     return Instant.now().plus(OAUTH_EXCHANGE_CODE_TTL);
+  }
+
+  public String generateMfaChallengeToken() {
+    return generateToken(MFA_CHALLENGE_TOKEN_BYTES);
+  }
+
+  public Instant getMfaChallengeTokenExpiry() {
+    return Instant.now().plus(MFA_CHALLENGE_TOKEN_TTL);
   }
 
   private String generateToken(int length) {

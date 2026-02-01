@@ -29,4 +29,8 @@ public interface TokenHasherPort {
   Instant getEmailVerificationTokenExpiry();
 
   Instant getOAuthExchangeCodeExpiry();
+
+  String generateMfaChallengeToken();
+
+  Instant getMfaChallengeTokenExpiry();
 }

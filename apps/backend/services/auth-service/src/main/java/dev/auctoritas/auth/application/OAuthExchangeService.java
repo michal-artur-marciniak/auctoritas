@@ -73,7 +73,7 @@ public class OAuthExchangeService implements dev.auctoritas.auth.application.por
             context.emailVerified(),
             context.accessTokenTtlSeconds());
 
-    return new EndUserLoginResponse(
+    return EndUserLoginResponse.success(
         new EndUserLoginResponse.EndUserSummary(
             context.userId(), context.email(), context.name(), context.emailVerified()),
         accessToken,

@@ -207,6 +207,13 @@ public class MfaChallenge extends BaseEntity {
   }
 
   /**
+   * Checks if the challenge has been used.
+   */
+  public boolean isUsed() {
+    return Boolean.TRUE.equals(this.used);
+  }
+
+  /**
    * Checks if the challenge has expired.
    */
   public boolean isExpired(Instant now) {
@@ -217,7 +224,7 @@ public class MfaChallenge extends BaseEntity {
    * Checks if the challenge is valid (not used and not expired).
    */
   public boolean isValid(Instant now) {
-    return !Boolean.TRUE.equals(this.used) && !isExpired(now);
+    return !isUsed() && !isExpired(now);
   }
 
   /**

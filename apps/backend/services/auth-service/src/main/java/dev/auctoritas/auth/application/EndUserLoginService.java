@@ -17,6 +17,9 @@ import dev.auctoritas.auth.application.port.out.security.TokenHasherPort;
 import dev.auctoritas.auth.domain.enduser.EndUserRefreshTokenRepositoryPort;
 import dev.auctoritas.auth.domain.enduser.EndUserSessionRepositoryPort;
 import dev.auctoritas.auth.application.port.out.messaging.DomainEventPublisherPort;
+import dev.auctoritas.auth.domain.mfa.EndUserMfaRepositoryPort;
+import dev.auctoritas.auth.domain.mfa.MfaChallenge;
+import dev.auctoritas.auth.domain.mfa.MfaChallengeRepositoryPort;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
@@ -44,6 +47,8 @@ public class EndUserLoginService implements dev.auctoritas.auth.application.port
   private final TokenHasherPort tokenHasherPort;
   private final JwtProviderPort jwtProviderPort;
   private final DomainEventPublisherPort domainEventPublisherPort;
+  private final EndUserMfaRepositoryPort endUserMfaRepository;
+  private final MfaChallengeRepositoryPort mfaChallengeRepository;
   private final TransactionTemplate transactionTemplate;
 
   public EndUserLoginService(
@@ -55,6 +60,8 @@ public class EndUserLoginService implements dev.auctoritas.auth.application.port
       TokenHasherPort tokenHasherPort,
       JwtProviderPort jwtProviderPort,
       DomainEventPublisherPort domainEventPublisherPort,
+      EndUserMfaRepositoryPort endUserMfaRepository,
+      MfaChallengeRepositoryPort mfaChallengeRepository,
       PlatformTransactionManager transactionManager) {
     this.apiKeyService = apiKeyService;
     this.endUserRepository = endUserRepository;
@@ -64,6 +71,8 @@ public class EndUserLoginService implements dev.auctoritas.auth.application.port
     this.tokenHasherPort = tokenHasherPort;
     this.jwtProviderPort = jwtProviderPort;
     this.domainEventPublisherPort = domainEventPublisherPort;
+    this.endUserMfaRepository = endUserMfaRepository;
+    this.mfaChallengeRepository = mfaChallengeRepository;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
   }
 
@@ -72,29 +81,37 @@ public class EndUserLoginService implements dev.auctoritas.auth.application.port
       EndUserLoginRequest request,
       String ipAddress,
       String userAgent) {
-    LoginContext context =
+    LoginResult result =
         transactionTemplate.execute(
             status -> loginInTransaction(apiKey, request, ipAddress, userAgent));
-    if (context == null) {
+    if (result == null) {
       throw new IllegalStateException("end_user_login_failed");
     }
 
+    if (result instanceof LoginResult.MfaChallenge challenge) {
+      return EndUserLoginResponse.mfaChallenge(challenge.mfaToken());
+    }
+
+    LoginResult.Success success = (LoginResult.Success) result;
     String accessToken =
         jwtProviderPort.generateEndUserAccessToken(
-            context.userId(),
-            context.projectId(),
-            context.email(),
-            context.emailVerified(),
-            context.accessTokenTtlSeconds());
+            success.user().getId(),
+            success.project().getId(),
+            success.user().getEmail(),
+            success.user().isEmailVerified(),
+            success.project().getSettings().getAccessTokenTtlSeconds());
 
-    return new EndUserLoginResponse(
+    return EndUserLoginResponse.success(
         new EndUserLoginResponse.EndUserSummary(
-            context.userId(), context.email(), context.name(), context.emailVerified()),
+            success.user().getId(),
+            success.user().getEmail(),
+            success.user().getName(),
+            success.user().isEmailVerified()),
         accessToken,
-        context.rawRefreshToken());
+        success.rawRefreshToken());
   }
 
-  private LoginContext loginInTransaction(
+  private LoginResult loginInTransaction(
       String apiKey,
       EndUserLoginRequest request,
       String ipAddress,
@@ -134,16 +151,25 @@ public class EndUserLoginService implements dev.auctoritas.auth.application.port
     endUserRepository.save(user);
     publishUserDomainEvents(user);
 
-    String rawRefreshToken = createSession(user, ipAddress, userAgent);
+    // Check if MFA is enabled for this user
+    boolean mfaEnabled = endUserMfaRepository.isEnabledByUserId(user.getId());
+    if (mfaEnabled) {
+      // Create MFA challenge
+      String mfaToken = tokenHasherPort.generateMfaChallengeToken();
+      Instant expiresAt = tokenHasherPort.getMfaChallengeTokenExpiry();
+      MfaChallenge challenge = MfaChallenge.createForUser(user, project, mfaToken, expiresAt);
+      MfaChallenge savedChallenge = mfaChallengeRepository.save(challenge);
 
-    return new LoginContext(
-        user.getId(),
-        user.getEmail(),
-        user.getName(),
-        user.isEmailVerified(),
-        project.getId(),
-        settings.getAccessTokenTtlSeconds(),
-        rawRefreshToken);
+      // Publish challenge events
+      savedChallenge.getDomainEvents().forEach(event ->
+          domainEventPublisherPort.publish(event.eventType(), event));
+      savedChallenge.clearDomainEvents();
+
+      return new LoginResult.MfaChallenge(mfaToken);
+    }
+
+    String rawRefreshToken = createSession(user, ipAddress, userAgent);
+    return new LoginResult.Success(user, project, rawRefreshToken);
   }
 
   private String createSession(
@@ -158,14 +184,10 @@ public class EndUserLoginService implements dev.auctoritas.auth.application.port
     return rawRefreshToken;
   }
 
-  private record LoginContext(
-      java.util.UUID userId,
-      String email,
-      String name,
-      boolean emailVerified,
-      java.util.UUID projectId,
-      long accessTokenTtlSeconds,
-      String rawRefreshToken) {}
+  private sealed interface LoginResult {
+    record Success(EndUser user, Project project, String rawRefreshToken) implements LoginResult {}
+    record MfaChallenge(String mfaToken) implements LoginResult {}
+  }
 
   private int resolveMaxAttempts(ProjectSettings settings) {
     int configured = settings.getFailedLoginMaxAttempts();
