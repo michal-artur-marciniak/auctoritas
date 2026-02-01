@@ -1,13 +1,18 @@
 package dev.auctoritas.auth.adapter.in.web;
 
 import dev.auctoritas.auth.adapter.out.security.EndUserPrincipal;
+import dev.auctoritas.auth.application.mfa.RegenerateRecoveryCodesResult;
 import dev.auctoritas.auth.application.mfa.SetupMfaResult;
+import dev.auctoritas.auth.application.port.in.mfa.DisableMfaUseCase;
+import dev.auctoritas.auth.application.port.in.mfa.RegenerateRecoveryCodesUseCase;
 import dev.auctoritas.auth.application.port.in.mfa.SetupMfaUseCase;
 import dev.auctoritas.auth.application.port.in.mfa.VerifyMfaUseCase;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -26,10 +31,18 @@ public class EndUserMfaController {
 
   private final SetupMfaUseCase setupMfaUseCase;
   private final VerifyMfaUseCase verifyMfaUseCase;
+  private final DisableMfaUseCase disableMfaUseCase;
+  private final RegenerateRecoveryCodesUseCase regenerateRecoveryCodesUseCase;
 
-  public EndUserMfaController(SetupMfaUseCase setupMfaUseCase, VerifyMfaUseCase verifyMfaUseCase) {
+  public EndUserMfaController(
+      SetupMfaUseCase setupMfaUseCase,
+      VerifyMfaUseCase verifyMfaUseCase,
+      DisableMfaUseCase disableMfaUseCase,
+      RegenerateRecoveryCodesUseCase regenerateRecoveryCodesUseCase) {
     this.setupMfaUseCase = setupMfaUseCase;
     this.verifyMfaUseCase = verifyMfaUseCase;
+    this.disableMfaUseCase = disableMfaUseCase;
+    this.regenerateRecoveryCodesUseCase = regenerateRecoveryCodesUseCase;
   }
 
   /**
@@ -69,6 +82,46 @@ public class EndUserMfaController {
   }
 
   /**
+   * Disables MFA for the authenticated end user.
+   * Requires TOTP code verification before disabling.
+   * All recovery codes are deleted when MFA is disabled.
+   *
+   * @param apiKey the API key for the project
+   * @param principal the authenticated end user
+   * @param request the disable request containing the TOTP code
+   * @return empty response with 204 status on success
+   */
+  @DeleteMapping("/")
+  public ResponseEntity<Void> disableMfa(
+      @RequestHeader(value = API_KEY_HEADER, required = false) String apiKey,
+      @AuthenticationPrincipal EndUserPrincipal principal,
+      @Valid @RequestBody DisableMfaRequest request) {
+    disableMfaUseCase.disableMfa(apiKey, principal, request.code());
+    return ResponseEntity.noContent().build();
+  }
+
+  /**
+   * Regenerates recovery codes for the authenticated end user.
+   * Requires TOTP code verification before regenerating.
+   * Old recovery codes are invalidated and replaced with new ones.
+   *
+   * @param apiKey the API key for the project
+   * @param principal the authenticated end user
+   * @param request the regeneration request containing the TOTP code
+   * @return response with new backup codes on success
+   */
+  @PostMapping("/recovery")
+  public ResponseEntity<RegenerateRecoveryCodesResponse> regenerateRecoveryCodes(
+      @RequestHeader(value = API_KEY_HEADER, required = false) String apiKey,
+      @AuthenticationPrincipal EndUserPrincipal principal,
+      @Valid @RequestBody RegenerateRecoveryCodesRequest request) {
+    RegenerateRecoveryCodesResult result = regenerateRecoveryCodesUseCase.regenerateRecoveryCodes(
+        apiKey, principal, request.code());
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(new RegenerateRecoveryCodesResponse(result.backupCodes()));
+  }
+
+  /**
    * Response payload for MFA setup.
    *
    * @param secret the plain TOTP secret (Base32 encoded)
@@ -79,5 +132,14 @@ public class EndUserMfaController {
       String secret,
       String qrCodeUrl,
       java.util.List<String> backupCodes) {
+  }
+
+  /**
+   * Response payload for recovery code regeneration.
+   *
+   * @param backupCodes the new recovery codes (shown once)
+   */
+  public record RegenerateRecoveryCodesResponse(
+      List<String> backupCodes) {
   }
 }
