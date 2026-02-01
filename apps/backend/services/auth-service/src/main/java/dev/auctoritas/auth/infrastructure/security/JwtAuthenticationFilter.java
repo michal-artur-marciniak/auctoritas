@@ -1,8 +1,8 @@
 package dev.auctoritas.auth.infrastructure.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.auctoritas.auth.service.JwtService;
-import dev.auctoritas.auth.service.JwtService.JwtValidationResult;
+import dev.auctoritas.auth.application.JwtService;
+import dev.auctoritas.auth.application.JwtService.JwtValidationResult;
 import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;

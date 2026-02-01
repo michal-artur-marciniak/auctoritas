@@ -1,10 +1,10 @@
 package dev.auctoritas.auth.application.port.out.oauth;
 
 import dev.auctoritas.auth.domain.project.ProjectSettings;
-import dev.auctoritas.auth.service.oauth.OAuthAuthorizeDetails;
-import dev.auctoritas.auth.service.oauth.OAuthAuthorizeUrlRequest;
-import dev.auctoritas.auth.service.oauth.OAuthTokenExchangeRequest;
-import dev.auctoritas.auth.service.oauth.OAuthUserInfo;
+import dev.auctoritas.auth.application.oauth.OAuthAuthorizeDetails;
+import dev.auctoritas.auth.application.oauth.OAuthAuthorizeUrlRequest;
+import dev.auctoritas.auth.application.oauth.OAuthTokenExchangeRequest;
+import dev.auctoritas.auth.application.oauth.OAuthUserInfo;
 
 /**
  * Port for OAuth provider interactions used by auth application services.

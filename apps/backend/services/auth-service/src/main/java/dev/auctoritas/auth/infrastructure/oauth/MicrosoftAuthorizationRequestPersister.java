@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.infrastructure.oauth;
 
-import dev.auctoritas.auth.service.oauth.OAuthAuthorizationRequestCreateRequest;
-import dev.auctoritas.auth.service.oauth.OAuthAuthorizationRequestPersister;
+import dev.auctoritas.auth.application.oauth.OAuthAuthorizationRequestCreateRequest;
+import dev.auctoritas.auth.application.oauth.OAuthAuthorizationRequestPersister;
 import org.springframework.stereotype.Component;
 
 @Component

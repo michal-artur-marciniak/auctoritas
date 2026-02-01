@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.api;
 
 import dev.auctoritas.auth.infrastructure.security.OrganizationMemberPrincipal;
-import dev.auctoritas.auth.service.ProjectService;
+import dev.auctoritas.auth.application.ProjectService;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;

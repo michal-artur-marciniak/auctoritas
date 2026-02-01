@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.api;
 
-import dev.auctoritas.auth.service.oauth.PublicOAuthFlowService;
+import dev.auctoritas.auth.application.oauth.PublicOAuthFlowService;
 import java.net.URI;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

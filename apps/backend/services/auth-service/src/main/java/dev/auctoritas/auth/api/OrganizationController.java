@@ -1,8 +1,8 @@
 package dev.auctoritas.auth.api;
 
 import dev.auctoritas.auth.infrastructure.security.OrganizationMemberPrincipal;
-import dev.auctoritas.auth.service.OrganizationMemberProfileService;
-import dev.auctoritas.auth.service.OrganizationRegistrationService;
+import dev.auctoritas.auth.application.OrganizationMemberProfileService;
+import dev.auctoritas.auth.application.OrganizationRegistrationService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

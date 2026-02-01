@@ -2,7 +2,7 @@ package dev.auctoritas.auth.api;
 
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.infrastructure.security.EndUserPrincipal;
-import dev.auctoritas.auth.service.EndUserPasswordChangeService;
+import dev.auctoritas.auth.application.EndUserPasswordChangeService;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;

@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.infrastructure.oauth;
 
-import dev.auctoritas.auth.service.oauth.OAuthCallbackHandleRequest;
-import dev.auctoritas.auth.service.oauth.OAuthCallbackHandler;
+import dev.auctoritas.auth.application.oauth.OAuthCallbackHandleRequest;
+import dev.auctoritas.auth.application.oauth.OAuthCallbackHandler;
 import org.springframework.stereotype.Component;
 
 @Component

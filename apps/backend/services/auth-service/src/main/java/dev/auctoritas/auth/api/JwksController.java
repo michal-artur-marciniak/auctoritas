@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.api;
 
 import dev.auctoritas.auth.infrastructure.config.JwtProperties;
-import dev.auctoritas.auth.service.JwtService;
+import dev.auctoritas.auth.application.JwtService;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;

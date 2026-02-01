@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.infrastructure.security;
 
 import dev.auctoritas.auth.application.port.out.security.TokenHasherPort;
-import dev.auctoritas.auth.service.TokenService;
+import dev.auctoritas.auth.application.TokenService;
 import java.time.Instant;
 import org.springframework.stereotype.Component;
 

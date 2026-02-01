@@ -9,7 +9,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import dev.auctoritas.auth.infrastructure.persistence.repository.ProjectRepository;
-import dev.auctoritas.auth.service.ApiKeyService;
+import dev.auctoritas.auth.application.apikey.ApiKeyService;
 import dev.auctoritas.auth.infrastructure.oauth.OAuthAppleAuthorizationService;
 import dev.auctoritas.auth.infrastructure.oauth.OAuthAppleCallbackService;
 import dev.auctoritas.auth.infrastructure.oauth.OAuthFacebookAuthorizationService;
@@ -20,9 +20,9 @@ import dev.auctoritas.auth.infrastructure.oauth.OAuthGoogleAuthorizationService;
 import dev.auctoritas.auth.infrastructure.oauth.OAuthGoogleCallbackService;
 import dev.auctoritas.auth.infrastructure.oauth.OAuthMicrosoftAuthorizationService;
 import dev.auctoritas.auth.infrastructure.oauth.OAuthMicrosoftCallbackService;
-import dev.auctoritas.auth.service.TokenService;
+import dev.auctoritas.auth.application.TokenService;
 import dev.auctoritas.auth.application.port.out.oauth.OAuthProviderPort;
-import dev.auctoritas.auth.service.oauth.OAuthProviderRegistry;
+import dev.auctoritas.auth.application.oauth.OAuthProviderRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

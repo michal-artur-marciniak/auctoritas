@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.infrastructure.security;
 
 import dev.auctoritas.auth.application.port.out.security.JwtProviderPort;
-import dev.auctoritas.auth.service.JwtService;
+import dev.auctoritas.auth.application.JwtService;
 import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
 import java.security.PublicKey;
 import java.util.UUID;
