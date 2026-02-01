@@ -66,6 +66,7 @@ public class EndUserRegistrationService implements dev.auctoritas.auth.applicati
       JwtProviderPort jwtProviderPort,
       EndUserEmailVerificationService endUserEmailVerificationService,
       DomainEventPublisherPort domainEventPublisherPort,
+      EndUserRegistrationDomainService registrationDomainService,
       @Value("${auctoritas.auth.email-verification.log-challenge:true}") boolean logVerificationChallenge,
       PlatformTransactionManager transactionManager) {
     this.apiKeyService = apiKeyService;
@@ -77,7 +78,7 @@ public class EndUserRegistrationService implements dev.auctoritas.auth.applicati
     this.jwtProviderPort = jwtProviderPort;
     this.endUserEmailVerificationService = endUserEmailVerificationService;
     this.domainEventPublisherPort = domainEventPublisherPort;
-    this.registrationDomainService = new EndUserRegistrationDomainService();
+    this.registrationDomainService = registrationDomainService;
     this.logVerificationChallenge = logVerificationChallenge;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
   }

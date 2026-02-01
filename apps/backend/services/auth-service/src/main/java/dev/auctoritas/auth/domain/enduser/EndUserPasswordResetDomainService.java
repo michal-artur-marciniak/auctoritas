@@ -7,7 +7,9 @@ import dev.auctoritas.auth.domain.project.ProjectSettings;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
+import org.springframework.stereotype.Component;
 
+@Component
 public class EndUserPasswordResetDomainService {
   private final EndUserCredentialPolicyDomainService credentialPolicyDomainService;
 

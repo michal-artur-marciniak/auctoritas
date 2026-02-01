@@ -7,7 +7,6 @@ import dev.auctoritas.auth.domain.exception.DomainUnauthorizedException;
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.enduser.Password;
 import dev.auctoritas.auth.domain.enduser.EndUser;
-import dev.auctoritas.auth.domain.enduser.EndUserCredentialPolicyDomainService;
 import dev.auctoritas.auth.domain.enduser.EndUserPasswordChangeDomainService;
 import dev.auctoritas.auth.domain.enduser.EndUserPasswordHistory;
 import dev.auctoritas.auth.domain.enduser.EndUserRefreshToken;
@@ -19,6 +18,7 @@ import dev.auctoritas.auth.domain.enduser.EndUserRefreshTokenRepositoryPort;
 import dev.auctoritas.auth.domain.enduser.EndUserRepositoryPort;
 import dev.auctoritas.auth.domain.enduser.EndUserSessionRepositoryPort;
 import dev.auctoritas.auth.adapter.out.security.EndUserPrincipal;
+
 import java.util.UUID;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -41,15 +41,15 @@ public class EndUserPasswordChangeService implements dev.auctoritas.auth.applica
       EndUserPasswordHistoryRepositoryPort passwordHistoryRepository,
       EndUserSessionRepositoryPort sessionRepository,
       EndUserRefreshTokenRepositoryPort refreshTokenRepository,
-      PasswordEncoder passwordEncoder) {
+      PasswordEncoder passwordEncoder,
+      EndUserPasswordChangeDomainService domainService) {
     this.apiKeyService = apiKeyService;
     this.endUserRepository = endUserRepository;
     this.passwordHistoryRepository = passwordHistoryRepository;
     this.sessionRepository = sessionRepository;
     this.refreshTokenRepository = refreshTokenRepository;
     this.passwordEncoder = passwordEncoder;
-    this.domainService =
-        new EndUserPasswordChangeDomainService(new EndUserCredentialPolicyDomainService());
+    this.domainService = domainService;
   }
 
   @Transactional

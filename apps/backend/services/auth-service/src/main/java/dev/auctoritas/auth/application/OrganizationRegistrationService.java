@@ -43,6 +43,7 @@ public class OrganizationRegistrationService implements dev.auctoritas.auth.appl
       TokenService tokenService,
       JwtService jwtService,
       DomainEventPublisherPort domainEventPublisherPort,
+      OrganizationRegistrationDomainService domainService,
       PlatformTransactionManager transactionManager) {
     this.organizationRepository = organizationRepository;
     this.organizationMemberRepository = organizationMemberRepository;
@@ -51,7 +52,7 @@ public class OrganizationRegistrationService implements dev.auctoritas.auth.appl
     this.tokenService = tokenService;
     this.jwtService = jwtService;
     this.domainEventPublisherPort = domainEventPublisherPort;
-    this.domainService = new OrganizationRegistrationDomainService();
+    this.domainService = domainService;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
   }
 

@@ -3,6 +3,7 @@ package dev.auctoritas.auth.domain.enduser;
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.project.Project;
 import dev.auctoritas.auth.domain.project.ProjectSettings;
+import org.springframework.stereotype.Component;
 
 /**
  * Domain service for EndUser registration operations.
@@ -15,6 +16,7 @@ import dev.auctoritas.auth.domain.project.ProjectSettings;
  * - Prepare validated registration data
  * - Return RegistrationAttempt for application layer to complete
  */
+@Component
 public class EndUserRegistrationDomainService {
 
   /**

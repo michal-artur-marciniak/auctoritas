@@ -7,6 +7,7 @@ import dev.auctoritas.auth.domain.enduser.EndUser;
 import dev.auctoritas.auth.domain.project.Project;
 import java.util.Locale;
 import java.util.Optional;
+import org.springframework.stereotype.Component;
 
 /**
  * Domain service for OAuth account linking operations.
@@ -24,6 +25,7 @@ import java.util.Optional;
  * - Define user creation/update specifications
  * - Handle email reconciliation logic
  */
+@Component
 public class OAuthAccountLinkingDomainService {
 
   /**

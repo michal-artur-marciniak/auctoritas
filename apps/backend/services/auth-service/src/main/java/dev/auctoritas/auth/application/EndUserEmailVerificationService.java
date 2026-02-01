@@ -46,14 +46,15 @@ public class EndUserEmailVerificationService implements dev.auctoritas.auth.appl
       EndUserEmailVerificationTokenRepositoryPort verificationTokenRepository,
       TokenService tokenService,
       DomainEventPublisher domainEventPublisher,
+      EndUserEmailVerificationDomainService domainService,
       @Value("${auctoritas.auth.email-verification.log-challenge:true}") boolean logVerificationChallenge) {
     this.apiKeyService = apiKeyService;
     this.endUserRepository = endUserRepository;
     this.verificationTokenRepository = verificationTokenRepository;
     this.tokenService = tokenService;
     this.domainEventPublisher = domainEventPublisher;
+    this.domainService = domainService;
     this.logVerificationChallenge = logVerificationChallenge;
-    this.domainService = new EndUserEmailVerificationDomainService();
   }
 
   @Transactional

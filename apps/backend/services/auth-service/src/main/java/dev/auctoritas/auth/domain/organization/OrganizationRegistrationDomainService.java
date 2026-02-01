@@ -4,6 +4,7 @@ import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.enduser.Email;
 import dev.auctoritas.auth.domain.project.Slug;
 import java.util.Objects;
+import org.springframework.stereotype.Component;
 
 /**
  * Domain service for Organization registration operations.
@@ -21,6 +22,7 @@ import java.util.Objects;
  * - Create Owner specification (validated data for member creation)
  * - Enforce business invariants (organization must have owner)
  */
+@Component
 public class OrganizationRegistrationDomainService {
 
   /**

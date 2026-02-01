@@ -44,13 +44,14 @@ public class OAuthAccountLinkingService {
       OAuthConnectionRepositoryPort oauthConnectionRepository,
       PasswordEncoder passwordEncoder,
       TokenService tokenService,
-      DomainEventPublisherPort domainEventPublisherPort) {
+      DomainEventPublisherPort domainEventPublisherPort,
+      OAuthAccountLinkingDomainService domainService) {
     this.endUserRepository = endUserRepository;
     this.oauthConnectionRepository = oauthConnectionRepository;
     this.passwordEncoder = passwordEncoder;
     this.tokenService = tokenService;
     this.domainEventPublisherPort = domainEventPublisherPort;
-    this.domainService = new OAuthAccountLinkingDomainService();
+    this.domainService = domainService;
   }
 
   @Transactional

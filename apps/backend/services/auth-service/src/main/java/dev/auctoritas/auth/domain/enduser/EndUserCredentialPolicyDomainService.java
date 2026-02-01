@@ -7,7 +7,9 @@ import dev.auctoritas.auth.shared.security.PasswordValidator;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.BiPredicate;
+import org.springframework.stereotype.Component;
 
+@Component
 public class EndUserCredentialPolicyDomainService {
   private static final int DEFAULT_MAX_PASSWORD_LENGTH = 128;
   private static final int DEFAULT_MIN_UNIQUE = 4;

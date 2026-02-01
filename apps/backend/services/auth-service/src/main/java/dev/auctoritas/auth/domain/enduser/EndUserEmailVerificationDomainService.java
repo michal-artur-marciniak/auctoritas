@@ -7,7 +7,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
+import org.springframework.stereotype.Component;
 
+@Component
 public class EndUserEmailVerificationDomainService {
   private static final int RESEND_MAX_PER_HOUR = 3;
   private static final Duration RESEND_WINDOW = Duration.ofHours(1);

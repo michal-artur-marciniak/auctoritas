@@ -4,7 +4,9 @@ import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.project.ProjectSettings;
 import java.util.List;
 import java.util.Objects;
+import org.springframework.stereotype.Component;
 
+@Component
 public class EndUserPasswordChangeDomainService {
   private final EndUserCredentialPolicyDomainService credentialPolicyDomainService;
 

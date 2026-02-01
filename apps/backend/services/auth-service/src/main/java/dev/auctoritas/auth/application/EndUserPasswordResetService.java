@@ -8,7 +8,6 @@ import dev.auctoritas.auth.domain.exception.DomainException;
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.enduser.Password;
 import dev.auctoritas.auth.domain.enduser.EndUser;
-import dev.auctoritas.auth.domain.enduser.EndUserCredentialPolicyDomainService;
 import dev.auctoritas.auth.domain.enduser.EndUserPasswordHistory;
 import dev.auctoritas.auth.domain.enduser.EndUserPasswordResetDomainService;
 import dev.auctoritas.auth.domain.enduser.EndUserPasswordResetToken;
@@ -64,6 +63,7 @@ public class EndUserPasswordResetService implements dev.auctoritas.auth.applicat
       PasswordEncoder passwordEncoder,
       TokenService tokenService,
       DomainEventPublisher domainEventPublisher,
+      EndUserPasswordResetDomainService domainService,
       @Value("${auctoritas.auth.password-reset.log-token:false}") boolean logResetToken) {
     this.apiKeyService = apiKeyService;
     this.endUserRepository = endUserRepository;
@@ -74,9 +74,8 @@ public class EndUserPasswordResetService implements dev.auctoritas.auth.applicat
     this.passwordEncoder = passwordEncoder;
     this.tokenService = tokenService;
     this.domainEventPublisher = domainEventPublisher;
+    this.domainService = domainService;
     this.logResetToken = logResetToken;
-    this.domainService =
-        new EndUserPasswordResetDomainService(new EndUserCredentialPolicyDomainService());
   }
 
   @Transactional
