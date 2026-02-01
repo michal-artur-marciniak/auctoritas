@@ -1,6 +1,7 @@
 package dev.auctoritas.auth.adapter.in.web;
 
 import dev.auctoritas.auth.adapter.out.security.OrganizationMemberPrincipal;
+import dev.auctoritas.auth.application.port.in.ApplicationPrincipal;
 import dev.auctoritas.auth.application.port.in.project.ProjectManagementUseCase;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -34,14 +35,14 @@ public class ProjectController {
       @Valid @RequestBody ProjectCreateRequest request,
       @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(projectManagementUseCase.createProject(orgId, principal, request));
+        .body(projectManagementUseCase.createProject(orgId, toApplicationPrincipal(principal), request));
   }
 
   @PreAuthorize("isAuthenticated()")
   @GetMapping
   public ResponseEntity<List<ProjectSummaryResponse>> listProjects(
       @PathVariable UUID orgId, @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
-    return ResponseEntity.ok(projectManagementUseCase.listProjects(orgId, principal));
+    return ResponseEntity.ok(projectManagementUseCase.listProjects(orgId, toApplicationPrincipal(principal)));
   }
 
   @PreAuthorize("isAuthenticated()")
@@ -51,7 +52,8 @@ public class ProjectController {
       @PathVariable UUID projectId,
       @Valid @RequestBody ProjectUpdateRequest request,
       @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
-    return ResponseEntity.ok(projectManagementUseCase.updateProject(orgId, projectId, principal, request));
+    return ResponseEntity.ok(
+        projectManagementUseCase.updateProject(orgId, projectId, toApplicationPrincipal(principal), request));
   }
 
   @PreAuthorize("isAuthenticated()")
@@ -60,7 +62,7 @@ public class ProjectController {
       @PathVariable UUID orgId,
       @PathVariable UUID projectId,
       @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
-    projectManagementUseCase.deleteProject(orgId, projectId, principal);
+    projectManagementUseCase.deleteProject(orgId, projectId, toApplicationPrincipal(principal));
     return ResponseEntity.noContent().build();
   }
 
@@ -70,7 +72,8 @@ public class ProjectController {
       @PathVariable UUID orgId,
       @PathVariable UUID projectId,
       @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
-    return ResponseEntity.ok(projectManagementUseCase.getProjectSettings(orgId, projectId, principal));
+    return ResponseEntity.ok(
+        projectManagementUseCase.getProjectSettings(orgId, projectId, toApplicationPrincipal(principal)));
   }
 
   @PreAuthorize("isAuthenticated()")
@@ -81,7 +84,8 @@ public class ProjectController {
       @Valid @RequestBody ProjectPasswordSettingsRequest request,
       @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
     return ResponseEntity.ok(
-        projectManagementUseCase.updatePasswordSettings(orgId, projectId, principal, request));
+        projectManagementUseCase.updatePasswordSettings(
+            orgId, projectId, toApplicationPrincipal(principal), request));
   }
 
   @PreAuthorize("isAuthenticated()")
@@ -92,7 +96,8 @@ public class ProjectController {
       @Valid @RequestBody ProjectSessionSettingsRequest request,
       @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
     return ResponseEntity.ok(
-        projectManagementUseCase.updateSessionSettings(orgId, projectId, principal, request));
+        projectManagementUseCase.updateSessionSettings(
+            orgId, projectId, toApplicationPrincipal(principal), request));
   }
 
   @PreAuthorize("isAuthenticated()")
@@ -102,7 +107,9 @@ public class ProjectController {
       @PathVariable UUID projectId,
       @Valid @RequestBody ProjectAuthSettingsRequest request,
       @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
-    return ResponseEntity.ok(projectManagementUseCase.updateAuthSettings(orgId, projectId, principal, request));
+    return ResponseEntity.ok(
+        projectManagementUseCase.updateAuthSettings(
+            orgId, projectId, toApplicationPrincipal(principal), request));
   }
 
   @PreAuthorize("isAuthenticated()")
@@ -113,7 +120,8 @@ public class ProjectController {
       @Valid @RequestBody ProjectOAuthSettingsRequest request,
       @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
     return ResponseEntity.ok(
-        projectManagementUseCase.updateOAuthSettings(orgId, projectId, principal, request));
+        projectManagementUseCase.updateOAuthSettings(
+            orgId, projectId, toApplicationPrincipal(principal), request));
   }
 
   @PreAuthorize("isAuthenticated()")
@@ -124,7 +132,9 @@ public class ProjectController {
       @Valid @RequestBody ApiKeyCreateRequest request,
       @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(projectManagementUseCase.createApiKey(orgId, projectId, principal, request));
+        .body(
+            projectManagementUseCase.createApiKey(
+                orgId, projectId, toApplicationPrincipal(principal), request));
   }
 
   @PreAuthorize("isAuthenticated()")
@@ -133,7 +143,8 @@ public class ProjectController {
       @PathVariable UUID orgId,
       @PathVariable UUID projectId,
       @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
-    return ResponseEntity.ok(projectManagementUseCase.listApiKeys(orgId, projectId, principal));
+    return ResponseEntity.ok(
+        projectManagementUseCase.listApiKeys(orgId, projectId, toApplicationPrincipal(principal)));
   }
 
   @PreAuthorize("isAuthenticated()")
@@ -143,7 +154,16 @@ public class ProjectController {
       @PathVariable UUID projectId,
       @PathVariable UUID keyId,
       @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
-    projectManagementUseCase.revokeApiKey(orgId, projectId, keyId, principal);
+    projectManagementUseCase.revokeApiKey(
+        orgId, projectId, keyId, toApplicationPrincipal(principal));
     return ResponseEntity.noContent().build();
+  }
+
+  private ApplicationPrincipal toApplicationPrincipal(OrganizationMemberPrincipal principal) {
+    if (principal == null) {
+      return null;
+    }
+    return new ApplicationPrincipal(
+        principal.orgMemberId(), principal.orgId(), principal.email(), principal.role());
   }
 }

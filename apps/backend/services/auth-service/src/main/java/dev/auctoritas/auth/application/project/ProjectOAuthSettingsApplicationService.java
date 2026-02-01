@@ -10,7 +10,7 @@ import dev.auctoritas.auth.domain.project.Project;
 import dev.auctoritas.auth.domain.project.ProjectSettings;
 import dev.auctoritas.auth.domain.project.ProjectRepositoryPort;
 import dev.auctoritas.auth.domain.project.ProjectSettingsRepositoryPort;
-import dev.auctoritas.auth.adapter.out.security.OrganizationMemberPrincipal;
+import dev.auctoritas.auth.application.port.in.ApplicationPrincipal;
 import java.util.UUID;
 import java.util.function.Consumer;
 import org.springframework.security.crypto.encrypt.TextEncryptor;
@@ -39,7 +39,7 @@ public class ProjectOAuthSettingsApplicationService {
   public ProjectSettings updateOAuthSettings(
       UUID orgId,
       UUID projectId,
-      OrganizationMemberPrincipal principal,
+      ApplicationPrincipal principal,
       ProjectOAuthSettingsRequest request) {
     enforceOrgAccess(orgId, principal);
     ProjectSettings settings = loadProject(orgId, projectId).getSettings();
@@ -59,7 +59,7 @@ public class ProjectOAuthSettingsApplicationService {
     return projectSettingsRepository.save(settings);
   }
 
-  private void enforceOrgAccess(UUID orgId, OrganizationMemberPrincipal principal) {
+  private void enforceOrgAccess(UUID orgId, ApplicationPrincipal principal) {
     if (principal == null) {
       throw new IllegalStateException("Authenticated org member principal is required.");
     }

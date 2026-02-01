@@ -13,7 +13,6 @@ import java.time.Instant;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.springframework.security.crypto.encrypt.TextEncryptor;
 
 @Entity
 @Table(
@@ -23,8 +22,6 @@ import org.springframework.security.crypto.encrypt.TextEncryptor;
 @Setter
 @NoArgsConstructor
 public class OAuthAuthorizationRequest extends BaseAuditEntity {
-
-  private static final String CODE_VERIFIER_ENC_PREFIX = "ENC:";
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "project_id", nullable = false)
@@ -44,18 +41,4 @@ public class OAuthAuthorizationRequest extends BaseAuditEntity {
 
   @Column(name = "expires_at", nullable = false)
   private Instant expiresAt;
-
-  /** Returns the PKCE code verifier decrypted using the provided encryptor. */
-  public String getCodeVerifierDecrypted(TextEncryptor oauthClientSecretEncryptor) {
-    if (codeVerifier == null || codeVerifier.isBlank()) {
-      return codeVerifier;
-    }
-    String trimmed = codeVerifier.trim();
-    if (!trimmed.startsWith(CODE_VERIFIER_ENC_PREFIX)) {
-      throw new IllegalStateException("codeVerifier is not encrypted");
-    }
-    String ciphertext =
-        trimmed.substring(CODE_VERIFIER_ENC_PREFIX.length());
-    return oauthClientSecretEncryptor.decrypt(ciphertext);
-  }
 }

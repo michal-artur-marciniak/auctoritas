@@ -13,7 +13,7 @@ import dev.auctoritas.auth.domain.project.Project;
 import dev.auctoritas.auth.application.port.out.messaging.DomainEventPublisherPort;
 import dev.auctoritas.auth.domain.project.ProjectRepositoryPort;
 import dev.auctoritas.auth.application.port.out.security.TokenHasherPort;
-import dev.auctoritas.auth.adapter.out.security.OrganizationMemberPrincipal;
+import dev.auctoritas.auth.application.port.in.ApplicationPrincipal;
 import dev.auctoritas.auth.application.apikey.ApiKeyService;
 import dev.auctoritas.auth.domain.project.ApiKeyEnvironment;
 import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
@@ -63,7 +63,7 @@ public class ApiKeyApplicationService {
   /** Creates a new API key for a project. */
   @Transactional
   public ApiKeySecretResponse createApiKey(
-      UUID orgId, UUID projectId, OrganizationMemberPrincipal principal, ApiKeyCreateRequest request) {
+      UUID orgId, UUID projectId, ApplicationPrincipal principal, ApiKeyCreateRequest request) {
     enforceOrgAccess(orgId, principal);
     Project project = loadProject(orgId, projectId);
     String name = requireValue(request.name(), "api_key_name_required");
@@ -73,7 +73,7 @@ public class ApiKeyApplicationService {
   /** Lists API keys for a project. */
   @Transactional(readOnly = true)
   public List<ApiKeySummaryResponse> listApiKeys(
-      UUID orgId, UUID projectId, OrganizationMemberPrincipal principal) {
+      UUID orgId, UUID projectId, ApplicationPrincipal principal) {
     enforceOrgAccess(orgId, principal);
     loadProject(orgId, projectId);
     return apiKeyService.listKeys(projectId).stream().map(this::toApiKeySummary).toList();
@@ -81,7 +81,7 @@ public class ApiKeyApplicationService {
 
   /** Revokes a project API key. */
   @Transactional
-  public void revokeApiKey(UUID orgId, UUID projectId, UUID keyId, OrganizationMemberPrincipal principal) {
+  public void revokeApiKey(UUID orgId, UUID projectId, UUID keyId, ApplicationPrincipal principal) {
     enforceOrgAccess(orgId, principal);
     enforceAdminAccess(principal);
     loadProject(orgId, projectId);
@@ -149,7 +149,7 @@ public class ApiKeyApplicationService {
     return resolved == ApiKeyEnvironment.TEST ? TEST_KEY_PREFIX : LIVE_KEY_PREFIX;
   }
 
-  private void enforceOrgAccess(UUID orgId, OrganizationMemberPrincipal principal) {
+  private void enforceOrgAccess(UUID orgId, ApplicationPrincipal principal) {
     if (principal == null) {
       throw new IllegalStateException("Authenticated org member principal is required.");
     }
@@ -158,7 +158,7 @@ public class ApiKeyApplicationService {
     }
   }
 
-  private void enforceAdminAccess(OrganizationMemberPrincipal principal) {
+  private void enforceAdminAccess(ApplicationPrincipal principal) {
     OrganizationMemberRole role = principal.role();
     if (role != OrganizationMemberRole.OWNER && role != OrganizationMemberRole.ADMIN) {
       throw new DomainForbiddenException("insufficient_role");

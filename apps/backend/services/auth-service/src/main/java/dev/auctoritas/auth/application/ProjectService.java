@@ -22,7 +22,7 @@ import dev.auctoritas.auth.domain.exception.DomainForbiddenException;
 import dev.auctoritas.auth.domain.exception.DomainNotFoundException;
 import dev.auctoritas.auth.domain.project.ProjectRepositoryPort;
 import dev.auctoritas.auth.domain.project.ProjectSettingsRepositoryPort;
-import dev.auctoritas.auth.adapter.out.security.OrganizationMemberPrincipal;
+import dev.auctoritas.auth.application.port.in.ApplicationPrincipal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,29 +57,29 @@ public class ProjectService implements dev.auctoritas.auth.application.port.in.p
 
   @Transactional
   public ProjectCreateResponse createProject(
-      UUID orgId, OrganizationMemberPrincipal principal, ProjectCreateRequest request) {
+      UUID orgId, ApplicationPrincipal principal, ProjectCreateRequest request) {
     return projectApplicationService.createProject(orgId, principal, request);
   }
 
   @Transactional(readOnly = true)
-  public List<ProjectSummaryResponse> listProjects(UUID orgId, OrganizationMemberPrincipal principal) {
+  public List<ProjectSummaryResponse> listProjects(UUID orgId, ApplicationPrincipal principal) {
     return projectApplicationService.listProjects(orgId, principal);
   }
 
   @Transactional
   public ProjectSummaryResponse updateProject(
-      UUID orgId, UUID projectId, OrganizationMemberPrincipal principal, ProjectUpdateRequest request) {
+      UUID orgId, UUID projectId, ApplicationPrincipal principal, ProjectUpdateRequest request) {
     return projectApplicationService.updateProject(orgId, projectId, principal, request);
   }
 
   @Transactional
-  public void deleteProject(UUID orgId, UUID projectId, OrganizationMemberPrincipal principal) {
+  public void deleteProject(UUID orgId, UUID projectId, ApplicationPrincipal principal) {
     projectApplicationService.deleteProject(orgId, projectId, principal);
   }
 
   @Transactional(readOnly = true)
   public ProjectSettingsResponse getProjectSettings(
-      UUID orgId, UUID projectId, OrganizationMemberPrincipal principal) {
+      UUID orgId, UUID projectId, ApplicationPrincipal principal) {
     enforceOrgAccess(orgId, principal);
     Project project = loadProject(orgId, projectId);
     return toSettingsResponse(project.getSettings());
@@ -89,7 +89,7 @@ public class ProjectService implements dev.auctoritas.auth.application.port.in.p
   public ProjectSettingsResponse updatePasswordSettings(
       UUID orgId,
       UUID projectId,
-      OrganizationMemberPrincipal principal,
+      ApplicationPrincipal principal,
       ProjectPasswordSettingsRequest request) {
 
     enforceOrgAccess(orgId, principal);
@@ -110,7 +110,7 @@ public class ProjectService implements dev.auctoritas.auth.application.port.in.p
   public ProjectSettingsResponse updateSessionSettings(
       UUID orgId,
       UUID projectId,
-      OrganizationMemberPrincipal principal,
+      ApplicationPrincipal principal,
       ProjectSessionSettingsRequest request) {
 
     enforceOrgAccess(orgId, principal);
@@ -130,7 +130,7 @@ public class ProjectService implements dev.auctoritas.auth.application.port.in.p
   public ProjectSettingsResponse updateAuthSettings(
       UUID orgId,
       UUID projectId,
-      OrganizationMemberPrincipal principal,
+      ApplicationPrincipal principal,
       ProjectAuthSettingsRequest request) {
 
     enforceOrgAccess(orgId, principal);
@@ -145,7 +145,7 @@ public class ProjectService implements dev.auctoritas.auth.application.port.in.p
   public ProjectSettingsResponse updateOAuthSettings(
       UUID orgId,
       UUID projectId,
-      OrganizationMemberPrincipal principal,
+      ApplicationPrincipal principal,
       ProjectOAuthSettingsRequest request) {
 
     ProjectSettings settings =
@@ -158,20 +158,20 @@ public class ProjectService implements dev.auctoritas.auth.application.port.in.p
   public ApiKeySecretResponse createApiKey(
       UUID orgId,
       UUID projectId,
-      OrganizationMemberPrincipal principal,
+      ApplicationPrincipal principal,
       ApiKeyCreateRequest request) {
     return apiKeyApplicationService.createApiKey(orgId, projectId, principal, request);
   }
 
   @Transactional(readOnly = true)
   public List<ApiKeySummaryResponse> listApiKeys(
-      UUID orgId, UUID projectId, OrganizationMemberPrincipal principal) {
+      UUID orgId, UUID projectId, ApplicationPrincipal principal) {
     return apiKeyApplicationService.listApiKeys(orgId, projectId, principal);
   }
 
   @Transactional
   public void revokeApiKey(
-      UUID orgId, UUID projectId, UUID keyId, OrganizationMemberPrincipal principal) {
+      UUID orgId, UUID projectId, UUID keyId, ApplicationPrincipal principal) {
     apiKeyApplicationService.revokeApiKey(orgId, projectId, keyId, principal);
   }
 
@@ -287,7 +287,7 @@ public class ProjectService implements dev.auctoritas.auth.application.port.in.p
     return new HashMap<>();
   }
 
-  private void enforceOrgAccess(UUID orgId, OrganizationMemberPrincipal principal) {
+  private void enforceOrgAccess(UUID orgId, ApplicationPrincipal principal) {
     if (principal == null) {
       throw new IllegalStateException("Authenticated org member principal is required.");
     }
