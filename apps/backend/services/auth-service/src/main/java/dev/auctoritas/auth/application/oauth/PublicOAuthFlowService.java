@@ -21,7 +21,7 @@ import org.springframework.web.util.UriComponentsBuilder;
  * Application service for public OAuth authorization and callback flows.
  */
 @Service
-public class PublicOAuthFlowService {
+public class PublicOAuthFlowService implements dev.auctoritas.auth.application.port.in.oauth.PublicOAuthAuthorizationUseCase {
   private final ApiKeyService apiKeyService;
   private final TokenService tokenService;
   private final ProjectRepositoryPort projectRepository;

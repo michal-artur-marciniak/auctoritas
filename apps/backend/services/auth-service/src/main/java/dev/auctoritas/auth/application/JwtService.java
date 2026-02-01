@@ -22,7 +22,7 @@ import org.springframework.stereotype.Service;
  * Uses asymmetric keys: private key for signing, public key for verification.
  */
 @Service
-public class JwtService {
+public class JwtService implements dev.auctoritas.auth.application.port.in.system.JwksUseCase {
   public static final String CLAIM_ORG_ID = "org_id";
   public static final String CLAIM_ORG_MEMBER_ID = "org_member_id";
   public static final String CLAIM_EMAIL = "email";

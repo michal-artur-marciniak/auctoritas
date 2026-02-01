@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Service for org member profile operations.
  */
 @Service
-public class OrganizationMemberProfileService {
+public class OrganizationMemberProfileService implements dev.auctoritas.auth.application.port.in.org.OrganizationMemberProfileUseCase {
   private final OrganizationMemberRepositoryPort memberRepository;
 
   public OrganizationMemberProfileService(OrganizationMemberRepositoryPort memberRepository) {

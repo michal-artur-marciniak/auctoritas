@@ -1,5 +1,6 @@
 package dev.auctoritas.auth.application.apikey;
 
+import dev.auctoritas.auth.application.TokenService;
 import dev.auctoritas.auth.domain.exception.DomainNotFoundException;
 import dev.auctoritas.auth.domain.exception.DomainUnauthorizedException;
 import dev.auctoritas.auth.domain.project.ApiKeyStatus;
@@ -12,7 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class ApiKeyService {
+public class ApiKeyService implements dev.auctoritas.auth.application.port.in.apikey.ApiKeyResolutionUseCase {
   private final ApiKeyRepositoryPort apiKeyRepository;
   private final TokenService tokenService;
   private final DomainEventPublisherPort domainEventPublisherPort;

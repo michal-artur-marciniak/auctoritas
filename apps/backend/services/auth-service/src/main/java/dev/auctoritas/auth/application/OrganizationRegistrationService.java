@@ -22,7 +22,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
-public class OrganizationRegistrationService {
+public class OrganizationRegistrationService implements dev.auctoritas.auth.application.port.in.org.OrganizationRegistrationUseCase {
   private static final Logger log = LoggerFactory.getLogger(OrganizationRegistrationService.class);
 
   private final OrganizationRepositoryPort organizationRepository;

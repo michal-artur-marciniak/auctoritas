@@ -1,5 +1,6 @@
 package dev.auctoritas.auth.adapter.out.persistence;
 
+import dev.auctoritas.auth.domain.oauth.OAuthAuthorizationRequest;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import org.springframework.beans.factory.annotation.Autowired;

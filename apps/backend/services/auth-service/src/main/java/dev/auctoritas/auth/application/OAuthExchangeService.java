@@ -1,4 +1,5 @@
 package dev.auctoritas.auth.application;
+import dev.auctoritas.auth.application.apikey.ApiKeyService;
 
 import dev.auctoritas.auth.adapter.in.web.EndUserLoginResponse;
 import dev.auctoritas.auth.adapter.in.web.OAuthExchangeRequest;
@@ -26,7 +27,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
-public class OAuthExchangeService {
+public class OAuthExchangeService implements dev.auctoritas.auth.application.port.in.oauth.OAuthExchangeUseCase {
   private final ApiKeyService apiKeyService;
   private final OAuthExchangeCodeRepositoryPort oauthExchangeCodeRepository;
   private final EndUserRefreshTokenRepositoryPort refreshTokenRepository;

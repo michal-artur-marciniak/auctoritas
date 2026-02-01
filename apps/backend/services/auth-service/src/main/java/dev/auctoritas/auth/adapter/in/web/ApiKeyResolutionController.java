@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.adapter.in.web;
 
 import dev.auctoritas.auth.domain.project.ApiKey;
-import dev.auctoritas.auth.application.apikey.ApiKeyService;
+import dev.auctoritas.auth.application.port.in.apikey.ApiKeyResolutionUseCase;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -13,16 +13,16 @@ import org.springframework.web.bind.annotation.RestController;
 public class ApiKeyResolutionController {
   private static final String API_KEY_HEADER = "X-API-Key";
 
-  private final ApiKeyService apiKeyService;
+  private final ApiKeyResolutionUseCase apiKeyResolutionUseCase;
 
-  public ApiKeyResolutionController(ApiKeyService apiKeyService) {
-    this.apiKeyService = apiKeyService;
+  public ApiKeyResolutionController(ApiKeyResolutionUseCase apiKeyResolutionUseCase) {
+    this.apiKeyResolutionUseCase = apiKeyResolutionUseCase;
   }
 
   @PostMapping("/resolve")
   public ResponseEntity<ApiKeyResolveResponse> resolve(
       @RequestHeader(value = API_KEY_HEADER, required = false) String apiKey) {
-    ApiKey resolved = apiKeyService.validateActiveKey(apiKey);
+    ApiKey resolved = apiKeyResolutionUseCase.validateActiveKey(apiKey);
     return ResponseEntity.ok(new ApiKeyResolveResponse(resolved.getProject().getId()));
   }
 }

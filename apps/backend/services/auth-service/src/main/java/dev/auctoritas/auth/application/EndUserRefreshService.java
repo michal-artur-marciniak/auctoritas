@@ -1,4 +1,5 @@
 package dev.auctoritas.auth.application;
+import dev.auctoritas.auth.application.apikey.ApiKeyService;
 
 import dev.auctoritas.auth.adapter.in.web.EndUserRefreshRequest;
 import dev.auctoritas.auth.adapter.in.web.EndUserRefreshResponse;
@@ -24,7 +25,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
-public class EndUserRefreshService {
+public class EndUserRefreshService implements dev.auctoritas.auth.application.port.in.enduser.EndUserRefreshUseCase {
   private final ApiKeyService apiKeyService;
   private final EndUserRefreshTokenRepositoryPort refreshTokenRepository;
   private final EndUserSessionRepositoryPort endUserSessionRepository;

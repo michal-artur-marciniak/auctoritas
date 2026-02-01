@@ -1,4 +1,5 @@
 package dev.auctoritas.auth.application;
+import dev.auctoritas.auth.application.apikey.ApiKeyService;
 
 import dev.auctoritas.auth.domain.exception.DomainUnauthorizedException;
 import dev.auctoritas.auth.domain.project.ApiKey;
@@ -9,7 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class EndUserLogoutService {
+public class EndUserLogoutService implements dev.auctoritas.auth.application.port.in.enduser.EndUserLogoutUseCase {
   private final ApiKeyService apiKeyService;
   private final EndUserSessionRepositoryPort endUserSessionRepository;
   private final EndUserRefreshTokenRepositoryPort endUserRefreshTokenRepository;

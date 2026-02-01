@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.adapter.in.web;
 
-import dev.auctoritas.auth.application.OrgAuthService;
+import dev.auctoritas.auth.application.port.in.org.OrgAuthUseCase;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -11,20 +11,20 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/org/auth")
 public class OrgAuthController {
-  private final OrgAuthService orgAuthService;
+  private final OrgAuthUseCase orgAuthUseCase;
 
-  public OrgAuthController(OrgAuthService orgAuthService) {
-    this.orgAuthService = orgAuthService;
+  public OrgAuthController(OrgAuthUseCase orgAuthUseCase) {
+    this.orgAuthUseCase = orgAuthUseCase;
   }
 
   @PostMapping("/login")
   public ResponseEntity<OrgLoginResponse> login(@Valid @RequestBody OrgLoginRequest request) {
-    return ResponseEntity.ok(orgAuthService.login(request));
+    return ResponseEntity.ok(orgAuthUseCase.login(request));
   }
 
   @PostMapping("/refresh")
   public ResponseEntity<OrgRefreshResponse> refresh(
       @Valid @RequestBody OrgRefreshRequest request) {
-    return ResponseEntity.ok(orgAuthService.refresh(request));
+    return ResponseEntity.ok(orgAuthUseCase.refresh(request));
   }
 }

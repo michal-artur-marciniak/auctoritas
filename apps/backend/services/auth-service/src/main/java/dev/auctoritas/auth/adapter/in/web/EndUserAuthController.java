@@ -3,13 +3,13 @@ package dev.auctoritas.auth.adapter.in.web;
 import dev.auctoritas.auth.application.enduser.EndUserRegistrationCommand;
 import dev.auctoritas.auth.application.enduser.EndUserRegistrationResult;
 import dev.auctoritas.auth.adapter.out.security.EndUserPrincipal;
-import dev.auctoritas.auth.application.EndUserEmailVerificationService;
-import dev.auctoritas.auth.application.EndUserLoginService;
-import dev.auctoritas.auth.application.EndUserLogoutService;
-import dev.auctoritas.auth.application.EndUserPasswordResetService;
-import dev.auctoritas.auth.application.EndUserRefreshService;
-import dev.auctoritas.auth.application.EndUserRegistrationService;
-import dev.auctoritas.auth.application.OAuthExchangeService;
+import dev.auctoritas.auth.application.port.in.enduser.EndUserEmailVerificationUseCase;
+import dev.auctoritas.auth.application.port.in.enduser.EndUserLoginUseCase;
+import dev.auctoritas.auth.application.port.in.enduser.EndUserLogoutUseCase;
+import dev.auctoritas.auth.application.port.in.enduser.EndUserPasswordResetUseCase;
+import dev.auctoritas.auth.application.port.in.enduser.EndUserRefreshUseCase;
+import dev.auctoritas.auth.application.port.in.enduser.EndUserRegistrationUseCase;
+import dev.auctoritas.auth.application.port.in.oauth.OAuthExchangeUseCase;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -30,23 +30,23 @@ public class EndUserAuthController {
   private static final String API_KEY_HEADER = "X-API-Key";
   private static final String FORWARDED_FOR_HEADER = "X-Forwarded-For";
 
-  private final EndUserRegistrationService endUserRegistrationService;
-  private final EndUserLoginService endUserLoginService;
-  private final EndUserLogoutService endUserLogoutService;
-  private final EndUserRefreshService endUserRefreshService;
-  private final EndUserPasswordResetService endUserPasswordResetService;
-  private final EndUserEmailVerificationService endUserEmailVerificationService;
-  private final OAuthExchangeService oauthExchangeService;
+  private final EndUserRegistrationUseCase endUserRegistrationService;
+  private final EndUserLoginUseCase endUserLoginService;
+  private final EndUserLogoutUseCase endUserLogoutService;
+  private final EndUserRefreshUseCase endUserRefreshService;
+  private final EndUserPasswordResetUseCase endUserPasswordResetService;
+  private final EndUserEmailVerificationUseCase endUserEmailVerificationService;
+  private final OAuthExchangeUseCase oauthExchangeService;
   private final List<String> trustedProxies;
 
   public EndUserAuthController(
-      EndUserRegistrationService endUserRegistrationService,
-      EndUserLoginService endUserLoginService,
-      EndUserLogoutService endUserLogoutService,
-      EndUserRefreshService endUserRefreshService,
-      EndUserPasswordResetService endUserPasswordResetService,
-      EndUserEmailVerificationService endUserEmailVerificationService,
-      OAuthExchangeService oauthExchangeService,
+      EndUserRegistrationUseCase endUserRegistrationService,
+      EndUserLoginUseCase endUserLoginService,
+      EndUserLogoutUseCase endUserLogoutService,
+      EndUserRefreshUseCase endUserRefreshService,
+      EndUserPasswordResetUseCase endUserPasswordResetService,
+      EndUserEmailVerificationUseCase endUserEmailVerificationService,
+      OAuthExchangeUseCase oauthExchangeService,
       @Value("${auth.security.trusted-proxies:}") List<String> trustedProxies) {
     this.endUserRegistrationService = endUserRegistrationService;
     this.endUserLoginService = endUserLoginService;

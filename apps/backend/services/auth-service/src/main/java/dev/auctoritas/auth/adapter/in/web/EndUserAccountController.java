@@ -2,7 +2,7 @@ package dev.auctoritas.auth.adapter.in.web;
 
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.adapter.out.security.EndUserPrincipal;
-import dev.auctoritas.auth.application.EndUserPasswordChangeService;
+import dev.auctoritas.auth.application.port.in.enduser.EndUserPasswordChangeUseCase;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
@@ -19,10 +19,10 @@ public class EndUserAccountController {
   private static final String API_KEY_HEADER = "X-API-Key";
   private static final String SESSION_ID_HEADER = "X-Session-Id";
 
-  private final EndUserPasswordChangeService endUserPasswordChangeService;
+  private final EndUserPasswordChangeUseCase endUserPasswordChangeUseCase;
 
-  public EndUserAccountController(EndUserPasswordChangeService endUserPasswordChangeService) {
-    this.endUserPasswordChangeService = endUserPasswordChangeService;
+  public EndUserAccountController(EndUserPasswordChangeUseCase endUserPasswordChangeUseCase) {
+    this.endUserPasswordChangeUseCase = endUserPasswordChangeUseCase;
   }
 
   /**
@@ -37,7 +37,7 @@ public class EndUserAccountController {
       @Valid @RequestBody EndUserPasswordChangeRequest request) {
     UUID currentSessionId = parseSessionId(sessionId);
     return ResponseEntity.ok(
-        endUserPasswordChangeService.changePassword(apiKey, principal, currentSessionId, request));
+        endUserPasswordChangeUseCase.changePassword(apiKey, principal, currentSessionId, request));
   }
 
   private UUID parseSessionId(String sessionId) {

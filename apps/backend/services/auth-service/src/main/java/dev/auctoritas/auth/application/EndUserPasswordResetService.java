@@ -1,4 +1,5 @@
 package dev.auctoritas.auth.application;
+import dev.auctoritas.auth.application.apikey.ApiKeyService;
 
 import dev.auctoritas.auth.adapter.in.web.EndUserPasswordForgotRequest;
 import dev.auctoritas.auth.adapter.in.web.EndUserPasswordResetRequest;
@@ -36,7 +37,7 @@ import org.springframework.beans.factory.annotation.Value;
 import static net.logstash.logback.argument.StructuredArguments.kv;
 
 @Service
-public class EndUserPasswordResetService {
+public class EndUserPasswordResetService implements dev.auctoritas.auth.application.port.in.enduser.EndUserPasswordResetUseCase {
   private static final Logger log = LoggerFactory.getLogger(EndUserPasswordResetService.class);
   private static final String GENERIC_MESSAGE =
       "If an account exists, password reset instructions have been sent";

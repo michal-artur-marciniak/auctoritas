@@ -1,4 +1,5 @@
 package dev.auctoritas.auth.application;
+import dev.auctoritas.auth.application.apikey.ApiKeyService;
 
 import dev.auctoritas.auth.adapter.in.web.EndUserEmailVerificationRequest;
 import dev.auctoritas.auth.adapter.in.web.EndUserEmailVerificationResponse;
@@ -27,7 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import static net.logstash.logback.argument.StructuredArguments.kv;
 
 @Service
-public class EndUserEmailVerificationService {
+public class EndUserEmailVerificationService implements dev.auctoritas.auth.application.port.in.enduser.EndUserEmailVerificationUseCase {
   private static final Logger log = LoggerFactory.getLogger(EndUserEmailVerificationService.class);
   private static final String GENERIC_MESSAGE =
       "If an account exists, verification instructions have been sent";

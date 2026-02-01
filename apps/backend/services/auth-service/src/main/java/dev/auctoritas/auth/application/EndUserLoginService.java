@@ -1,4 +1,5 @@
 package dev.auctoritas.auth.application;
+import dev.auctoritas.auth.application.apikey.ApiKeyService;
 
 import dev.auctoritas.auth.adapter.in.web.EndUserLoginRequest;
 import dev.auctoritas.auth.adapter.in.web.EndUserLoginResponse;
@@ -30,7 +31,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  * Thin application service - delegates business logic to domain entities.
  */
 @Service
-public class EndUserLoginService {
+public class EndUserLoginService implements dev.auctoritas.auth.application.port.in.enduser.EndUserLoginUseCase {
   private static final int DEFAULT_MAX_FAILED_ATTEMPTS = 5;
   private static final int DEFAULT_WINDOW_SECONDS = 900;
   private static final int MIN_WINDOW_SECONDS = 60;

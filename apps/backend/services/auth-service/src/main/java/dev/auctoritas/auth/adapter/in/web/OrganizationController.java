@@ -1,8 +1,8 @@
 package dev.auctoritas.auth.adapter.in.web;
 
 import dev.auctoritas.auth.adapter.out.security.OrganizationMemberPrincipal;
-import dev.auctoritas.auth.application.OrganizationMemberProfileService;
-import dev.auctoritas.auth.application.OrganizationRegistrationService;
+import dev.auctoritas.auth.application.port.in.org.OrganizationMemberProfileUseCase;
+import dev.auctoritas.auth.application.port.in.org.OrganizationRegistrationUseCase;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,21 +17,21 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/org")
 public class OrganizationController {
-  private final OrganizationRegistrationService organizationRegistrationService;
-  private final OrganizationMemberProfileService orgMemberProfileService;
+  private final OrganizationRegistrationUseCase organizationRegistrationUseCase;
+  private final OrganizationMemberProfileUseCase orgMemberProfileUseCase;
 
   public OrganizationController(
-      OrganizationRegistrationService organizationRegistrationService,
-      OrganizationMemberProfileService orgMemberProfileService) {
-    this.organizationRegistrationService = organizationRegistrationService;
-    this.orgMemberProfileService = orgMemberProfileService;
+      OrganizationRegistrationUseCase organizationRegistrationUseCase,
+      OrganizationMemberProfileUseCase orgMemberProfileUseCase) {
+    this.organizationRegistrationUseCase = organizationRegistrationUseCase;
+    this.orgMemberProfileUseCase = orgMemberProfileUseCase;
   }
 
   @PostMapping("/register")
   public ResponseEntity<OrgRegistrationResponse> register(
       @Valid @RequestBody OrgRegistrationRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(organizationRegistrationService.register(request));
+        .body(organizationRegistrationUseCase.register(request));
   }
 
   /**
@@ -45,6 +45,6 @@ public class OrganizationController {
     if (principal == null) {
       throw new IllegalStateException("Authenticated org member principal is required.");
     }
-    return ResponseEntity.ok(orgMemberProfileService.getProfile(principal.orgMemberId()));
+    return ResponseEntity.ok(orgMemberProfileUseCase.getProfile(principal.orgMemberId()));
   }
 }

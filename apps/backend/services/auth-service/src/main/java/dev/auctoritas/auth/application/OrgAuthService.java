@@ -24,7 +24,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
-public class OrgAuthService {
+public class OrgAuthService implements dev.auctoritas.auth.application.port.in.org.OrgAuthUseCase {
   private final OrganizationRepositoryPort organizationRepository;
   private final OrganizationMemberRepositoryPort organizationMemberRepository;
   private final OrganizationMemberRefreshTokenRepositoryPort refreshTokenRepository;

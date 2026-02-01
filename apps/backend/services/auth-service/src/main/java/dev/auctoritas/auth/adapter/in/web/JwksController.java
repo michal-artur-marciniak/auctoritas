@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.adapter.in.web;
 
 import dev.auctoritas.auth.infrastructure.config.JwtProperties;
-import dev.auctoritas.auth.application.JwtService;
+import dev.auctoritas.auth.application.port.in.system.JwksUseCase;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -24,11 +24,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/.well-known")
 public class JwksController {
 
-  private final JwtService jwtService;
+  private final JwksUseCase jwksUseCase;
   private final JwtProperties jwtProperties;
 
-  public JwksController(JwtService jwtService, JwtProperties jwtProperties) {
-    this.jwtService = jwtService;
+  public JwksController(JwksUseCase jwksUseCase, JwtProperties jwtProperties) {
+    this.jwksUseCase = jwksUseCase;
     this.jwtProperties = jwtProperties;
   }
 
@@ -38,7 +38,7 @@ public class JwksController {
    */
   @GetMapping(value = "/jwks.json", produces = MediaType.APPLICATION_JSON_VALUE)
   public JwksResponse getJwks() {
-    RSAPublicKey rsaPublicKey = (RSAPublicKey) jwtService.getPublicKey();
+    RSAPublicKey rsaPublicKey = (RSAPublicKey) jwksUseCase.getPublicKey();
 
     String kid = generateKeyId(rsaPublicKey);
     String n = base64UrlUnsigned(rsaPublicKey.getModulus());

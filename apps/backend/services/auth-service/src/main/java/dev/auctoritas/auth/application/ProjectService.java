@@ -35,7 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Thin application service - delegates business logic to domain entities.
  */
 @Service
-public class ProjectService {
+public class ProjectService implements dev.auctoritas.auth.application.port.in.project.ProjectManagementUseCase {
   private final ProjectRepositoryPort projectRepository;
   private final ProjectSettingsRepositoryPort projectSettingsRepository;
   private final ProjectApplicationService projectApplicationService;

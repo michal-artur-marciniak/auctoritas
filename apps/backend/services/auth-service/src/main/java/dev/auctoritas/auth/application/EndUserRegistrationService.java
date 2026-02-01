@@ -1,4 +1,5 @@
 package dev.auctoritas.auth.application;
+import dev.auctoritas.auth.application.apikey.ApiKeyService;
 
 import dev.auctoritas.auth.application.enduser.EndUserRegistrationCommand;
 import dev.auctoritas.auth.application.enduser.EndUserRegistrationResult;
@@ -39,7 +40,7 @@ import static net.logstash.logback.argument.StructuredArguments.kv;
  * Thin application service - delegates business logic to domain entities.
  */
 @Service
-public class EndUserRegistrationService {
+public class EndUserRegistrationService implements dev.auctoritas.auth.application.port.in.enduser.EndUserRegistrationUseCase {
   private static final Logger log = LoggerFactory.getLogger(EndUserRegistrationService.class);
 
   private final ApiKeyService apiKeyService;

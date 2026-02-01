@@ -1,4 +1,5 @@
 package dev.auctoritas.auth.application;
+import dev.auctoritas.auth.application.apikey.ApiKeyService;
 
 import dev.auctoritas.auth.adapter.in.web.EndUserPasswordChangeRequest;
 import dev.auctoritas.auth.adapter.in.web.EndUserPasswordChangeResponse;
@@ -25,7 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class EndUserPasswordChangeService {
+public class EndUserPasswordChangeService implements dev.auctoritas.auth.application.port.in.enduser.EndUserPasswordChangeUseCase {
   private final ApiKeyService apiKeyService;
   private final EndUserRepositoryPort endUserRepository;
   private final EndUserPasswordHistoryRepositoryPort passwordHistoryRepository;

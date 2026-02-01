@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.adapter.in.web;
 
-import dev.auctoritas.auth.application.oauth.PublicOAuthFlowService;
+import dev.auctoritas.auth.application.port.in.oauth.PublicOAuthAuthorizationUseCase;
 import java.net.URI;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,10 +16,10 @@ import org.springframework.web.bind.annotation.RestController;
 public class PublicOAuthController {
   private static final String API_KEY_HEADER = "X-API-Key";
 
-  private final PublicOAuthFlowService publicOAuthFlowService;
+  private final PublicOAuthAuthorizationUseCase publicOAuthAuthorizationUseCase;
 
-  public PublicOAuthController(PublicOAuthFlowService publicOAuthFlowService) {
-    this.publicOAuthFlowService = publicOAuthFlowService;
+  public PublicOAuthController(PublicOAuthAuthorizationUseCase publicOAuthAuthorizationUseCase) {
+    this.publicOAuthAuthorizationUseCase = publicOAuthAuthorizationUseCase;
   }
 
   @GetMapping("/{provider}")
@@ -35,7 +35,7 @@ public class PublicOAuthController {
       @PathVariable("provider") String provider,
       @RequestHeader(value = API_KEY_HEADER, required = false) String apiKey,
       @RequestParam(value = "redirect_uri", required = false) String redirectUri) {
-    URI location = publicOAuthFlowService.authorize(provider, apiKey, redirectUri);
+    URI location = publicOAuthAuthorizationUseCase.authorize(provider, apiKey, redirectUri);
     return ResponseEntity.status(HttpStatus.FOUND).location(location).build();
   }
 
@@ -44,7 +44,7 @@ public class PublicOAuthController {
       @PathVariable("provider") String provider,
       @RequestParam(value = "code", required = false) String code,
       @RequestParam(value = "state", required = false) String state) {
-    URI location = publicOAuthFlowService.callback(provider, code, state);
+    URI location = publicOAuthAuthorizationUseCase.callback(provider, code, state);
     return ResponseEntity.status(HttpStatus.FOUND).location(location).build();
   }
 }

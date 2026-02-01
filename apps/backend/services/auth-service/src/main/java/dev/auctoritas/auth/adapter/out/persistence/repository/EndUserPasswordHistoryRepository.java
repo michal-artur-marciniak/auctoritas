@@ -1,4 +1,4 @@
-package dev.auctoritas.auth.infrastructure.persistence.repository;
+package dev.auctoritas.auth.adapter.out.persistence.repository;
 
 import dev.auctoritas.auth.domain.enduser.EndUserPasswordHistory;
 import java.util.List;
