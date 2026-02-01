@@ -1,26 +1,29 @@
 package dev.auctoritas.auth.application.apikey;
 
-import dev.auctoritas.auth.api.ApiKeyCreateRequest;
-import dev.auctoritas.auth.api.ApiKeySecretResponse;
-import dev.auctoritas.auth.api.ApiKeySummaryResponse;
-import dev.auctoritas.auth.entity.project.ApiKey;
-import dev.auctoritas.auth.entity.project.Project;
-import dev.auctoritas.auth.ports.apikey.ApiKeyRepositoryPort;
-import dev.auctoritas.auth.ports.security.TokenHasherPort;
-import dev.auctoritas.auth.repository.ProjectRepository;
-import dev.auctoritas.auth.security.OrgMemberPrincipal;
-import dev.auctoritas.auth.service.ApiKeyService;
-import dev.auctoritas.auth.domain.apikey.ApiKeyEnvironment;
-import dev.auctoritas.auth.domain.organization.OrgMemberRole;
+import dev.auctoritas.auth.adapter.in.web.ApiKeyCreateRequest;
+import dev.auctoritas.auth.adapter.in.web.ApiKeySecretResponse;
+import dev.auctoritas.auth.adapter.in.web.ApiKeySummaryResponse;
+import dev.auctoritas.auth.domain.exception.DomainConflictException;
+import dev.auctoritas.auth.domain.exception.DomainForbiddenException;
+import dev.auctoritas.auth.domain.exception.DomainNotFoundException;
+import dev.auctoritas.auth.domain.exception.DomainValidationException;
+import dev.auctoritas.auth.domain.project.ApiKey;
+import dev.auctoritas.auth.domain.project.ApiKeyRepositoryPort;
+import dev.auctoritas.auth.domain.project.Project;
+import dev.auctoritas.auth.application.port.out.messaging.DomainEventPublisherPort;
+import dev.auctoritas.auth.domain.project.ProjectRepositoryPort;
+import dev.auctoritas.auth.application.port.out.security.TokenHasherPort;
+import dev.auctoritas.auth.application.port.in.ApplicationPrincipal;
+import dev.auctoritas.auth.application.apikey.ApiKeyService;
+import dev.auctoritas.auth.domain.project.ApiKeyEnvironment;
+import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 /** Application service that owns API key lifecycle operations. */
 @Service
@@ -31,21 +34,24 @@ public class ApiKeyApplicationService {
   private static final String TEST_KEY_PREFIX = "pk_test_";
 
   private final ApiKeyRepositoryPort apiKeyRepository;
-  private final ProjectRepository projectRepository;
+  private final ProjectRepositoryPort projectRepository;
   private final ApiKeyService apiKeyService;
   private final TokenHasherPort tokenHasherPort;
+  private final DomainEventPublisherPort domainEventPublisherPort;
   private final SecureRandom secureRandom = new SecureRandom();
   private final Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();
 
   public ApiKeyApplicationService(
       ApiKeyRepositoryPort apiKeyRepository,
-      ProjectRepository projectRepository,
+      ProjectRepositoryPort projectRepository,
       ApiKeyService apiKeyService,
-      TokenHasherPort tokenHasherPort) {
+      TokenHasherPort tokenHasherPort,
+      DomainEventPublisherPort domainEventPublisherPort) {
     this.apiKeyRepository = apiKeyRepository;
     this.projectRepository = projectRepository;
     this.apiKeyService = apiKeyService;
     this.tokenHasherPort = tokenHasherPort;
+    this.domainEventPublisherPort = domainEventPublisherPort;
   }
 
   /** Creates the default API key for a newly created project. */
@@ -57,7 +63,7 @@ public class ApiKeyApplicationService {
   /** Creates a new API key for a project. */
   @Transactional
   public ApiKeySecretResponse createApiKey(
-      UUID orgId, UUID projectId, OrgMemberPrincipal principal, ApiKeyCreateRequest request) {
+      UUID orgId, UUID projectId, ApplicationPrincipal principal, ApiKeyCreateRequest request) {
     enforceOrgAccess(orgId, principal);
     Project project = loadProject(orgId, projectId);
     String name = requireValue(request.name(), "api_key_name_required");
@@ -67,7 +73,7 @@ public class ApiKeyApplicationService {
   /** Lists API keys for a project. */
   @Transactional(readOnly = true)
   public List<ApiKeySummaryResponse> listApiKeys(
-      UUID orgId, UUID projectId, OrgMemberPrincipal principal) {
+      UUID orgId, UUID projectId, ApplicationPrincipal principal) {
     enforceOrgAccess(orgId, principal);
     loadProject(orgId, projectId);
     return apiKeyService.listKeys(projectId).stream().map(this::toApiKeySummary).toList();
@@ -75,7 +81,7 @@ public class ApiKeyApplicationService {
 
   /** Revokes a project API key. */
   @Transactional
-  public void revokeApiKey(UUID orgId, UUID projectId, UUID keyId, OrgMemberPrincipal principal) {
+  public void revokeApiKey(UUID orgId, UUID projectId, UUID keyId, ApplicationPrincipal principal) {
     enforceOrgAccess(orgId, principal);
     enforceAdminAccess(principal);
     loadProject(orgId, projectId);
@@ -91,7 +97,7 @@ public class ApiKeyApplicationService {
   private ApiKeySecretResponse createKeyResponse(
       Project project, String name, ApiKeyEnvironment environment) {
     if (apiKeyRepository.existsByProjectIdAndName(project.getId(), name)) {
-      throw new ResponseStatusException(HttpStatus.CONFLICT, "api_key_name_taken");
+      throw new DomainConflictException("api_key_name_taken");
     }
 
     String prefix = resolvePrefix(environment);
@@ -101,9 +107,14 @@ public class ApiKeyApplicationService {
 
     try {
       ApiKey savedKey = apiKeyRepository.save(apiKey);
+
+      // Publish and clear domain events
+      apiKey.getDomainEvents().forEach(event -> domainEventPublisherPort.publish(event.eventType(), event));
+      apiKey.clearDomainEvents();
+
       return toSecretResponse(savedKey, rawKey);
     } catch (DataIntegrityViolationException ex) {
-      throw new ResponseStatusException(HttpStatus.CONFLICT, "api_key_name_taken", ex);
+      throw new DomainConflictException("api_key_name_taken", ex);
     }
   }
 
@@ -138,19 +149,19 @@ public class ApiKeyApplicationService {
     return resolved == ApiKeyEnvironment.TEST ? TEST_KEY_PREFIX : LIVE_KEY_PREFIX;
   }
 
-  private void enforceOrgAccess(UUID orgId, OrgMemberPrincipal principal) {
+  private void enforceOrgAccess(UUID orgId, ApplicationPrincipal principal) {
     if (principal == null) {
       throw new IllegalStateException("Authenticated org member principal is required.");
     }
     if (!orgId.equals(principal.orgId())) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "org_access_denied");
+      throw new DomainForbiddenException("org_access_denied");
     }
   }
 
-  private void enforceAdminAccess(OrgMemberPrincipal principal) {
-    OrgMemberRole role = principal.role();
-    if (role != OrgMemberRole.OWNER && role != OrgMemberRole.ADMIN) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "insufficient_role");
+  private void enforceAdminAccess(ApplicationPrincipal principal) {
+    OrganizationMemberRole role = principal.role();
+    if (role != OrganizationMemberRole.OWNER && role != OrganizationMemberRole.ADMIN) {
+      throw new DomainForbiddenException("insufficient_role");
     }
   }
 
@@ -158,20 +169,20 @@ public class ApiKeyApplicationService {
     Project project =
         projectRepository
             .findById(projectId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "project_not_found"));
+            .orElseThrow(() -> new DomainNotFoundException("project_not_found"));
     if (!orgId.equals(project.getOrganization().getId())) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "project_not_found");
+      throw new DomainNotFoundException("project_not_found");
     }
     return project;
   }
 
   private String requireValue(String value, String errorCode) {
     if (value == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     String trimmed = value.trim();
     if (trimmed.isEmpty()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorCode);
+      throw new DomainValidationException(errorCode);
     }
     return trimmed;
   }

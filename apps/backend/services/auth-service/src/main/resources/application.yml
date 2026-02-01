@@ -18,6 +18,7 @@ spring:
 
   jpa:
     open-in-view: false
+    mapping-resources: classpath:META-INF/orm.xml
     hibernate:
       ddl-auto: validate
     properties:

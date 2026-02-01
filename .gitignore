@@ -83,3 +83,4 @@ logs/
 *.swo
 *~
 .docs/
+bin/

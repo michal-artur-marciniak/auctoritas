@@ -1,0 +1,169 @@
+package dev.auctoritas.auth.adapter.in.web;
+
+import dev.auctoritas.auth.adapter.out.security.OrganizationMemberPrincipal;
+import dev.auctoritas.auth.application.port.in.ApplicationPrincipal;
+import dev.auctoritas.auth.application.port.in.project.ProjectManagementUseCase;
+import jakarta.validation.Valid;
+import java.util.List;
+import java.util.UUID;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/v1/org/{orgId}/projects")
+public class ProjectController {
+  private final ProjectManagementUseCase projectManagementUseCase;
+
+  public ProjectController(ProjectManagementUseCase projectManagementUseCase) {
+    this.projectManagementUseCase = projectManagementUseCase;
+  }
+
+  @PreAuthorize("isAuthenticated()")
+  @PostMapping
+  public ResponseEntity<ProjectCreateResponse> createProject(
+      @PathVariable UUID orgId,
+      @Valid @RequestBody ProjectCreateRequest request,
+      @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(projectManagementUseCase.createProject(orgId, toApplicationPrincipal(principal), request));
+  }
+
+  @PreAuthorize("isAuthenticated()")
+  @GetMapping
+  public ResponseEntity<List<ProjectSummaryResponse>> listProjects(
+      @PathVariable UUID orgId, @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
+    return ResponseEntity.ok(projectManagementUseCase.listProjects(orgId, toApplicationPrincipal(principal)));
+  }
+
+  @PreAuthorize("isAuthenticated()")
+  @PutMapping("/{projectId}")
+  public ResponseEntity<ProjectSummaryResponse> updateProject(
+      @PathVariable UUID orgId,
+      @PathVariable UUID projectId,
+      @Valid @RequestBody ProjectUpdateRequest request,
+      @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
+    return ResponseEntity.ok(
+        projectManagementUseCase.updateProject(orgId, projectId, toApplicationPrincipal(principal), request));
+  }
+
+  @PreAuthorize("isAuthenticated()")
+  @DeleteMapping("/{projectId}")
+  public ResponseEntity<Void> deleteProject(
+      @PathVariable UUID orgId,
+      @PathVariable UUID projectId,
+      @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
+    projectManagementUseCase.deleteProject(orgId, projectId, toApplicationPrincipal(principal));
+    return ResponseEntity.noContent().build();
+  }
+
+  @PreAuthorize("isAuthenticated()")
+  @GetMapping("/{projectId}/settings")
+  public ResponseEntity<ProjectSettingsResponse> getProjectSettings(
+      @PathVariable UUID orgId,
+      @PathVariable UUID projectId,
+      @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
+    return ResponseEntity.ok(
+        projectManagementUseCase.getProjectSettings(orgId, projectId, toApplicationPrincipal(principal)));
+  }
+
+  @PreAuthorize("isAuthenticated()")
+  @PutMapping("/{projectId}/settings/password")
+  public ResponseEntity<ProjectSettingsResponse> updatePasswordSettings(
+      @PathVariable UUID orgId,
+      @PathVariable UUID projectId,
+      @Valid @RequestBody ProjectPasswordSettingsRequest request,
+      @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
+    return ResponseEntity.ok(
+        projectManagementUseCase.updatePasswordSettings(
+            orgId, projectId, toApplicationPrincipal(principal), request));
+  }
+
+  @PreAuthorize("isAuthenticated()")
+  @PutMapping("/{projectId}/settings/session")
+  public ResponseEntity<ProjectSettingsResponse> updateSessionSettings(
+      @PathVariable UUID orgId,
+      @PathVariable UUID projectId,
+      @Valid @RequestBody ProjectSessionSettingsRequest request,
+      @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
+    return ResponseEntity.ok(
+        projectManagementUseCase.updateSessionSettings(
+            orgId, projectId, toApplicationPrincipal(principal), request));
+  }
+
+  @PreAuthorize("isAuthenticated()")
+  @PutMapping("/{projectId}/settings/auth")
+  public ResponseEntity<ProjectSettingsResponse> updateAuthSettings(
+      @PathVariable UUID orgId,
+      @PathVariable UUID projectId,
+      @Valid @RequestBody ProjectAuthSettingsRequest request,
+      @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
+    return ResponseEntity.ok(
+        projectManagementUseCase.updateAuthSettings(
+            orgId, projectId, toApplicationPrincipal(principal), request));
+  }
+
+  @PreAuthorize("isAuthenticated()")
+  @PutMapping("/{projectId}/settings/oauth")
+  public ResponseEntity<ProjectSettingsResponse> updateOAuthSettings(
+      @PathVariable UUID orgId,
+      @PathVariable UUID projectId,
+      @Valid @RequestBody ProjectOAuthSettingsRequest request,
+      @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
+    return ResponseEntity.ok(
+        projectManagementUseCase.updateOAuthSettings(
+            orgId, projectId, toApplicationPrincipal(principal), request));
+  }
+
+  @PreAuthorize("isAuthenticated()")
+  @PostMapping("/{projectId}/api-keys")
+  public ResponseEntity<ApiKeySecretResponse> createApiKey(
+      @PathVariable UUID orgId,
+      @PathVariable UUID projectId,
+      @Valid @RequestBody ApiKeyCreateRequest request,
+      @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(
+            projectManagementUseCase.createApiKey(
+                orgId, projectId, toApplicationPrincipal(principal), request));
+  }
+
+  @PreAuthorize("isAuthenticated()")
+  @GetMapping("/{projectId}/api-keys")
+  public ResponseEntity<List<ApiKeySummaryResponse>> listApiKeys(
+      @PathVariable UUID orgId,
+      @PathVariable UUID projectId,
+      @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
+    return ResponseEntity.ok(
+        projectManagementUseCase.listApiKeys(orgId, projectId, toApplicationPrincipal(principal)));
+  }
+
+  @PreAuthorize("isAuthenticated()")
+  @DeleteMapping("/{projectId}/api-keys/{keyId}")
+  public ResponseEntity<Void> revokeApiKey(
+      @PathVariable UUID orgId,
+      @PathVariable UUID projectId,
+      @PathVariable UUID keyId,
+      @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
+    projectManagementUseCase.revokeApiKey(
+        orgId, projectId, keyId, toApplicationPrincipal(principal));
+    return ResponseEntity.noContent().build();
+  }
+
+  private ApplicationPrincipal toApplicationPrincipal(OrganizationMemberPrincipal principal) {
+    if (principal == null) {
+      return null;
+    }
+    return new ApplicationPrincipal(
+        principal.orgMemberId(), principal.orgId(), principal.email(), principal.role());
+  }
+}

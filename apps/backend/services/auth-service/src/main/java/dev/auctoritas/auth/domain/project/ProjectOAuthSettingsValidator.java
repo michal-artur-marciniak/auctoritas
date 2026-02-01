@@ -2,7 +2,6 @@ package dev.auctoritas.auth.domain.project;
 
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.project.ProjectOAuthSettingsUpdate.SecretUpdate;
-import dev.auctoritas.auth.entity.project.ProjectSettings;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashMap;
