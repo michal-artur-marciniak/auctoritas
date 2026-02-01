@@ -1,8 +1,8 @@
 package dev.auctoritas.auth.application;
 
-import dev.auctoritas.auth.api.EndUserPasswordForgotRequest;
-import dev.auctoritas.auth.api.EndUserPasswordResetRequest;
-import dev.auctoritas.auth.api.EndUserPasswordResetResponse;
+import dev.auctoritas.auth.interface.api.EndUserPasswordForgotRequest;
+import dev.auctoritas.auth.interface.api.EndUserPasswordResetRequest;
+import dev.auctoritas.auth.interface.api.EndUserPasswordResetResponse;
 import dev.auctoritas.auth.domain.exception.DomainException;
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.enduser.Password;

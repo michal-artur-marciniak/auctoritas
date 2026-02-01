@@ -3,9 +3,9 @@ package dev.auctoritas.auth.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import dev.auctoritas.auth.api.EndUserPasswordForgotRequest;
-import dev.auctoritas.auth.api.EndUserPasswordResetRequest;
-import dev.auctoritas.auth.api.EndUserPasswordResetResponse;
+import dev.auctoritas.auth.interface.api.EndUserPasswordForgotRequest;
+import dev.auctoritas.auth.interface.api.EndUserPasswordResetRequest;
+import dev.auctoritas.auth.interface.api.EndUserPasswordResetResponse;
 import dev.auctoritas.auth.domain.enduser.EndUser;
 import dev.auctoritas.auth.domain.enduser.EndUserPasswordHistory;
 import dev.auctoritas.auth.domain.enduser.EndUserPasswordResetToken;

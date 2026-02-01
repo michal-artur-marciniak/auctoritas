@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class OAuthAuthorizationRequestEntityListener {
 
-  static final String ENC_PREFIX = "ENC:";
+  private static final String ENC_PREFIX = "ENC:";
 
   private static volatile TextEncryptor oauthClientSecretEncryptor;
 

@@ -1,9 +1,9 @@
 package dev.auctoritas.auth.application;
 
-import dev.auctoritas.auth.api.OrgLoginRequest;
-import dev.auctoritas.auth.api.OrgLoginResponse;
-import dev.auctoritas.auth.api.OrgRefreshRequest;
-import dev.auctoritas.auth.api.OrgRefreshResponse;
+import dev.auctoritas.auth.interface.api.OrgLoginRequest;
+import dev.auctoritas.auth.interface.api.OrgLoginResponse;
+import dev.auctoritas.auth.interface.api.OrgRefreshRequest;
+import dev.auctoritas.auth.interface.api.OrgRefreshResponse;
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.organization.OrganizationMemberRefreshToken;
 import dev.auctoritas.auth.domain.organization.Organization;

@@ -3,8 +3,8 @@ package dev.auctoritas.auth.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import dev.auctoritas.auth.api.EndUserLoginResponse;
-import dev.auctoritas.auth.api.OAuthExchangeRequest;
+import dev.auctoritas.auth.interface.api.EndUserLoginResponse;
+import dev.auctoritas.auth.interface.api.OAuthExchangeRequest;
 import dev.auctoritas.auth.domain.enduser.EndUser;
 import dev.auctoritas.auth.domain.oauth.OAuthExchangeCode;
 import dev.auctoritas.auth.domain.organization.Organization;

@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.application.project;
 
-import dev.auctoritas.auth.api.ProjectOAuthSettingsRequest;
+import dev.auctoritas.auth.interface.api.ProjectOAuthSettingsRequest;
 import dev.auctoritas.auth.domain.exception.DomainForbiddenException;
 import dev.auctoritas.auth.domain.exception.DomainNotFoundException;
 import dev.auctoritas.auth.domain.project.ProjectOAuthSettingsUpdate;

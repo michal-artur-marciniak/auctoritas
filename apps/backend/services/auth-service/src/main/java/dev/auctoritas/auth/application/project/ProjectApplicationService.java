@@ -1,10 +1,10 @@
 package dev.auctoritas.auth.application.project;
 
-import dev.auctoritas.auth.api.ApiKeySecretResponse;
-import dev.auctoritas.auth.api.ProjectCreateRequest;
-import dev.auctoritas.auth.api.ProjectCreateResponse;
-import dev.auctoritas.auth.api.ProjectSummaryResponse;
-import dev.auctoritas.auth.api.ProjectUpdateRequest;
+import dev.auctoritas.auth.interface.api.ApiKeySecretResponse;
+import dev.auctoritas.auth.interface.api.ProjectCreateRequest;
+import dev.auctoritas.auth.interface.api.ProjectCreateResponse;
+import dev.auctoritas.auth.interface.api.ProjectSummaryResponse;
+import dev.auctoritas.auth.interface.api.ProjectUpdateRequest;
 import dev.auctoritas.auth.application.apikey.ApiKeyApplicationService;
 import dev.auctoritas.auth.domain.exception.DomainConflictException;
 import dev.auctoritas.auth.domain.exception.DomainForbiddenException;

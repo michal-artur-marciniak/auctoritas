@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.application;
 
-import dev.auctoritas.auth.api.EndUserRefreshRequest;
-import dev.auctoritas.auth.api.EndUserRefreshResponse;
+import dev.auctoritas.auth.interface.api.EndUserRefreshRequest;
+import dev.auctoritas.auth.interface.api.EndUserRefreshResponse;
 import dev.auctoritas.auth.domain.exception.DomainUnauthorizedException;
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.enduser.EndUser;

@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.application;
 
-import dev.auctoritas.auth.api.OrgRegistrationRequest;
-import dev.auctoritas.auth.api.OrgRegistrationResponse;
+import dev.auctoritas.auth.interface.api.OrgRegistrationRequest;
+import dev.auctoritas.auth.interface.api.OrgRegistrationResponse;
 import dev.auctoritas.auth.domain.exception.DomainConflictException;
 import dev.auctoritas.auth.domain.organization.OrganizationMemberRefreshToken;
 import dev.auctoritas.auth.domain.organization.Organization;

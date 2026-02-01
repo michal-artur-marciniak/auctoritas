@@ -1,8 +1,8 @@
 package dev.auctoritas.auth.application;
 
-import dev.auctoritas.auth.api.EndUserEmailVerificationRequest;
-import dev.auctoritas.auth.api.EndUserEmailVerificationResponse;
-import dev.auctoritas.auth.api.EndUserResendVerificationRequest;
+import dev.auctoritas.auth.interface.api.EndUserEmailVerificationRequest;
+import dev.auctoritas.auth.interface.api.EndUserEmailVerificationResponse;
+import dev.auctoritas.auth.interface.api.EndUserResendVerificationRequest;
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.enduser.EndUser;
 import dev.auctoritas.auth.domain.enduser.EndUserEmailVerificationDomainService;

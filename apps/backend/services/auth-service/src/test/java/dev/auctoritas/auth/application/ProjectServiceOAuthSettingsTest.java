@@ -3,7 +3,7 @@ package dev.auctoritas.auth.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import dev.auctoritas.auth.api.ProjectOAuthSettingsRequest;
+import dev.auctoritas.auth.interface.api.ProjectOAuthSettingsRequest;
 import dev.auctoritas.auth.domain.organization.Organization;
 import dev.auctoritas.auth.domain.project.Project;
 import dev.auctoritas.auth.domain.project.ProjectSettings;

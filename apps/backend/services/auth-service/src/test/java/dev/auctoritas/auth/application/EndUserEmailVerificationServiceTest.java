@@ -3,9 +3,9 @@ package dev.auctoritas.auth.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import dev.auctoritas.auth.api.EndUserEmailVerificationRequest;
-import dev.auctoritas.auth.api.EndUserEmailVerificationResponse;
-import dev.auctoritas.auth.api.EndUserResendVerificationRequest;
+import dev.auctoritas.auth.interface.api.EndUserEmailVerificationRequest;
+import dev.auctoritas.auth.interface.api.EndUserEmailVerificationResponse;
+import dev.auctoritas.auth.interface.api.EndUserResendVerificationRequest;
 import dev.auctoritas.auth.domain.enduser.EndUser;
 import dev.auctoritas.auth.domain.enduser.EndUserEmailVerificationToken;
 import dev.auctoritas.auth.domain.organization.Organization;

@@ -1,8 +1,8 @@
 package dev.auctoritas.auth.application.apikey;
 
-import dev.auctoritas.auth.api.ApiKeyCreateRequest;
-import dev.auctoritas.auth.api.ApiKeySecretResponse;
-import dev.auctoritas.auth.api.ApiKeySummaryResponse;
+import dev.auctoritas.auth.interface.api.ApiKeyCreateRequest;
+import dev.auctoritas.auth.interface.api.ApiKeySecretResponse;
+import dev.auctoritas.auth.interface.api.ApiKeySummaryResponse;
 import dev.auctoritas.auth.domain.exception.DomainConflictException;
 import dev.auctoritas.auth.domain.exception.DomainForbiddenException;
 import dev.auctoritas.auth.domain.exception.DomainNotFoundException;

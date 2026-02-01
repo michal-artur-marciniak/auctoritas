@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.application;
 
-import dev.auctoritas.auth.api.EndUserPasswordChangeRequest;
-import dev.auctoritas.auth.api.EndUserPasswordChangeResponse;
+import dev.auctoritas.auth.interface.api.EndUserPasswordChangeRequest;
+import dev.auctoritas.auth.interface.api.EndUserPasswordChangeResponse;
 import dev.auctoritas.auth.domain.exception.DomainUnauthorizedException;
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.enduser.Password;

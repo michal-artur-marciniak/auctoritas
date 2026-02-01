@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.application;
 
-import dev.auctoritas.auth.api.EndUserLoginRequest;
-import dev.auctoritas.auth.api.EndUserLoginResponse;
+import dev.auctoritas.auth.interface.api.EndUserLoginRequest;
+import dev.auctoritas.auth.interface.api.EndUserLoginResponse;
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.enduser.Email;
 import dev.auctoritas.auth.domain.enduser.EndUser;

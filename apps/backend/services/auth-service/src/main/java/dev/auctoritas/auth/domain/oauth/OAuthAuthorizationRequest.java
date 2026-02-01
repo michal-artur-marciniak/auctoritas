@@ -4,7 +4,6 @@ import dev.auctoritas.auth.domain.project.Project;
 import dev.auctoritas.auth.shared.persistence.BaseAuditEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EntityListeners;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -15,17 +14,17 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.security.crypto.encrypt.TextEncryptor;
-import dev.auctoritas.auth.infrastructure.persistence.OAuthAuthorizationRequestEntityListener;
 
 @Entity
 @Table(
     name = "oauth_authorization_requests",
     uniqueConstraints = @UniqueConstraint(columnNames = {"state_hash"}))
-@EntityListeners(OAuthAuthorizationRequestEntityListener.class)
 @Getter
 @Setter
 @NoArgsConstructor
 public class OAuthAuthorizationRequest extends BaseAuditEntity {
+
+  private static final String CODE_VERIFIER_ENC_PREFIX = "ENC:";
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "project_id", nullable = false)
@@ -52,11 +51,11 @@ public class OAuthAuthorizationRequest extends BaseAuditEntity {
       return codeVerifier;
     }
     String trimmed = codeVerifier.trim();
-    if (!trimmed.startsWith(OAuthAuthorizationRequestEntityListener.ENC_PREFIX)) {
+    if (!trimmed.startsWith(CODE_VERIFIER_ENC_PREFIX)) {
       throw new IllegalStateException("codeVerifier is not encrypted");
     }
     String ciphertext =
-        trimmed.substring(OAuthAuthorizationRequestEntityListener.ENC_PREFIX.length());
+        trimmed.substring(CODE_VERIFIER_ENC_PREFIX.length());
     return oauthClientSecretEncryptor.decrypt(ciphertext);
   }
 }

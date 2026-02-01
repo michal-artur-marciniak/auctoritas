@@ -3,8 +3,8 @@ package dev.auctoritas.auth.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import dev.auctoritas.auth.api.EndUserPasswordChangeRequest;
-import dev.auctoritas.auth.api.EndUserPasswordChangeResponse;
+import dev.auctoritas.auth.interface.api.EndUserPasswordChangeRequest;
+import dev.auctoritas.auth.interface.api.EndUserPasswordChangeResponse;
 import dev.auctoritas.auth.domain.enduser.EndUser;
 import dev.auctoritas.auth.domain.enduser.EndUserPasswordHistory;
 import dev.auctoritas.auth.domain.enduser.EndUserRefreshToken;
