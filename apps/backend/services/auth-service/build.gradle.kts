@@ -5,6 +5,7 @@ plugins {
 val bouncyCastleVersion = "1.79"
 val jjwtVersion = "0.12.6"
 val commonsCompressVersion = "1.27.1"
+val commonsCodecVersion = "1.17.1"
 
 dependencies {
   implementation("org.springframework.boot:spring-boot-starter-web")
@@ -17,6 +18,7 @@ dependencies {
   runtimeOnly("org.postgresql:postgresql")
   implementation("org.springframework.security:spring-security-crypto")
   implementation("org.bouncycastle:bcpkix-jdk18on:$bouncyCastleVersion")
+  implementation("commons-codec:commons-codec:$commonsCodecVersion")
   implementation("org.springframework.boot:spring-boot-starter-data-redis")
   implementation("org.springframework.boot:spring-boot-starter-amqp")
   implementation("io.jsonwebtoken:jjwt-api:$jjwtVersion")
