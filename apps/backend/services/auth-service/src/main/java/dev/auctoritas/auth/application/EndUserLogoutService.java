@@ -4,7 +4,7 @@ import dev.auctoritas.auth.domain.exception.DomainUnauthorizedException;
 import dev.auctoritas.auth.domain.project.ApiKey;
 import dev.auctoritas.auth.domain.enduser.EndUserRefreshTokenRepositoryPort;
 import dev.auctoritas.auth.domain.enduser.EndUserSessionRepositoryPort;
-import dev.auctoritas.auth.infrastructure.security.EndUserPrincipal;
+import dev.auctoritas.auth.adapter.out.security.EndUserPrincipal;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

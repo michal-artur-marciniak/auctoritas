@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.application.project;
 
-import dev.auctoritas.auth.interface.api.ProjectOAuthSettingsRequest;
+import dev.auctoritas.auth.adapter.in.web.ProjectOAuthSettingsRequest;
 import dev.auctoritas.auth.domain.exception.DomainForbiddenException;
 import dev.auctoritas.auth.domain.exception.DomainNotFoundException;
 import dev.auctoritas.auth.domain.project.ProjectOAuthSettingsUpdate;
@@ -10,7 +10,7 @@ import dev.auctoritas.auth.domain.project.Project;
 import dev.auctoritas.auth.domain.project.ProjectSettings;
 import dev.auctoritas.auth.domain.project.ProjectRepositoryPort;
 import dev.auctoritas.auth.domain.project.ProjectSettingsRepositoryPort;
-import dev.auctoritas.auth.infrastructure.security.OrganizationMemberPrincipal;
+import dev.auctoritas.auth.adapter.out.security.OrganizationMemberPrincipal;
 import java.util.UUID;
 import java.util.function.Consumer;
 import org.springframework.security.crypto.encrypt.TextEncryptor;

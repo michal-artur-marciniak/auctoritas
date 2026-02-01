@@ -1,8 +1,8 @@
 package dev.auctoritas.auth.application.apikey;
 
-import dev.auctoritas.auth.interface.api.ApiKeyCreateRequest;
-import dev.auctoritas.auth.interface.api.ApiKeySecretResponse;
-import dev.auctoritas.auth.interface.api.ApiKeySummaryResponse;
+import dev.auctoritas.auth.adapter.in.web.ApiKeyCreateRequest;
+import dev.auctoritas.auth.adapter.in.web.ApiKeySecretResponse;
+import dev.auctoritas.auth.adapter.in.web.ApiKeySummaryResponse;
 import dev.auctoritas.auth.domain.exception.DomainConflictException;
 import dev.auctoritas.auth.domain.exception.DomainForbiddenException;
 import dev.auctoritas.auth.domain.exception.DomainNotFoundException;
@@ -13,7 +13,7 @@ import dev.auctoritas.auth.domain.project.Project;
 import dev.auctoritas.auth.application.port.out.messaging.DomainEventPublisherPort;
 import dev.auctoritas.auth.domain.project.ProjectRepositoryPort;
 import dev.auctoritas.auth.application.port.out.security.TokenHasherPort;
-import dev.auctoritas.auth.infrastructure.security.OrganizationMemberPrincipal;
+import dev.auctoritas.auth.adapter.out.security.OrganizationMemberPrincipal;
 import dev.auctoritas.auth.application.apikey.ApiKeyService;
 import dev.auctoritas.auth.domain.project.ApiKeyEnvironment;
 import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;

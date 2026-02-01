@@ -1,15 +1,15 @@
 package dev.auctoritas.auth.application;
 
-import dev.auctoritas.auth.interface.api.EndUserEmailVerificationRequest;
-import dev.auctoritas.auth.interface.api.EndUserEmailVerificationResponse;
-import dev.auctoritas.auth.interface.api.EndUserResendVerificationRequest;
+import dev.auctoritas.auth.adapter.in.web.EndUserEmailVerificationRequest;
+import dev.auctoritas.auth.adapter.in.web.EndUserEmailVerificationResponse;
+import dev.auctoritas.auth.adapter.in.web.EndUserResendVerificationRequest;
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.enduser.EndUser;
 import dev.auctoritas.auth.domain.enduser.EndUserEmailVerificationDomainService;
 import dev.auctoritas.auth.domain.enduser.EndUserEmailVerificationToken;
 import dev.auctoritas.auth.domain.project.ApiKey;
 import dev.auctoritas.auth.domain.project.Project;
-import dev.auctoritas.auth.infrastructure.messaging.DomainEventPublisher;
+import dev.auctoritas.auth.adapter.out.messaging.DomainEventPublisher;
 import dev.auctoritas.auth.application.event.EmailVerificationResentEvent;
 import dev.auctoritas.auth.domain.enduser.EndUserEmailVerificationTokenRepositoryPort;
 import dev.auctoritas.auth.domain.enduser.EndUserRepositoryPort;

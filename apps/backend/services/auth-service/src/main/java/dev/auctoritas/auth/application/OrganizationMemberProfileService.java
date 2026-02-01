@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.application;
 
-import dev.auctoritas.auth.interface.api.OrganizationMemberProfileResponse;
+import dev.auctoritas.auth.adapter.in.web.OrganizationMemberProfileResponse;
 import dev.auctoritas.auth.domain.organization.OrganizationMember;
 import dev.auctoritas.auth.domain.organization.OrganizationMemberRepositoryPort;
 import jakarta.persistence.EntityNotFoundException;

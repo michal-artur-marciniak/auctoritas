@@ -1,8 +1,8 @@
 package dev.auctoritas.auth.application;
 
-import dev.auctoritas.auth.interface.api.EndUserPasswordForgotRequest;
-import dev.auctoritas.auth.interface.api.EndUserPasswordResetRequest;
-import dev.auctoritas.auth.interface.api.EndUserPasswordResetResponse;
+import dev.auctoritas.auth.adapter.in.web.EndUserPasswordForgotRequest;
+import dev.auctoritas.auth.adapter.in.web.EndUserPasswordResetRequest;
+import dev.auctoritas.auth.adapter.in.web.EndUserPasswordResetResponse;
 import dev.auctoritas.auth.domain.exception.DomainException;
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.enduser.Password;
@@ -14,7 +14,7 @@ import dev.auctoritas.auth.domain.enduser.EndUserPasswordResetToken;
 import dev.auctoritas.auth.domain.project.ApiKey;
 import dev.auctoritas.auth.domain.project.Project;
 import dev.auctoritas.auth.domain.project.ProjectSettings;
-import dev.auctoritas.auth.infrastructure.messaging.DomainEventPublisher;
+import dev.auctoritas.auth.adapter.out.messaging.DomainEventPublisher;
 import dev.auctoritas.auth.application.event.PasswordResetRequestedEvent;
 import dev.auctoritas.auth.domain.enduser.EndUserPasswordHistoryRepositoryPort;
 import dev.auctoritas.auth.domain.enduser.EndUserPasswordResetTokenRepositoryPort;

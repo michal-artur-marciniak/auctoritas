@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.application;
 
-import dev.auctoritas.auth.interface.api.EndUserPasswordChangeRequest;
-import dev.auctoritas.auth.interface.api.EndUserPasswordChangeResponse;
+import dev.auctoritas.auth.adapter.in.web.EndUserPasswordChangeRequest;
+import dev.auctoritas.auth.adapter.in.web.EndUserPasswordChangeResponse;
 import dev.auctoritas.auth.domain.exception.DomainUnauthorizedException;
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.enduser.Password;
@@ -17,7 +17,7 @@ import dev.auctoritas.auth.domain.enduser.EndUserPasswordHistoryRepositoryPort;
 import dev.auctoritas.auth.domain.enduser.EndUserRefreshTokenRepositoryPort;
 import dev.auctoritas.auth.domain.enduser.EndUserRepositoryPort;
 import dev.auctoritas.auth.domain.enduser.EndUserSessionRepositoryPort;
-import dev.auctoritas.auth.infrastructure.security.EndUserPrincipal;
+import dev.auctoritas.auth.adapter.out.security.EndUserPrincipal;
 import java.util.UUID;
 
 import org.springframework.security.crypto.password.PasswordEncoder;

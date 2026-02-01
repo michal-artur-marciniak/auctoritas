@@ -1,10 +1,10 @@
 package dev.auctoritas.auth.application.project;
 
-import dev.auctoritas.auth.interface.api.ApiKeySecretResponse;
-import dev.auctoritas.auth.interface.api.ProjectCreateRequest;
-import dev.auctoritas.auth.interface.api.ProjectCreateResponse;
-import dev.auctoritas.auth.interface.api.ProjectSummaryResponse;
-import dev.auctoritas.auth.interface.api.ProjectUpdateRequest;
+import dev.auctoritas.auth.adapter.in.web.ApiKeySecretResponse;
+import dev.auctoritas.auth.adapter.in.web.ProjectCreateRequest;
+import dev.auctoritas.auth.adapter.in.web.ProjectCreateResponse;
+import dev.auctoritas.auth.adapter.in.web.ProjectSummaryResponse;
+import dev.auctoritas.auth.adapter.in.web.ProjectUpdateRequest;
 import dev.auctoritas.auth.application.apikey.ApiKeyApplicationService;
 import dev.auctoritas.auth.domain.exception.DomainConflictException;
 import dev.auctoritas.auth.domain.exception.DomainForbiddenException;
@@ -16,7 +16,7 @@ import dev.auctoritas.auth.domain.organization.Organization;
 import dev.auctoritas.auth.domain.project.Project;
 import dev.auctoritas.auth.domain.organization.OrganizationRepositoryPort;
 import dev.auctoritas.auth.domain.project.ProjectRepositoryPort;
-import dev.auctoritas.auth.infrastructure.security.OrganizationMemberPrincipal;
+import dev.auctoritas.auth.adapter.out.security.OrganizationMemberPrincipal;
 import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
 import java.util.List;
 import java.util.UUID;

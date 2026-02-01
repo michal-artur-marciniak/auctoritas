@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.infrastructure.config;
 
-import dev.auctoritas.auth.infrastructure.security.JwtAuthenticationFilter;
+import dev.auctoritas.auth.adapter.out.security.JwtAuthenticationFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
