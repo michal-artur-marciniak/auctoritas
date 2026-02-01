@@ -6,6 +6,7 @@ val bouncyCastleVersion = "1.79"
 val jjwtVersion = "0.12.6"
 val commonsCompressVersion = "1.27.1"
 val commonsCodecVersion = "1.17.1"
+val zxingVersion = "3.5.3"
 
 dependencies {
   implementation("org.springframework.boot:spring-boot-starter-web")
@@ -26,6 +27,8 @@ dependencies {
   runtimeOnly("io.jsonwebtoken:jjwt-jackson:$jjwtVersion")
   implementation("org.springframework.boot:spring-boot-starter-security")
   implementation("net.logstash.logback:logstash-logback-encoder:9.0")
+  implementation("com.google.zxing:core:$zxingVersion")
+  implementation("com.google.zxing:javase:$zxingVersion")
 
   testImplementation("org.springframework.boot:spring-boot-starter-test")
   testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
