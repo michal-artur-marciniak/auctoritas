@@ -5,6 +5,9 @@ import dev.auctoritas.auth.adapter.in.web.OrgLoginResponse;
 import dev.auctoritas.auth.adapter.in.web.OrgRefreshRequest;
 import dev.auctoritas.auth.adapter.in.web.OrgRefreshResponse;
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
+import dev.auctoritas.auth.domain.mfa.MfaChallenge;
+import dev.auctoritas.auth.domain.mfa.MfaChallengeRepositoryPort;
+import dev.auctoritas.auth.domain.organization.OrganizationMemberMfaRepositoryPort;
 import dev.auctoritas.auth.domain.organization.OrganizationMemberRefreshToken;
 import dev.auctoritas.auth.domain.organization.Organization;
 import dev.auctoritas.auth.domain.organization.OrganizationMember;
@@ -28,6 +31,8 @@ public class OrgAuthService implements dev.auctoritas.auth.application.port.in.o
   private final OrganizationRepositoryPort organizationRepository;
   private final OrganizationMemberRepositoryPort organizationMemberRepository;
   private final OrganizationMemberRefreshTokenRepositoryPort refreshTokenRepository;
+  private final OrganizationMemberMfaRepositoryPort orgMemberMfaRepository;
+  private final MfaChallengeRepositoryPort mfaChallengeRepository;
   private final PasswordEncoder passwordEncoder;
   private final TokenService tokenService;
   private final JwtService jwtService;
@@ -38,6 +43,8 @@ public class OrgAuthService implements dev.auctoritas.auth.application.port.in.o
       OrganizationRepositoryPort organizationRepository,
       OrganizationMemberRepositoryPort organizationMemberRepository,
       OrganizationMemberRefreshTokenRepositoryPort refreshTokenRepository,
+      OrganizationMemberMfaRepositoryPort orgMemberMfaRepository,
+      MfaChallengeRepositoryPort mfaChallengeRepository,
       PasswordEncoder passwordEncoder,
       TokenService tokenService,
       JwtService jwtService,
@@ -46,6 +53,8 @@ public class OrgAuthService implements dev.auctoritas.auth.application.port.in.o
     this.organizationRepository = organizationRepository;
     this.organizationMemberRepository = organizationMemberRepository;
     this.refreshTokenRepository = refreshTokenRepository;
+    this.orgMemberMfaRepository = orgMemberMfaRepository;
+    this.mfaChallengeRepository = mfaChallengeRepository;
     this.passwordEncoder = passwordEncoder;
     this.tokenService = tokenService;
     this.jwtService = jwtService;
@@ -54,28 +63,37 @@ public class OrgAuthService implements dev.auctoritas.auth.application.port.in.o
   }
 
   public OrgLoginResponse login(OrgLoginRequest request) {
-    LoginContext context = transactionTemplate.execute(status -> loginInTransaction(request));
-    if (context == null) {
+    LoginResult result = transactionTemplate.execute(status -> loginInTransaction(request));
+    if (result == null) {
       throw new IllegalStateException("org_login_failed");
     }
 
+    if (result instanceof LoginResult.MfaChallenge challenge) {
+      return OrgLoginResponse.mfaChallenge(challenge.mfaToken());
+    }
+
+    LoginResult.Success success = (LoginResult.Success) result;
     String accessToken =
         jwtService.generateAccessToken(
-            context.memberId(),
-            context.organizationId(),
-            context.memberEmail(),
-            context.memberRole());
+            success.member().getId(),
+            success.organization().getId(),
+            success.member().getEmail(),
+            success.member().getRole());
 
-    return new OrgLoginResponse(
+    return OrgLoginResponse.success(
         new OrgLoginResponse.OrganizationSummary(
-            context.organizationId(), context.organizationName(), context.organizationSlug()),
+            success.organization().getId(),
+            success.organization().getName(),
+            success.organization().getSlug()),
         new OrgLoginResponse.MemberSummary(
-            context.memberId(), context.memberEmail(), context.memberRole()),
+            success.member().getId(),
+            success.member().getEmail(),
+            success.member().getRole()),
         accessToken,
-        context.rawRefreshToken());
+        success.rawRefreshToken());
   }
 
-  private LoginContext loginInTransaction(OrgLoginRequest request) {
+  private LoginResult loginInTransaction(OrgLoginRequest request) {
     String slug = normalizeSlug(requireValue(request.orgSlug(), "org_slug_required"));
     String email = normalizeEmail(requireValue(request.email(), "email_required"));
     String password = requireValue(request.password(), "password_required");
@@ -100,17 +118,33 @@ public class OrgAuthService implements dev.auctoritas.auth.application.port.in.o
       throw new DomainValidationException("email_not_verified");
     }
 
+    // Check if MFA is enabled for the member
+    boolean memberMfaEnabled = orgMemberMfaRepository.isEnabledByMemberId(member.getId());
+
+    if (memberMfaEnabled) {
+      // Create MFA challenge
+      String mfaToken = tokenService.generateMfaChallengeToken();
+      Instant expiresAt = tokenService.getMfaChallengeTokenExpiry();
+      MfaChallenge challenge = MfaChallenge.createForMember(member, organization, mfaToken, expiresAt);
+      MfaChallenge savedChallenge = mfaChallengeRepository.save(challenge);
+
+      // Publish challenge events
+      savedChallenge.getDomainEvents().forEach(event ->
+          domainEventPublisherPort.publish(event.eventType(), event));
+      savedChallenge.clearDomainEvents();
+
+      return new LoginResult.MfaChallenge(mfaToken);
+    }
+
     String rawRefreshToken = tokenService.generateRefreshToken();
     persistRefreshToken(member, rawRefreshToken, null, null);
 
-    return new LoginContext(
-        organization.getId(),
-        organization.getName(),
-        organization.getSlug(),
-        member.getId(),
-        member.getEmail(),
-        member.getRole(),
-        rawRefreshToken);
+    return new LoginResult.Success(organization, member, rawRefreshToken);
+  }
+
+  private sealed interface LoginResult {
+    record Success(Organization organization, OrganizationMember member, String rawRefreshToken) implements LoginResult {}
+    record MfaChallenge(String mfaToken) implements LoginResult {}
   }
 
   public OrgRefreshResponse refresh(OrgRefreshRequest request) {
