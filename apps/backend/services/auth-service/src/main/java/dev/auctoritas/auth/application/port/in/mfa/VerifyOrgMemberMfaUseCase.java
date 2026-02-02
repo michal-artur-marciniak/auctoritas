@@ -1,6 +1,7 @@
 package dev.auctoritas.auth.application.port.in.mfa;
 
-import dev.auctoritas.auth.adapter.out.security.OrganizationMemberPrincipal;
+import dev.auctoritas.auth.application.mfa.VerifyMfaResult;
+import dev.auctoritas.auth.application.port.in.ApplicationPrincipal;
 
 /**
  * Use case for verifying MFA setup for an organization member.
@@ -13,6 +14,7 @@ public interface VerifyOrgMemberMfaUseCase {
    *
    * @param principal the authenticated organization member
    * @param code the 6-digit TOTP code to verify
+   * @return result containing recovery codes (shown once)
    */
-  void verifyMfa(OrganizationMemberPrincipal principal, String code);
+  VerifyMfaResult verifyMfa(ApplicationPrincipal principal, String code);
 }

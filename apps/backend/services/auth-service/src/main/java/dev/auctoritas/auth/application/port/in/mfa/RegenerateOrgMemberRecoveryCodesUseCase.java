@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.application.port.in.mfa;
 
-import dev.auctoritas.auth.adapter.out.security.OrganizationMemberPrincipal;
 import dev.auctoritas.auth.application.mfa.RegenerateRecoveryCodesResult;
+import dev.auctoritas.auth.application.port.in.ApplicationPrincipal;
 
 /**
  * Use case for regenerating recovery codes for an organization member.
@@ -17,5 +17,5 @@ public interface RegenerateOrgMemberRecoveryCodesUseCase {
    * @param code the TOTP code to verify before regenerating
    * @return result containing the new recovery codes (shown once)
    */
-  RegenerateRecoveryCodesResult regenerateRecoveryCodes(OrganizationMemberPrincipal principal, String code);
+  RegenerateRecoveryCodesResult regenerateRecoveryCodes(ApplicationPrincipal principal, String code);
 }

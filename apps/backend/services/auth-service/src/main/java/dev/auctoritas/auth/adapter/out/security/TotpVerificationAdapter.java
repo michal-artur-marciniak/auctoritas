@@ -2,7 +2,9 @@ package dev.auctoritas.auth.adapter.out.security;
 
 import dev.auctoritas.auth.application.port.out.security.TotpVerificationPort;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -38,7 +40,7 @@ public class TotpVerificationAdapter implements TotpVerificationPort {
       // Check codes in the time window (before and after current time)
       for (int i = -timeWindow; i <= timeWindow; i++) {
         String expectedCode = generateCode(secret, currentTimeStep + i);
-        if (expectedCode.equals(code)) {
+        if (codesMatch(expectedCode, code)) {
           return true;
         }
       }
@@ -87,5 +89,14 @@ public class TotpVerificationAdapter implements TotpVerificationPort {
     } catch (NoSuchAlgorithmException | InvalidKeyException e) {
       throw new RuntimeException("Failed to generate TOTP code", e);
     }
+  }
+
+  private boolean codesMatch(String expectedCode, String providedCode) {
+    if (expectedCode == null || providedCode == null) {
+      return false;
+    }
+    return MessageDigest.isEqual(
+        expectedCode.getBytes(StandardCharsets.UTF_8),
+        providedCode.getBytes(StandardCharsets.UTF_8));
   }
 }

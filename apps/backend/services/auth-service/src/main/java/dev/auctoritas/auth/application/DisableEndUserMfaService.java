@@ -1,8 +1,8 @@
 package dev.auctoritas.auth.application;
 
-import dev.auctoritas.auth.adapter.out.security.EndUserPrincipal;
 import dev.auctoritas.auth.application.apikey.ApiKeyService;
 import dev.auctoritas.auth.application.port.in.mfa.DisableMfaUseCase;
+import dev.auctoritas.auth.application.port.in.mfa.EndUserMfaPrincipal;
 import dev.auctoritas.auth.application.port.out.messaging.DomainEventPublisherPort;
 import dev.auctoritas.auth.application.port.out.security.EncryptionPort;
 import dev.auctoritas.auth.application.port.out.security.TotpVerificationPort;
@@ -60,7 +60,7 @@ public class DisableEndUserMfaService implements DisableMfaUseCase {
 
   @Override
   @Transactional
-  public void disableMfa(String apiKey, EndUserPrincipal principal, String code) {
+  public void disableMfa(String apiKey, EndUserMfaPrincipal principal, String code) {
     // Validate API key and get project
     ApiKey resolvedKey = apiKeyService.validateActiveKey(apiKey);
     Project project = resolvedKey.getProject();

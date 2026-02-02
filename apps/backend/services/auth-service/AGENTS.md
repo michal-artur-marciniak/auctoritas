@@ -24,7 +24,7 @@ When implementing MFA features, follow this hexagonal architecture pattern:
 
 ### Key Dependencies
 
-- **Encryption**: Use `EncryptionPort` for TOTP secrets (AES-256-GCM) and recovery codes
+- **Encryption**: Use `EncryptionPort` (AES-256-GCM) for TOTP secrets only; recovery codes are SHA-256 hashed (not encrypted)
 - **QR Codes**: Use `QrCodeGeneratorPort` to generate authenticator app QR codes
 - **API Key Validation**: Always validate API key via `ApiKeyService.validateActiveKey()`
 - **Project Validation**: Verify principal's project matches API key's project for security
@@ -63,6 +63,6 @@ MFA challenge flow for organization members mirrors the end-user flow with key d
 
 ### Testing Requirements
 
-- All MFA endpoints require end-user JWT + X-API-Key
+- End-user MFA endpoints require end-user JWT + X-API-Key; org-member endpoints use JWT-only (no X-API-Key header)
 - Run `./gradlew :services:auth-service:test` before committing
 - Ensure type safety with no compiler warnings

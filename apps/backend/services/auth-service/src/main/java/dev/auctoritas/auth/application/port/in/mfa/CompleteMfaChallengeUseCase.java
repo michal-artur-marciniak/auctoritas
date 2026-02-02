@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.application.port.in.mfa;
 
-import dev.auctoritas.auth.adapter.in.web.EndUserLoginResponse;
+import dev.auctoritas.auth.application.port.in.enduser.EndUserLoginResult;
 
 /**
  * Use case for completing an MFA challenge during login.
@@ -19,7 +19,7 @@ public interface CompleteMfaChallengeUseCase {
    * @param userAgent the client user agent
    * @return login response with tokens
    */
-  EndUserLoginResponse completeChallenge(
+  EndUserLoginResult completeChallenge(
       String apiKey,
       String mfaToken,
       String code,

@@ -80,6 +80,7 @@ public class OrganizationMemberMfa extends BaseAuditEntity {
     }
 
     OrganizationMemberMfa mfa = new OrganizationMemberMfa();
+    mfa.setId(UUID.randomUUID());
     mfa.member = member;
     mfa.organization = organization;
     mfa.encryptedSecret = secret.encryptedValue();

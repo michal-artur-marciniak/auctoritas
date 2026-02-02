@@ -1,8 +1,9 @@
 package dev.auctoritas.auth.application;
 
-import dev.auctoritas.auth.adapter.out.security.EndUserPrincipal;
 import dev.auctoritas.auth.application.apikey.ApiKeyService;
+import dev.auctoritas.auth.application.mfa.RecoveryCodeHasher;
 import dev.auctoritas.auth.application.mfa.RegenerateRecoveryCodesResult;
+import dev.auctoritas.auth.application.port.in.mfa.EndUserMfaPrincipal;
 import dev.auctoritas.auth.application.port.in.mfa.RegenerateRecoveryCodesUseCase;
 import dev.auctoritas.auth.application.port.out.messaging.DomainEventPublisherPort;
 import dev.auctoritas.auth.application.port.out.security.EncryptionPort;
@@ -19,12 +20,8 @@ import dev.auctoritas.auth.domain.mfa.RecoveryCodeRepositoryPort;
 import dev.auctoritas.auth.domain.mfa.RecoveryCodesRegeneratedEvent;
 import dev.auctoritas.auth.domain.project.ApiKey;
 import dev.auctoritas.auth.domain.project.Project;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -72,7 +69,7 @@ public class RegenerateRecoveryCodesService implements RegenerateRecoveryCodesUs
 
   @Override
   @Transactional
-  public RegenerateRecoveryCodesResult regenerateRecoveryCodes(String apiKey, EndUserPrincipal principal, String code) {
+  public RegenerateRecoveryCodesResult regenerateRecoveryCodes(String apiKey, EndUserMfaPrincipal principal, String code) {
     // Validate API key and get project
     ApiKey resolvedKey = apiKeyService.validateActiveKey(apiKey);
     Project project = resolvedKey.getProject();
@@ -120,7 +117,7 @@ public class RegenerateRecoveryCodesService implements RegenerateRecoveryCodesUs
     String[] recoveryCodes = encryptionPort.generateRecoveryCodes(RECOVERY_CODE_COUNT);
     List<MfaRecoveryCode> recoveryCodeEntities = Arrays.stream(recoveryCodes)
         .map(codePlain -> {
-          String codeHash = hashRecoveryCode(codePlain);
+           String codeHash = RecoveryCodeHasher.hash(codePlain);
           return MfaRecoveryCode.createForUser(user, codeHash);
         })
         .collect(Collectors.toList());
@@ -147,13 +144,4 @@ public class RegenerateRecoveryCodesService implements RegenerateRecoveryCodesUs
     return new RegenerateRecoveryCodesResult(Arrays.asList(recoveryCodes));
   }
 
-  private String hashRecoveryCode(String code) {
-    try {
-      MessageDigest digest = MessageDigest.getInstance("SHA-256");
-      byte[] hash = digest.digest(code.getBytes(StandardCharsets.UTF_8));
-      return Base64.getEncoder().encodeToString(hash);
-    } catch (NoSuchAlgorithmException e) {
-      throw new RuntimeException("SHA-256 algorithm not available", e);
-    }
-  }
 }

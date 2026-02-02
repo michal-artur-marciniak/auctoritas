@@ -62,4 +62,13 @@ public interface RecoveryCodeRepositoryPort {
    * @param id the recovery code ID
    */
   void markAsUsed(UUID id);
+
+  /**
+   * Marks an unused recovery code as used for a member.
+   *
+   * @param memberId the member ID
+   * @param codeHash the SHA-256 hash of the recovery code
+   * @return true if a code was marked as used
+   */
+  boolean markUnusedCodeAsUsedForMember(UUID memberId, String codeHash);
 }

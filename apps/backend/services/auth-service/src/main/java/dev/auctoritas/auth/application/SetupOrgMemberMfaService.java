@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.application;
 
-import dev.auctoritas.auth.adapter.out.security.OrganizationMemberPrincipal;
 import dev.auctoritas.auth.application.mfa.SetupMfaResult;
+import dev.auctoritas.auth.application.port.in.ApplicationPrincipal;
 import dev.auctoritas.auth.application.port.in.mfa.SetupOrgMemberMfaUseCase;
 import dev.auctoritas.auth.application.port.out.messaging.DomainEventPublisherPort;
 import dev.auctoritas.auth.application.port.out.mfa.QrCodeGeneratorPort;
@@ -14,7 +14,6 @@ import dev.auctoritas.auth.domain.organization.OrganizationMember;
 import dev.auctoritas.auth.domain.organization.OrganizationMemberMfa;
 import dev.auctoritas.auth.domain.organization.OrganizationMemberMfaRepositoryPort;
 import dev.auctoritas.auth.domain.organization.OrganizationMemberRepositoryPort;
-import java.util.Arrays;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,8 +30,6 @@ import static net.logstash.logback.argument.StructuredArguments.kv;
 public class SetupOrgMemberMfaService implements SetupOrgMemberMfaUseCase {
 
   private static final Logger log = LoggerFactory.getLogger(SetupOrgMemberMfaService.class);
-  private static final int RECOVERY_CODE_COUNT = 10;
-
   private final OrganizationMemberRepositoryPort orgMemberRepository;
   private final OrganizationMemberMfaRepositoryPort orgMemberMfaRepository;
   private final EncryptionPort encryptionPort;
@@ -54,9 +51,9 @@ public class SetupOrgMemberMfaService implements SetupOrgMemberMfaUseCase {
 
   @Override
   @Transactional
-  public SetupMfaResult setupMfa(OrganizationMemberPrincipal principal) {
+  public SetupMfaResult setupMfa(ApplicationPrincipal principal) {
     // Load organization member
-    OrganizationMember member = orgMemberRepository.findById(principal.orgMemberId())
+    OrganizationMember member = orgMemberRepository.findById(principal.memberId())
         .orElseThrow(() -> new DomainNotFoundException("org_member_not_found"));
 
     Organization organization = member.getOrganization();
@@ -72,9 +69,6 @@ public class SetupOrgMemberMfaService implements SetupOrgMemberMfaUseCase {
     // Generate TOTP secret (plain for response, encrypted for storage)
     String plainSecret = encryptionPort.generateTotpSecret();
     String encryptedSecret = encryptionPort.encrypt(plainSecret);
-
-    // Generate recovery codes
-    String[] recoveryCodes = encryptionPort.generateRecoveryCodes(RECOVERY_CODE_COUNT);
 
     // Create OrganizationMemberMfa aggregate (not enabled until verified)
     OrganizationMemberMfa mfa = OrganizationMemberMfa.create(member, organization, TotpSecret.of(encryptedSecret));
@@ -101,7 +95,8 @@ public class SetupOrgMemberMfaService implements SetupOrgMemberMfaUseCase {
     return new SetupMfaResult(
         plainSecret,
         qrCodeUrl,
-        Arrays.asList(recoveryCodes)
+        List.of()
     );
   }
+
 }

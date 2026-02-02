@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.application;
 
-import dev.auctoritas.auth.adapter.out.security.OrganizationMemberPrincipal;
 import dev.auctoritas.auth.application.port.in.mfa.DisableOrgMemberMfaUseCase;
+import dev.auctoritas.auth.application.port.in.ApplicationPrincipal;
 import dev.auctoritas.auth.application.port.out.messaging.DomainEventPublisherPort;
 import dev.auctoritas.auth.application.port.out.security.EncryptionPort;
 import dev.auctoritas.auth.application.port.out.security.TotpVerificationPort;
@@ -53,9 +53,9 @@ public class DisableOrgMemberMfaService implements DisableOrgMemberMfaUseCase {
 
   @Override
   @Transactional
-  public void disableMfa(OrganizationMemberPrincipal principal, String code) {
+  public void disableMfa(ApplicationPrincipal principal, String code) {
     // Load organization member
-    OrganizationMember member = orgMemberRepository.findById(principal.orgMemberId())
+    OrganizationMember member = orgMemberRepository.findById(principal.memberId())
         .orElseThrow(() -> new DomainNotFoundException("org_member_not_found"));
 
     // Find MFA settings for member

@@ -1,7 +1,8 @@
 package dev.auctoritas.auth.application;
 
-import dev.auctoritas.auth.adapter.out.security.OrganizationMemberPrincipal;
+import dev.auctoritas.auth.application.mfa.RecoveryCodeHasher;
 import dev.auctoritas.auth.application.mfa.RegenerateRecoveryCodesResult;
+import dev.auctoritas.auth.application.port.in.ApplicationPrincipal;
 import dev.auctoritas.auth.application.port.in.mfa.RegenerateOrgMemberRecoveryCodesUseCase;
 import dev.auctoritas.auth.application.port.out.messaging.DomainEventPublisherPort;
 import dev.auctoritas.auth.application.port.out.security.EncryptionPort;
@@ -15,12 +16,8 @@ import dev.auctoritas.auth.domain.organization.OrganizationMember;
 import dev.auctoritas.auth.domain.organization.OrganizationMemberMfa;
 import dev.auctoritas.auth.domain.organization.OrganizationMemberMfaRepositoryPort;
 import dev.auctoritas.auth.domain.organization.OrganizationMemberRepositoryPort;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -65,9 +62,9 @@ public class RegenerateOrgMemberRecoveryCodesService implements RegenerateOrgMem
 
   @Override
   @Transactional
-  public RegenerateRecoveryCodesResult regenerateRecoveryCodes(OrganizationMemberPrincipal principal, String code) {
+  public RegenerateRecoveryCodesResult regenerateRecoveryCodes(ApplicationPrincipal principal, String code) {
     // Load organization member
-    OrganizationMember member = orgMemberRepository.findById(principal.orgMemberId())
+    OrganizationMember member = orgMemberRepository.findById(principal.memberId())
         .orElseThrow(() -> new DomainNotFoundException("org_member_not_found"));
 
     // Find MFA settings for member
@@ -103,7 +100,7 @@ public class RegenerateOrgMemberRecoveryCodesService implements RegenerateOrgMem
     String[] recoveryCodes = encryptionPort.generateRecoveryCodes(RECOVERY_CODE_COUNT);
     List<MfaRecoveryCode> recoveryCodeEntities = Arrays.stream(recoveryCodes)
         .map(codePlain -> {
-          String codeHash = hashRecoveryCode(codePlain);
+           String codeHash = RecoveryCodeHasher.hash(codePlain);
           return MfaRecoveryCode.createForMember(member, codeHash);
         })
         .collect(Collectors.toList());
@@ -130,13 +127,4 @@ public class RegenerateOrgMemberRecoveryCodesService implements RegenerateOrgMem
     return new RegenerateRecoveryCodesResult(Arrays.asList(recoveryCodes));
   }
 
-  private String hashRecoveryCode(String code) {
-    try {
-      MessageDigest digest = MessageDigest.getInstance("SHA-256");
-      byte[] hash = digest.digest(code.getBytes(StandardCharsets.UTF_8));
-      return Base64.getEncoder().encodeToString(hash);
-    } catch (NoSuchAlgorithmException e) {
-      throw new RuntimeException("SHA-256 algorithm not available", e);
-    }
-  }
 }

@@ -28,6 +28,9 @@ auctoritas:
     public-key: "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAv0/lSere7gQJiRZ0l2mt\nG1fr9hzS+YzJWkCWnkLzxAmXTlD/6LOeboMEL676d8wkOX16znJQt5mS7E3PYNg4\nAbh4heF340fxik5YcMnOJ76G2DT8qFO5qE7FKPBNGw1RU9AtXrNpSngUC3c+4T+4\nI0XyQsJLU+OSk8f+qGyybjacEU1BS6uc0ecnX5lqvDu2Fsqbm18qdDvwNZFu6bgf\nwDSrVCT9bHoWX85GxeZs+EpJ9lwEOfa8v2aHR2CdELbHpkzcfD4bupUa0iCiuzi2\nIUQQ9J+mU/8W1btpBDrkv8RE6GmdsKZLXyIyqxNwuVtGNqW+Ph/72aCuJ6ECNqEk\nIQIDAQAB\n-----END PUBLIC KEY-----"
 
   auth:
+    mfa:
+      encryption:
+        key: ${MFA_ENCRYPTION_KEY:ZGV2LW1mYS1lbmNyeXB0aW9uLWtleS0zMi1ieXRlcyE=}
     oauth:
       encryption:
         key: test-oauth-encryption-key

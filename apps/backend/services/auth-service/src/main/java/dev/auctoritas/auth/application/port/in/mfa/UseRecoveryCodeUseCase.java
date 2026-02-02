@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.application.port.in.mfa;
 
-import dev.auctoritas.auth.adapter.in.web.EndUserLoginResponse;
+import dev.auctoritas.auth.application.port.in.enduser.EndUserLoginResult;
 
 /**
  * Use case for using a recovery code to complete login.
@@ -19,7 +19,7 @@ public interface UseRecoveryCodeUseCase {
    * @param userAgent the client user agent
    * @return login response with tokens
    */
-  EndUserLoginResponse useRecoveryCode(
+  EndUserLoginResult useRecoveryCode(
       String apiKey,
       String mfaToken,
       String recoveryCode,

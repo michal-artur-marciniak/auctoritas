@@ -31,6 +31,19 @@ public interface MfaRecoveryCodeRepository extends JpaRepository<MfaRecoveryCode
   @Query("UPDATE MfaRecoveryCode r SET r.usedAt = :usedAt WHERE r.id = :id")
   void markAsUsed(@Param("id") UUID id, @Param("usedAt") Instant usedAt);
 
+  @Modifying
+  @Query("""
+      UPDATE MfaRecoveryCode r
+      SET r.usedAt = :usedAt
+      WHERE r.member.id = :memberId
+        AND r.codeHash = :codeHash
+        AND r.usedAt IS NULL
+      """)
+  int markUnusedCodeAsUsedForMember(
+      @Param("memberId") UUID memberId,
+      @Param("codeHash") String codeHash,
+      @Param("usedAt") Instant usedAt);
+
   List<MfaRecoveryCode> findByUserIdAndUsedAtIsNull(UUID userId);
 
   List<MfaRecoveryCode> findByMemberIdAndUsedAtIsNull(UUID memberId);

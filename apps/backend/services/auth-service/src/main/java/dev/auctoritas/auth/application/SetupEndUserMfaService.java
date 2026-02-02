@@ -1,8 +1,9 @@
 package dev.auctoritas.auth.application;
 
-import dev.auctoritas.auth.adapter.out.security.EndUserPrincipal;
 import dev.auctoritas.auth.application.apikey.ApiKeyService;
+import dev.auctoritas.auth.application.mfa.RecoveryCodeHasher;
 import dev.auctoritas.auth.application.mfa.SetupMfaResult;
+import dev.auctoritas.auth.application.port.in.mfa.EndUserMfaPrincipal;
 import dev.auctoritas.auth.application.port.in.mfa.SetupMfaUseCase;
 import dev.auctoritas.auth.application.port.out.messaging.DomainEventPublisherPort;
 import dev.auctoritas.auth.application.port.out.mfa.QrCodeGeneratorPort;
@@ -13,11 +14,14 @@ import dev.auctoritas.auth.domain.exception.DomainNotFoundException;
 import dev.auctoritas.auth.domain.exception.DomainUnauthorizedException;
 import dev.auctoritas.auth.domain.mfa.EndUserMfa;
 import dev.auctoritas.auth.domain.mfa.EndUserMfaRepositoryPort;
+import dev.auctoritas.auth.domain.mfa.MfaRecoveryCode;
+import dev.auctoritas.auth.domain.mfa.RecoveryCodeRepositoryPort;
 import dev.auctoritas.auth.domain.mfa.TotpSecret;
 import dev.auctoritas.auth.domain.project.ApiKey;
 import dev.auctoritas.auth.domain.project.Project;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -38,6 +42,7 @@ public class SetupEndUserMfaService implements SetupMfaUseCase {
   private final ApiKeyService apiKeyService;
   private final EndUserRepositoryPort endUserRepository;
   private final EndUserMfaRepositoryPort endUserMfaRepository;
+  private final RecoveryCodeRepositoryPort recoveryCodeRepository;
   private final EncryptionPort encryptionPort;
   private final QrCodeGeneratorPort qrCodeGeneratorPort;
   private final DomainEventPublisherPort domainEventPublisherPort;
@@ -46,12 +51,14 @@ public class SetupEndUserMfaService implements SetupMfaUseCase {
       ApiKeyService apiKeyService,
       EndUserRepositoryPort endUserRepository,
       EndUserMfaRepositoryPort endUserMfaRepository,
+      RecoveryCodeRepositoryPort recoveryCodeRepository,
       EncryptionPort encryptionPort,
       QrCodeGeneratorPort qrCodeGeneratorPort,
       DomainEventPublisherPort domainEventPublisherPort) {
     this.apiKeyService = apiKeyService;
     this.endUserRepository = endUserRepository;
     this.endUserMfaRepository = endUserMfaRepository;
+    this.recoveryCodeRepository = recoveryCodeRepository;
     this.encryptionPort = encryptionPort;
     this.qrCodeGeneratorPort = qrCodeGeneratorPort;
     this.domainEventPublisherPort = domainEventPublisherPort;
@@ -59,7 +66,7 @@ public class SetupEndUserMfaService implements SetupMfaUseCase {
 
   @Override
   @Transactional
-  public SetupMfaResult setupMfa(String apiKey, EndUserPrincipal principal) {
+  public SetupMfaResult setupMfa(String apiKey, EndUserMfaPrincipal principal) {
     // Validate API key and get project
     ApiKey resolvedKey = apiKeyService.validateActiveKey(apiKey);
     Project project = resolvedKey.getProject();
@@ -92,6 +99,12 @@ public class SetupEndUserMfaService implements SetupMfaUseCase {
     // Persist the MFA settings
     EndUserMfa savedMfa = endUserMfaRepository.save(mfa);
 
+    // Hash and persist recovery codes
+    List<MfaRecoveryCode> recoveryCodeEntities = Arrays.stream(recoveryCodes)
+        .map(codePlain -> MfaRecoveryCode.createForUser(user, RecoveryCodeHasher.hash(codePlain)))
+        .collect(Collectors.toList());
+    recoveryCodeRepository.saveAll(recoveryCodeEntities);
+
     // Publish domain events
     savedMfa.getDomainEvents().forEach(event -> {
       domainEventPublisherPort.publish(event.eventType(), event);
@@ -114,4 +127,5 @@ public class SetupEndUserMfaService implements SetupMfaUseCase {
         Arrays.asList(recoveryCodes)
     );
   }
+
 }

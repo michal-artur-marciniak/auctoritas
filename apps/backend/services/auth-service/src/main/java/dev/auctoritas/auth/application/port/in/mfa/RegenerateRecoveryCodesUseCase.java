@@ -1,6 +1,5 @@
 package dev.auctoritas.auth.application.port.in.mfa;
 
-import dev.auctoritas.auth.adapter.out.security.EndUserPrincipal;
 import dev.auctoritas.auth.application.mfa.RegenerateRecoveryCodesResult;
 
 /**
@@ -18,5 +17,5 @@ public interface RegenerateRecoveryCodesUseCase {
    * @param code the TOTP code to verify before regenerating
    * @return result containing the new recovery codes (shown once)
    */
-  RegenerateRecoveryCodesResult regenerateRecoveryCodes(String apiKey, EndUserPrincipal principal, String code);
+  RegenerateRecoveryCodesResult regenerateRecoveryCodes(String apiKey, EndUserMfaPrincipal principal, String code);
 }

@@ -27,6 +27,9 @@ logging:
 
 auctoritas:
   auth:
+    mfa:
+      encryption:
+        key: ${MFA_ENCRYPTION_KEY}
     oauth:
       encryption:
         key: ${OAUTH_ENCRYPTION_KEY}

@@ -22,6 +22,9 @@ logging:
 
 auctoritas:
   auth:
+    mfa:
+      encryption:
+        key: ${MFA_ENCRYPTION_KEY:ZGV2LW1mYS1lbmNyeXB0aW9uLWtleS0zMi1ieXRlcyE=}
     oauth:
       encryption:
         key: ${OAUTH_ENCRYPTION_KEY:dev-insecure-change-me}

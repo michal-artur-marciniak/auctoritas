@@ -77,6 +77,7 @@ public class EndUserMfa extends BaseAuditEntity {
     }
 
     EndUserMfa mfa = new EndUserMfa();
+    mfa.setId(UUID.randomUUID());
     mfa.user = user;
     mfa.project = project;
     mfa.encryptedSecret = secret.encryptedValue();

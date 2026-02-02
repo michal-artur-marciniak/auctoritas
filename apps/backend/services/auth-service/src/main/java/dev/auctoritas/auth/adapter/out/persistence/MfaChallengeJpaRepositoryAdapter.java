@@ -30,7 +30,7 @@ public class MfaChallengeJpaRepositoryAdapter implements MfaChallengeRepositoryP
   }
 
   @Override
-  @Transactional(readOnly = true)
+  @Transactional
   public Optional<MfaChallenge> findByTokenForUpdate(String token) {
     return mfaChallengeRepository.findByTokenForUpdate(token);
   }

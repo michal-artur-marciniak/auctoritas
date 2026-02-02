@@ -1,6 +1,5 @@
 package dev.auctoritas.auth.application.port.in.mfa;
 
-import dev.auctoritas.auth.adapter.out.security.EndUserPrincipal;
 import dev.auctoritas.auth.application.mfa.SetupMfaResult;
 
 /**
@@ -17,5 +16,5 @@ public interface SetupMfaUseCase {
    * @param principal the authenticated end user
    * @return setup result containing secret, QR code URL, and backup codes
    */
-  SetupMfaResult setupMfa(String apiKey, EndUserPrincipal principal);
+  SetupMfaResult setupMfa(String apiKey, EndUserMfaPrincipal principal);
 }

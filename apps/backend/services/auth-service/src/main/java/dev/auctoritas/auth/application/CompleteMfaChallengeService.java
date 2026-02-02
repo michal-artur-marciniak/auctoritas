@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.application;
 
-import dev.auctoritas.auth.adapter.in.web.EndUserLoginResponse;
 import dev.auctoritas.auth.application.apikey.ApiKeyService;
+import dev.auctoritas.auth.application.port.in.enduser.EndUserLoginResult;
 import dev.auctoritas.auth.application.port.in.mfa.CompleteMfaChallengeUseCase;
 import dev.auctoritas.auth.application.port.out.messaging.DomainEventPublisherPort;
 import dev.auctoritas.auth.application.port.out.security.EncryptionPort;
@@ -78,7 +78,7 @@ public class CompleteMfaChallengeService implements CompleteMfaChallengeUseCase 
 
   @Override
   @Transactional
-  public EndUserLoginResponse completeChallenge(
+  public EndUserLoginResult completeChallenge(
       String apiKey,
       String mfaToken,
       String code,
@@ -98,9 +98,8 @@ public class CompleteMfaChallengeService implements CompleteMfaChallengeUseCase 
     Instant now = Instant.now();
 
     // Validate challenge is for the correct project
-    if (!project.getId().equals(challenge.getUserId())) {
-      // Note: challenge has userId, but we need to check project. The challenge stores project.
-      // The challenge should be associated with a project. Let me check the MfaChallenge entity.
+    if (challenge.getProject() == null || !project.getId().equals(challenge.getProject().getId())) {
+      throw new DomainValidationException("mfa_challenge_invalid_project");
     }
 
     // Check if challenge is still valid
@@ -132,8 +131,11 @@ public class CompleteMfaChallengeService implements CompleteMfaChallengeUseCase 
       throw new DomainValidationException("mfa_verification_failed");
     }
 
-    // Note: We need a TotpVerificationPort to verify the code. Let me check if we created it.
-    // For now, I'll create a simple verification or we need to inject TotpVerificationPort
+    // Verify TOTP code
+    if (!totpVerificationPort.verify(plainSecret, code)) {
+      log.warn("Invalid TOTP code for user {}", kv("userId", user.getId()));
+      throw new DomainValidationException("mfa_verification_failed");
+    }
 
     // Mark challenge as used
     challenge.markUsed();
@@ -156,8 +158,8 @@ public class CompleteMfaChallengeService implements CompleteMfaChallengeUseCase 
         user.isEmailVerified(),
         settings.getAccessTokenTtlSeconds());
 
-    return EndUserLoginResponse.success(
-        new EndUserLoginResponse.EndUserSummary(
+    return EndUserLoginResult.success(
+        new EndUserLoginResult.EndUserSummary(
             user.getId(),
             user.getEmail(),
             user.getName(),

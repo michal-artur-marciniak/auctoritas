@@ -1,6 +1,7 @@
 package dev.auctoritas.auth.adapter.in.web;
 
 import dev.auctoritas.auth.adapter.out.security.EndUserPrincipal;
+import dev.auctoritas.auth.application.port.in.mfa.EndUserMfaPrincipal;
 import dev.auctoritas.auth.application.mfa.RegenerateRecoveryCodesResult;
 import dev.auctoritas.auth.application.mfa.SetupMfaResult;
 import dev.auctoritas.auth.application.port.in.mfa.DisableMfaUseCase;
@@ -58,7 +59,7 @@ public class EndUserMfaController {
   public ResponseEntity<SetupMfaResponse> setupMfa(
       @RequestHeader(value = API_KEY_HEADER, required = false) String apiKey,
       @AuthenticationPrincipal EndUserPrincipal principal) {
-    SetupMfaResult result = setupMfaUseCase.setupMfa(apiKey, principal);
+    SetupMfaResult result = setupMfaUseCase.setupMfa(apiKey, toMfaPrincipal(principal));
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(new SetupMfaResponse(result.secret(), result.qrCodeUrl(), result.backupCodes()));
   }
@@ -77,7 +78,7 @@ public class EndUserMfaController {
       @RequestHeader(value = API_KEY_HEADER, required = false) String apiKey,
       @AuthenticationPrincipal EndUserPrincipal principal,
       @Valid @RequestBody VerifyMfaRequest request) {
-    verifyMfaUseCase.verifyMfa(apiKey, principal, request.code());
+    verifyMfaUseCase.verifyMfa(apiKey, toMfaPrincipal(principal), request.code());
     return ResponseEntity.ok().build();
   }
 
@@ -91,12 +92,12 @@ public class EndUserMfaController {
    * @param request the disable request containing the TOTP code
    * @return empty response with 204 status on success
    */
-  @DeleteMapping("/")
+  @DeleteMapping
   public ResponseEntity<Void> disableMfa(
       @RequestHeader(value = API_KEY_HEADER, required = false) String apiKey,
       @AuthenticationPrincipal EndUserPrincipal principal,
       @Valid @RequestBody DisableMfaRequest request) {
-    disableMfaUseCase.disableMfa(apiKey, principal, request.code());
+    disableMfaUseCase.disableMfa(apiKey, toMfaPrincipal(principal), request.code());
     return ResponseEntity.noContent().build();
   }
 
@@ -116,9 +117,16 @@ public class EndUserMfaController {
       @AuthenticationPrincipal EndUserPrincipal principal,
       @Valid @RequestBody RegenerateRecoveryCodesRequest request) {
     RegenerateRecoveryCodesResult result = regenerateRecoveryCodesUseCase.regenerateRecoveryCodes(
-        apiKey, principal, request.code());
+        apiKey, toMfaPrincipal(principal), request.code());
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(new RegenerateRecoveryCodesResponse(result.backupCodes()));
+  }
+
+  private EndUserMfaPrincipal toMfaPrincipal(EndUserPrincipal principal) {
+    return new EndUserMfaPrincipal(
+        principal.endUserId(),
+        principal.projectId(),
+        principal.email());
   }
 
   /**

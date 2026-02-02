@@ -1,6 +1,8 @@
 package dev.auctoritas.auth.application;
 
-import dev.auctoritas.auth.adapter.out.security.OrganizationMemberPrincipal;
+import dev.auctoritas.auth.application.mfa.RecoveryCodeHasher;
+import dev.auctoritas.auth.application.mfa.VerifyMfaResult;
+import dev.auctoritas.auth.application.port.in.ApplicationPrincipal;
 import dev.auctoritas.auth.application.port.in.mfa.VerifyOrgMemberMfaUseCase;
 import dev.auctoritas.auth.application.port.out.messaging.DomainEventPublisherPort;
 import dev.auctoritas.auth.application.port.out.security.EncryptionPort;
@@ -13,11 +15,7 @@ import dev.auctoritas.auth.domain.organization.OrganizationMember;
 import dev.auctoritas.auth.domain.organization.OrganizationMemberMfa;
 import dev.auctoritas.auth.domain.organization.OrganizationMemberMfaRepositoryPort;
 import dev.auctoritas.auth.domain.organization.OrganizationMemberRepositoryPort;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -61,9 +59,9 @@ public class VerifyOrgMemberMfaService implements VerifyOrgMemberMfaUseCase {
 
   @Override
   @Transactional
-  public void verifyMfa(OrganizationMemberPrincipal principal, String code) {
+  public VerifyMfaResult verifyMfa(ApplicationPrincipal principal, String code) {
     // Load organization member
-    OrganizationMember member = orgMemberRepository.findById(principal.orgMemberId())
+    OrganizationMember member = orgMemberRepository.findById(principal.memberId())
         .orElseThrow(() -> new DomainNotFoundException("org_member_not_found"));
 
     // Find MFA settings for member (must exist from setup)
@@ -102,7 +100,7 @@ public class VerifyOrgMemberMfaService implements VerifyOrgMemberMfaUseCase {
     String[] recoveryCodes = encryptionPort.generateRecoveryCodes(RECOVERY_CODE_COUNT);
     List<MfaRecoveryCode> recoveryCodeEntities = Arrays.stream(recoveryCodes)
         .map(codePlain -> {
-          String codeHash = hashRecoveryCode(codePlain);
+           String codeHash = RecoveryCodeHasher.hash(codePlain);
           return MfaRecoveryCode.createForMember(member, codeHash);
         })
         .collect(Collectors.toList());
@@ -121,15 +119,8 @@ public class VerifyOrgMemberMfaService implements VerifyOrgMemberMfaUseCase {
     log.info("MFA verification successful for org member {} with {} recovery codes",
         kv("memberId", member.getId()),
         kv("recoveryCodeCount", recoveryCodeEntities.size()));
+
+    return new VerifyMfaResult(Arrays.asList(recoveryCodes));
   }
 
-  private String hashRecoveryCode(String code) {
-    try {
-      MessageDigest digest = MessageDigest.getInstance("SHA-256");
-      byte[] hash = digest.digest(code.getBytes(StandardCharsets.UTF_8));
-      return Base64.getEncoder().encodeToString(hash);
-    } catch (NoSuchAlgorithmException e) {
-      throw new RuntimeException("SHA-256 algorithm not available", e);
-    }
-  }
 }

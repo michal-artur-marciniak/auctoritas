@@ -1,26 +1,26 @@
 package dev.auctoritas.auth.application;
-import dev.auctoritas.auth.application.apikey.ApiKeyService;
 
 import dev.auctoritas.auth.adapter.in.web.EndUserLoginRequest;
-import dev.auctoritas.auth.adapter.in.web.EndUserLoginResponse;
-import dev.auctoritas.auth.domain.exception.DomainValidationException;
+import dev.auctoritas.auth.application.apikey.ApiKeyService;
+import dev.auctoritas.auth.application.port.in.enduser.EndUserLoginResult;
+import dev.auctoritas.auth.application.port.out.messaging.DomainEventPublisherPort;
+import dev.auctoritas.auth.application.port.out.security.JwtProviderPort;
+import dev.auctoritas.auth.application.port.out.security.TokenHasherPort;
 import dev.auctoritas.auth.domain.enduser.Email;
 import dev.auctoritas.auth.domain.enduser.EndUser;
 import dev.auctoritas.auth.domain.enduser.EndUserRefreshToken;
+import dev.auctoritas.auth.domain.enduser.EndUserRefreshTokenRepositoryPort;
+import dev.auctoritas.auth.domain.enduser.EndUserRepositoryPort;
 import dev.auctoritas.auth.domain.enduser.EndUserSession;
+import dev.auctoritas.auth.domain.enduser.EndUserSessionRepositoryPort;
+import dev.auctoritas.auth.domain.exception.DomainValidationException;
+import dev.auctoritas.auth.domain.mfa.EndUserMfaRepositoryPort;
+import dev.auctoritas.auth.domain.mfa.MfaChallenge;
+import dev.auctoritas.auth.domain.mfa.MfaChallengeRepositoryPort;
 import dev.auctoritas.auth.domain.project.ApiKey;
 import dev.auctoritas.auth.domain.project.MfaPolicy;
 import dev.auctoritas.auth.domain.project.Project;
 import dev.auctoritas.auth.domain.project.ProjectSettings;
-import dev.auctoritas.auth.domain.enduser.EndUserRepositoryPort;
-import dev.auctoritas.auth.application.port.out.security.JwtProviderPort;
-import dev.auctoritas.auth.application.port.out.security.TokenHasherPort;
-import dev.auctoritas.auth.domain.enduser.EndUserRefreshTokenRepositoryPort;
-import dev.auctoritas.auth.domain.enduser.EndUserSessionRepositoryPort;
-import dev.auctoritas.auth.application.port.out.messaging.DomainEventPublisherPort;
-import dev.auctoritas.auth.domain.mfa.EndUserMfaRepositoryPort;
-import dev.auctoritas.auth.domain.mfa.MfaChallenge;
-import dev.auctoritas.auth.domain.mfa.MfaChallengeRepositoryPort;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
@@ -77,7 +77,7 @@ public class EndUserLoginService implements dev.auctoritas.auth.application.port
     this.transactionTemplate = new TransactionTemplate(transactionManager);
   }
 
-  public EndUserLoginResponse login(
+  public EndUserLoginResult login(
       String apiKey,
       EndUserLoginRequest request,
       String ipAddress,
@@ -90,7 +90,7 @@ public class EndUserLoginService implements dev.auctoritas.auth.application.port
     }
 
     if (result instanceof LoginResult.MfaChallenge challenge) {
-      return EndUserLoginResponse.mfaChallenge(challenge.mfaToken());
+      return EndUserLoginResult.mfaChallenge(challenge.mfaToken());
     }
 
     LoginResult.Success success = (LoginResult.Success) result;
@@ -102,8 +102,8 @@ public class EndUserLoginService implements dev.auctoritas.auth.application.port
             success.user().isEmailVerified(),
             success.project().getSettings().getAccessTokenTtlSeconds());
 
-    return EndUserLoginResponse.success(
-        new EndUserLoginResponse.EndUserSummary(
+    return EndUserLoginResult.success(
+        new EndUserLoginResult.EndUserSummary(
             success.user().getId(),
             success.user().getEmail(),
             success.user().getName(),

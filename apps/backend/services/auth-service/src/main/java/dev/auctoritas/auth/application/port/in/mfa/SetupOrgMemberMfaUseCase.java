@@ -1,7 +1,7 @@
 package dev.auctoritas.auth.application.port.in.mfa;
 
-import dev.auctoritas.auth.adapter.out.security.OrganizationMemberPrincipal;
 import dev.auctoritas.auth.application.mfa.SetupMfaResult;
+import dev.auctoritas.auth.application.port.in.ApplicationPrincipal;
 
 /**
  * Use case for setting up MFA for an organization member.
@@ -16,5 +16,5 @@ public interface SetupOrgMemberMfaUseCase {
    * @param principal the authenticated organization member
    * @return setup result containing secret, QR code URL, and backup codes
    */
-  SetupMfaResult setupMfa(OrganizationMemberPrincipal principal);
+  SetupMfaResult setupMfa(ApplicationPrincipal principal);
 }

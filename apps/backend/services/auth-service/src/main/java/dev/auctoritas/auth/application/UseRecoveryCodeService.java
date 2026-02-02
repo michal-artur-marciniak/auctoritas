@@ -1,7 +1,8 @@
 package dev.auctoritas.auth.application;
 
-import dev.auctoritas.auth.adapter.in.web.EndUserLoginResponse;
 import dev.auctoritas.auth.application.apikey.ApiKeyService;
+import dev.auctoritas.auth.application.mfa.RecoveryCodeHasher;
+import dev.auctoritas.auth.application.port.in.enduser.EndUserLoginResult;
 import dev.auctoritas.auth.application.port.in.mfa.UseRecoveryCodeUseCase;
 import dev.auctoritas.auth.application.port.out.messaging.DomainEventPublisherPort;
 import dev.auctoritas.auth.application.port.out.security.JwtProviderPort;
@@ -20,12 +21,8 @@ import dev.auctoritas.auth.domain.mfa.RecoveryCodeRepositoryPort;
 import dev.auctoritas.auth.domain.project.ApiKey;
 import dev.auctoritas.auth.domain.project.Project;
 import dev.auctoritas.auth.domain.project.ProjectSettings;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -75,7 +72,7 @@ public class UseRecoveryCodeService implements UseRecoveryCodeUseCase {
 
   @Override
   @Transactional
-  public EndUserLoginResponse useRecoveryCode(
+  public EndUserLoginResult useRecoveryCode(
       String apiKey,
       String mfaToken,
       String recoveryCode,
@@ -115,7 +112,7 @@ public class UseRecoveryCodeService implements UseRecoveryCodeUseCase {
     }
 
     // Validate recovery code
-    String codeHash = hashRecoveryCode(recoveryCode);
+    String codeHash = RecoveryCodeHasher.hash(recoveryCode);
     List<MfaRecoveryCode> userCodes = recoveryCodeRepository.findByUserId(user.getId());
 
     MfaRecoveryCode matchingCode = userCodes.stream()
@@ -154,24 +151,14 @@ public class UseRecoveryCodeService implements UseRecoveryCodeUseCase {
         user.isEmailVerified(),
         settings.getAccessTokenTtlSeconds());
 
-    return EndUserLoginResponse.success(
-        new EndUserLoginResponse.EndUserSummary(
+    return EndUserLoginResult.success(
+        new EndUserLoginResult.EndUserSummary(
             user.getId(),
             user.getEmail(),
             user.getName(),
             user.isEmailVerified()),
         accessToken,
         rawRefreshToken);
-  }
-
-  private String hashRecoveryCode(String code) {
-    try {
-      MessageDigest digest = MessageDigest.getInstance("SHA-256");
-      byte[] hash = digest.digest(code.getBytes(StandardCharsets.UTF_8));
-      return Base64.getEncoder().encodeToString(hash);
-    } catch (NoSuchAlgorithmException e) {
-      throw new RuntimeException("SHA-256 algorithm not available", e);
-    }
   }
 
   private String createSession(

@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.application.port.in.mfa;
 
-import dev.auctoritas.auth.adapter.out.security.EndUserPrincipal;
+import dev.auctoritas.auth.application.port.in.mfa.EndUserMfaPrincipal;
 
 /**
  * Use case for disabling MFA for an end user.
@@ -16,5 +16,5 @@ public interface DisableMfaUseCase {
    * @param principal the authenticated end user
    * @param code the TOTP code to verify before disabling
    */
-  void disableMfa(String apiKey, EndUserPrincipal principal, String code);
+  void disableMfa(String apiKey, EndUserMfaPrincipal principal, String code);
 }

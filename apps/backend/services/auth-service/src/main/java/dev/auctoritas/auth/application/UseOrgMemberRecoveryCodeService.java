@@ -1,27 +1,20 @@
 package dev.auctoritas.auth.application;
 
 import dev.auctoritas.auth.adapter.in.web.OrgLoginResponse;
+import dev.auctoritas.auth.application.mfa.RecoveryCodeHasher;
 import dev.auctoritas.auth.application.port.in.mfa.UseOrgMemberRecoveryCodeUseCase;
 import dev.auctoritas.auth.application.port.out.messaging.DomainEventPublisherPort;
-import dev.auctoritas.auth.application.port.out.security.JwtProviderPort;
-import dev.auctoritas.auth.application.port.out.security.TokenHasherPort;
 import dev.auctoritas.auth.domain.exception.DomainNotFoundException;
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.mfa.MfaChallenge;
 import dev.auctoritas.auth.domain.mfa.MfaChallengeRepositoryPort;
-import dev.auctoritas.auth.domain.mfa.MfaRecoveryCode;
 import dev.auctoritas.auth.domain.mfa.RecoveryCodeRepositoryPort;
 import dev.auctoritas.auth.domain.organization.Organization;
 import dev.auctoritas.auth.domain.organization.OrganizationMember;
 import dev.auctoritas.auth.domain.organization.OrganizationMemberRefreshToken;
 import dev.auctoritas.auth.domain.organization.OrganizationMemberRefreshTokenRepositoryPort;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Base64;
-import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -92,18 +85,12 @@ public class UseOrgMemberRecoveryCodeService implements UseOrgMemberRecoveryCode
 
     Organization organization = member.getOrganization();
 
-    // Validate recovery code
-    String codeHash = hashRecoveryCode(recoveryCode);
-    List<MfaRecoveryCode> memberCodes = recoveryCodeRepository.findByMemberId(member.getId());
-
-    MfaRecoveryCode matchingCode = memberCodes.stream()
-        .filter(code -> codeHash.equals(code.getCodeHash()) && !code.isUsed())
-        .findFirst()
-        .orElseThrow(() -> new DomainValidationException("recovery_code_invalid"));
-
-    // Mark recovery code as used
-    matchingCode.markUsed();
-    recoveryCodeRepository.saveAll(List.of(matchingCode));
+    // Validate recovery code with atomic update
+    String codeHash = RecoveryCodeHasher.hash(recoveryCode);
+    boolean updated = recoveryCodeRepository.markUnusedCodeAsUsedForMember(member.getId(), codeHash);
+    if (!updated) {
+      throw new DomainValidationException("recovery_code_invalid");
+    }
 
     log.info("Recovery code used for member {}", kv("memberId", member.getId()));
 
@@ -138,16 +125,6 @@ public class UseOrgMemberRecoveryCodeService implements UseOrgMemberRecoveryCode
             member.getRole()),
         accessToken,
         rawRefreshToken);
-  }
-
-  private String hashRecoveryCode(String code) {
-    try {
-      MessageDigest digest = MessageDigest.getInstance("SHA-256");
-      byte[] hash = digest.digest(code.getBytes(StandardCharsets.UTF_8));
-      return Base64.getEncoder().encodeToString(hash);
-    } catch (NoSuchAlgorithmException e) {
-      throw new RuntimeException("SHA-256 algorithm not available", e);
-    }
   }
 
   private String createSession(OrganizationMember member, String ipAddress, String userAgent) {

@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.adapter.in.web;
 
-import dev.auctoritas.auth.adapter.out.security.EndUserPrincipal;
+import dev.auctoritas.auth.application.port.in.enduser.EndUserLoginResult;
 import dev.auctoritas.auth.application.port.in.mfa.CompleteMfaChallengeUseCase;
 import dev.auctoritas.auth.application.port.in.mfa.UseRecoveryCodeUseCase;
 import jakarta.servlet.http.HttpServletRequest;
@@ -44,14 +44,14 @@ public class EndUserAuthMfaController {
    */
   @PostMapping("/login/mfa")
   public ResponseEntity<EndUserLoginResponse> completeMfaChallenge(
-      @RequestHeader(value = API_KEY_HEADER, required = false) String apiKey,
+      @RequestHeader(value = API_KEY_HEADER) String apiKey,
       @Valid @RequestBody MfaChallengeRequest request,
       HttpServletRequest httpRequest) {
     String ipAddress = resolveIpAddress(httpRequest);
     String userAgent = resolveUserAgent(httpRequest);
-    EndUserLoginResponse response = completeMfaChallengeUseCase.completeChallenge(
+    EndUserLoginResult result = completeMfaChallengeUseCase.completeChallenge(
         apiKey, request.mfaToken(), request.code(), ipAddress, userAgent);
-    return ResponseEntity.ok(response);
+    return ResponseEntity.ok(toResponse(result));
   }
 
   /**
@@ -66,14 +66,29 @@ public class EndUserAuthMfaController {
    */
   @PostMapping("/login/recovery")
   public ResponseEntity<EndUserLoginResponse> useRecoveryCode(
-      @RequestHeader(value = API_KEY_HEADER, required = false) String apiKey,
+      @RequestHeader(value = API_KEY_HEADER) String apiKey,
       @Valid @RequestBody RecoveryCodeRequest request,
       HttpServletRequest httpRequest) {
     String ipAddress = resolveIpAddress(httpRequest);
     String userAgent = resolveUserAgent(httpRequest);
-    EndUserLoginResponse response = useRecoveryCodeUseCase.useRecoveryCode(
+    EndUserLoginResult result = useRecoveryCodeUseCase.useRecoveryCode(
         apiKey, request.mfaToken(), request.recoveryCode(), ipAddress, userAgent);
-    return ResponseEntity.ok(response);
+    return ResponseEntity.ok(toResponse(result));
+  }
+
+  private EndUserLoginResponse toResponse(EndUserLoginResult result) {
+    if (Boolean.TRUE.equals(result.mfaRequired())) {
+      return EndUserLoginResponse.mfaChallenge(result.mfaToken());
+    }
+    EndUserLoginResult.EndUserSummary user = result.user();
+    return EndUserLoginResponse.success(
+        new EndUserLoginResponse.EndUserSummary(
+            user.id(),
+            user.email(),
+            user.name(),
+            user.emailVerified()),
+        result.accessToken(),
+        result.refreshToken());
   }
 
   private String resolveIpAddress(HttpServletRequest request) {

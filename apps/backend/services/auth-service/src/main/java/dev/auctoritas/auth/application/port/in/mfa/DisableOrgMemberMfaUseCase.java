@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.application.port.in.mfa;
 
-import dev.auctoritas.auth.adapter.out.security.OrganizationMemberPrincipal;
+import dev.auctoritas.auth.application.port.in.ApplicationPrincipal;
 
 /**
  * Use case for disabling MFA for an organization member.
@@ -15,5 +15,5 @@ public interface DisableOrgMemberMfaUseCase {
    * @param principal the authenticated organization member
    * @param code the TOTP code to verify before disabling
    */
-  void disableMfa(OrganizationMemberPrincipal principal, String code);
+  void disableMfa(ApplicationPrincipal principal, String code);
 }

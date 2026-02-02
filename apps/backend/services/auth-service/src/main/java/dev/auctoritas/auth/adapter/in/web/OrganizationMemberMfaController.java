@@ -3,6 +3,8 @@ package dev.auctoritas.auth.adapter.in.web;
 import dev.auctoritas.auth.adapter.out.security.OrganizationMemberPrincipal;
 import dev.auctoritas.auth.application.mfa.RegenerateRecoveryCodesResult;
 import dev.auctoritas.auth.application.mfa.SetupMfaResult;
+import dev.auctoritas.auth.application.mfa.VerifyMfaResult;
+import dev.auctoritas.auth.application.port.in.ApplicationPrincipal;
 import dev.auctoritas.auth.application.port.in.mfa.DisableOrgMemberMfaUseCase;
 import dev.auctoritas.auth.application.port.in.mfa.RegenerateOrgMemberRecoveryCodesUseCase;
 import dev.auctoritas.auth.application.port.in.mfa.SetupOrgMemberMfaUseCase;
@@ -54,7 +56,7 @@ public class OrganizationMemberMfaController {
   @PostMapping("/setup")
   public ResponseEntity<SetupMfaResponse> setupMfa(
       @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
-    SetupMfaResult result = setupMfaUseCase.setupMfa(principal);
+    SetupMfaResult result = setupMfaUseCase.setupMfa(toApplicationPrincipal(principal));
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(new SetupMfaResponse(result.secret(), result.qrCodeUrl(), result.backupCodes()));
   }
@@ -65,14 +67,15 @@ public class OrganizationMemberMfaController {
    *
    * @param principal the authenticated organization member
    * @param request the verification request containing the TOTP code
-   * @return empty response with 200 status on success
+   * @return response with recovery codes on success
    */
   @PostMapping("/verify")
-  public ResponseEntity<Void> verifyMfa(
+  public ResponseEntity<RegenerateRecoveryCodesResponse> verifyMfa(
       @AuthenticationPrincipal OrganizationMemberPrincipal principal,
       @Valid @RequestBody VerifyMfaRequest request) {
-    verifyMfaUseCase.verifyMfa(principal, request.code());
-    return ResponseEntity.ok().build();
+    VerifyMfaResult result = verifyMfaUseCase.verifyMfa(toApplicationPrincipal(principal), request.code());
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(new RegenerateRecoveryCodesResponse(result.recoveryCodes()));
   }
 
   /**
@@ -84,11 +87,11 @@ public class OrganizationMemberMfaController {
    * @param request the disable request containing the TOTP code
    * @return empty response with 204 status on success
    */
-  @DeleteMapping("/")
+  @DeleteMapping
   public ResponseEntity<Void> disableMfa(
       @AuthenticationPrincipal OrganizationMemberPrincipal principal,
       @Valid @RequestBody DisableMfaRequest request) {
-    disableMfaUseCase.disableMfa(principal, request.code());
+    disableMfaUseCase.disableMfa(toApplicationPrincipal(principal), request.code());
     return ResponseEntity.noContent().build();
   }
 
@@ -106,9 +109,17 @@ public class OrganizationMemberMfaController {
       @AuthenticationPrincipal OrganizationMemberPrincipal principal,
       @Valid @RequestBody RegenerateRecoveryCodesRequest request) {
     RegenerateRecoveryCodesResult result = regenerateRecoveryCodesUseCase.regenerateRecoveryCodes(
-        principal, request.code());
+        toApplicationPrincipal(principal), request.code());
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(new RegenerateRecoveryCodesResponse(result.backupCodes()));
+  }
+
+  private ApplicationPrincipal toApplicationPrincipal(OrganizationMemberPrincipal principal) {
+    return new ApplicationPrincipal(
+        principal.orgMemberId(),
+        principal.orgId(),
+        principal.email(),
+        principal.role());
   }
 
   /**

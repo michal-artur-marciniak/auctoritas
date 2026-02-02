@@ -1,6 +1,6 @@
 package dev.auctoritas.auth.application.port.in.mfa;
 
-import dev.auctoritas.auth.adapter.out.security.EndUserPrincipal;
+import dev.auctoritas.auth.application.port.in.mfa.EndUserMfaPrincipal;
 
 /**
  * Use case for verifying MFA setup for an end user.
@@ -15,5 +15,5 @@ public interface VerifyMfaUseCase {
    * @param principal the authenticated end user
    * @param code the 6-digit TOTP code to verify
    */
-  void verifyMfa(String apiKey, EndUserPrincipal principal, String code);
+  void verifyMfa(String apiKey, EndUserMfaPrincipal principal, String code);
 }

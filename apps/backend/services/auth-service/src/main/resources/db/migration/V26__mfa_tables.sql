@@ -28,7 +28,10 @@ CREATE TABLE mfa_recovery_codes (
   used_at           TIMESTAMPTZ,
   created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-  CONSTRAINT chk_recovery_code_owner CHECK (user_id IS NOT NULL OR member_id IS NOT NULL)
+  CONSTRAINT chk_recovery_code_owner CHECK (
+    (user_id IS NOT NULL AND member_id IS NULL) OR
+    (user_id IS NULL AND member_id IS NOT NULL)
+  )
 );
 
 CREATE INDEX idx_recovery_codes_user ON mfa_recovery_codes(user_id) WHERE user_id IS NOT NULL;
@@ -54,7 +57,11 @@ CREATE TABLE mfa_challenges (
   CONSTRAINT chk_challenge_context CHECK (
     (project_id IS NOT NULL AND organization_id IS NULL) OR
     (project_id IS NULL AND organization_id IS NOT NULL)
-  )
+  ),
+  CONSTRAINT fk_mfa_challenges_user_id FOREIGN KEY (user_id)
+    REFERENCES end_users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_mfa_challenges_member_id FOREIGN KEY (member_id)
+    REFERENCES organization_members(id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_mfa_challenges_token ON mfa_challenges(token);
