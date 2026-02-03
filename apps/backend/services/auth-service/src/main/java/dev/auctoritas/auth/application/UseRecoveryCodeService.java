@@ -16,8 +16,6 @@ import dev.auctoritas.auth.domain.exception.DomainNotFoundException;
 import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.mfa.MfaChallenge;
 import dev.auctoritas.auth.domain.mfa.MfaChallengeRepositoryPort;
-import dev.auctoritas.auth.domain.mfa.MfaRecoveryCode;
-import dev.auctoritas.auth.domain.mfa.RecoveryCodeUsedEvent;
 import dev.auctoritas.auth.domain.mfa.RecoveryCodeRepositoryPort;
 import dev.auctoritas.auth.domain.project.ApiKey;
 import dev.auctoritas.auth.domain.project.Project;
@@ -25,7 +23,6 @@ import dev.auctoritas.auth.domain.project.ProjectSettings;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -115,27 +112,10 @@ public class UseRecoveryCodeService implements UseRecoveryCodeUseCase {
 
     // Validate recovery code with atomic update
     String codeHash = RecoveryCodeHasher.hash(recoveryCode);
-    List<MfaRecoveryCode> userCodes = recoveryCodeRepository.findByUserId(user.getId());
-    MfaRecoveryCode matchingCode = userCodes.stream()
-        .filter(code -> codeHash.equals(code.getCodeHash()) && !code.isUsed())
-        .findFirst()
-        .orElseThrow(() -> new DomainValidationException("recovery_code_invalid"));
     boolean updated = recoveryCodeRepository.markUnusedCodeAsUsedForUser(user.getId(), codeHash);
     if (!updated) {
       throw new DomainValidationException("recovery_code_invalid");
     }
-
-    matchingCode.markUsed();
-    recoveryCodeRepository.saveAll(List.of(matchingCode));
-
-    RecoveryCodeUsedEvent recoveryEvent = new RecoveryCodeUsedEvent(
-        UUID.randomUUID(),
-        matchingCode.getId(),
-        user.getId(),
-        project.getId(),
-        codeHash,
-        Instant.now());
-    domainEventPublisherPort.publish(recoveryEvent.eventType(), recoveryEvent);
 
     log.info("Recovery code used for user {}", kv("userId", user.getId()));
 
