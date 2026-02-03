@@ -75,4 +75,14 @@ public class TokenServiceAdapter implements TokenHasherPort {
   public Instant getOAuthExchangeCodeExpiry() {
     return tokenService.getOAuthExchangeCodeExpiry();
   }
+
+  @Override
+  public String generateMfaChallengeToken() {
+    return tokenService.generateMfaChallengeToken();
+  }
+
+  @Override
+  public Instant getMfaChallengeTokenExpiry() {
+    return tokenService.getMfaChallengeTokenExpiry();
+  }
 }

@@ -1,21 +1,21 @@
 package dev.auctoritas.auth.application;
-import dev.auctoritas.auth.application.apikey.ApiKeyService;
 
-import dev.auctoritas.auth.adapter.in.web.EndUserLoginResponse;
 import dev.auctoritas.auth.adapter.in.web.OAuthExchangeRequest;
-import dev.auctoritas.auth.domain.exception.DomainUnauthorizedException;
-import dev.auctoritas.auth.domain.exception.DomainValidationException;
+import dev.auctoritas.auth.application.apikey.ApiKeyService;
+import dev.auctoritas.auth.application.port.in.enduser.EndUserLoginResult;
+import dev.auctoritas.auth.application.port.out.messaging.DomainEventPublisherPort;
 import dev.auctoritas.auth.domain.enduser.EndUser;
 import dev.auctoritas.auth.domain.enduser.EndUserRefreshToken;
+import dev.auctoritas.auth.domain.enduser.EndUserRefreshTokenRepositoryPort;
 import dev.auctoritas.auth.domain.enduser.EndUserSession;
+import dev.auctoritas.auth.domain.enduser.EndUserSessionRepositoryPort;
+import dev.auctoritas.auth.domain.exception.DomainUnauthorizedException;
+import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.oauth.OAuthExchangeCode;
+import dev.auctoritas.auth.domain.oauth.OAuthExchangeCodeRepositoryPort;
 import dev.auctoritas.auth.domain.project.ApiKey;
 import dev.auctoritas.auth.domain.project.Project;
 import dev.auctoritas.auth.domain.project.ProjectSettings;
-import dev.auctoritas.auth.domain.enduser.EndUserRefreshTokenRepositoryPort;
-import dev.auctoritas.auth.domain.enduser.EndUserSessionRepositoryPort;
-import dev.auctoritas.auth.application.port.out.messaging.DomainEventPublisherPort;
-import dev.auctoritas.auth.domain.oauth.OAuthExchangeCodeRepositoryPort;
 import jakarta.persistence.LockTimeoutException;
 import jakarta.persistence.PessimisticLockException;
 import java.time.Duration;
@@ -56,7 +56,7 @@ public class OAuthExchangeService implements dev.auctoritas.auth.application.por
     this.transactionTemplate = new TransactionTemplate(transactionManager);
   }
 
-  public EndUserLoginResponse exchange(
+  public EndUserLoginResult exchange(
       String apiKey, OAuthExchangeRequest request, String ipAddress, String userAgent) {
     ExchangeContext context =
         transactionTemplate.execute(
@@ -73,8 +73,8 @@ public class OAuthExchangeService implements dev.auctoritas.auth.application.por
             context.emailVerified(),
             context.accessTokenTtlSeconds());
 
-    return new EndUserLoginResponse(
-        new EndUserLoginResponse.EndUserSummary(
+    return EndUserLoginResult.success(
+        new EndUserLoginResult.EndUserSummary(
             context.userId(), context.email(), context.name(), context.emailVerified()),
         accessToken,
         context.rawRefreshToken());

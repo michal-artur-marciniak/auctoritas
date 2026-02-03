@@ -1,9 +1,10 @@
 package dev.auctoritas.auth.adapter.in.web;
 
+import dev.auctoritas.auth.adapter.out.security.EndUserPrincipal;
 import dev.auctoritas.auth.application.enduser.EndUserRegistrationCommand;
 import dev.auctoritas.auth.application.enduser.EndUserRegistrationResult;
-import dev.auctoritas.auth.adapter.out.security.EndUserPrincipal;
 import dev.auctoritas.auth.application.port.in.enduser.EndUserEmailVerificationUseCase;
+import dev.auctoritas.auth.application.port.in.enduser.EndUserLoginResult;
 import dev.auctoritas.auth.application.port.in.enduser.EndUserLoginUseCase;
 import dev.auctoritas.auth.application.port.in.enduser.EndUserLogoutUseCase;
 import dev.auctoritas.auth.application.port.in.enduser.EndUserPasswordResetUseCase;
@@ -86,7 +87,8 @@ public class EndUserAuthController {
       HttpServletRequest httpRequest) {
     String ipAddress = resolveIpAddress(httpRequest);
     String userAgent = resolveUserAgent(httpRequest);
-    return ResponseEntity.ok(endUserLoginService.login(apiKey, request, ipAddress, userAgent));
+    EndUserLoginResult result = endUserLoginService.login(apiKey, request, ipAddress, userAgent);
+    return ResponseEntity.ok(toLoginResponse(result));
   }
 
   @PostMapping("/logout")
@@ -114,7 +116,8 @@ public class EndUserAuthController {
       HttpServletRequest httpRequest) {
     String ipAddress = resolveIpAddress(httpRequest);
     String userAgent = resolveUserAgent(httpRequest);
-    return ResponseEntity.ok(oauthExchangeService.exchange(apiKey, request, ipAddress, userAgent));
+    EndUserLoginResult result = oauthExchangeService.exchange(apiKey, request, ipAddress, userAgent);
+    return ResponseEntity.ok(toLoginResponse(result));
   }
 
   @PostMapping("/password/forgot")
@@ -182,6 +185,24 @@ public class EndUserAuthController {
     return new EndUserRegistrationResponse(
         new EndUserRegistrationResponse.EndUserSummary(
             summary.id(), summary.email(), summary.name(), summary.emailVerified()),
+        result.accessToken(),
+        result.refreshToken());
+  }
+
+  private EndUserLoginResponse toLoginResponse(EndUserLoginResult result) {
+    if (Boolean.TRUE.equals(result.mfaRequired())) {
+      return EndUserLoginResponse.mfaChallenge(result.mfaToken());
+    }
+    EndUserLoginResult.EndUserSummary user = result.user();
+    if (user == null) {
+      throw new IllegalStateException("EndUserLoginResult.user was null when mfaRequired=false");
+    }
+    return EndUserLoginResponse.success(
+        new EndUserLoginResponse.EndUserSummary(
+            user.id(),
+            user.email(),
+            user.name(),
+            user.emailVerified()),
         result.accessToken(),
         result.refreshToken());
   }
