@@ -1,6 +1,7 @@
 package dev.auctoritas.auth.infrastructure.config;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
@@ -12,5 +13,9 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 public record MfaEncryptionProperties(
     @NotBlank
-    @Size(min = 44, max = 44) String key) {
+    @Size(min = 44, max = 44)
+    @Pattern(
+        regexp = "^[A-Za-z0-9+/=]{44}$",
+        message = "auctoritas.auth.mfa.encryption.key must be Base64-encoded")
+    String key) {
 }

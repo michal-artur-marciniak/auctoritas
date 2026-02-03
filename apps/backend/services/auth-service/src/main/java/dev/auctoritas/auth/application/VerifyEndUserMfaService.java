@@ -120,10 +120,10 @@ public class VerifyEndUserMfaService implements VerifyMfaUseCase {
     // Publish domain events (MfaEnabledEvent)
     savedMfa.getDomainEvents().forEach(event -> {
       domainEventPublisherPort.publish(event.eventType(), event);
-      log.info("MFA enabled for user {} in project {}",
-          kv("userId", user.getId()),
-          kv("projectId", project.getId()));
     });
+    log.info("MFA enabled for user {} in project {}",
+        kv("userId", user.getId()),
+        kv("projectId", project.getId()));
     savedMfa.clearDomainEvents();
 
     log.info("MFA verification successful for user {} with {} recovery codes",

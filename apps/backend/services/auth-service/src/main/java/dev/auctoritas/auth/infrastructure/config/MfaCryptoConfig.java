@@ -38,7 +38,7 @@ public class MfaCryptoConfig {
     byte[] decoded = Base64.getDecoder().decode(keyBase64.trim());
     if (decoded.length != 32) {
       throw new IllegalStateException(
-          "MFA encryption key must be 32 bytes (256 bits) when Base64 decoded.");
+          "auctoritas.auth.mfa.encryption.key must decode to 32 bytes (256 bits), got " + decoded.length);
     }
 
     log.info("Loaded MFA encryption key for AES-256-GCM");

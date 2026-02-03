@@ -14,7 +14,6 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -87,7 +86,7 @@ public class OrganizationMemberMfaController {
    * @param request the disable request containing the TOTP code
    * @return empty response with 204 status on success
    */
-  @DeleteMapping
+  @PostMapping
   public ResponseEntity<Void> disableMfa(
       @AuthenticationPrincipal OrganizationMemberPrincipal principal,
       @Valid @RequestBody DisableMfaRequest request) {
