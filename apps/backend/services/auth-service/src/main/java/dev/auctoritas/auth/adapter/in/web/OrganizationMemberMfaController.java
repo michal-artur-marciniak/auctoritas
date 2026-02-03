@@ -47,11 +47,11 @@ public class OrganizationMemberMfaController {
 
   /**
    * Initiates MFA setup for the authenticated organization member.
-   * Returns TOTP secret, QR code URL, and recovery codes.
+   * Returns TOTP secret and QR code URL. Recovery codes are returned on verification.
    * MFA is not enabled until verified.
    *
    * @param principal the authenticated organization member
-   * @return setup response with secret, QR code, and backup codes
+   * @return setup response with secret and QR code
    */
   @PostMapping("/setup")
   public ResponseEntity<SetupMfaResponse> setupMfa(
@@ -127,7 +127,7 @@ public class OrganizationMemberMfaController {
    *
    * @param secret the plain TOTP secret (Base32 encoded)
    * @param qrCodeUrl the QR code URL for authenticator apps
-   * @param backupCodes the recovery codes (shown once)
+   * @param backupCodes the recovery codes (shown once, empty until verification)
    */
   public record SetupMfaResponse(
       String secret,

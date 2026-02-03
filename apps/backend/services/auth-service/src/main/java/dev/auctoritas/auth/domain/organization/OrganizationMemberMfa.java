@@ -72,17 +72,33 @@ public class OrganizationMemberMfa extends BaseAuditEntity {
     if (member == null) {
       throw new DomainValidationException("member_required");
     }
-    if (organization == null) {
-      throw new DomainValidationException("organization_required");
-    }
     if (secret == null) {
       throw new DomainValidationException("totp_secret_required");
+    }
+
+    Organization resolvedOrganization = organization;
+    Organization memberOrganization = member.getOrganization();
+    if (memberOrganization != null) {
+      if (resolvedOrganization != null) {
+        UUID resolvedId = resolvedOrganization.getId();
+        UUID memberOrgId = memberOrganization.getId();
+        if (resolvedId != null && memberOrgId != null && !resolvedId.equals(memberOrgId)) {
+          throw new DomainValidationException("member_organization_mismatch");
+        }
+        if ((resolvedId == null || memberOrgId == null) && resolvedOrganization != memberOrganization) {
+          throw new DomainValidationException("member_organization_mismatch");
+        }
+      }
+      resolvedOrganization = memberOrganization;
+    }
+    if (resolvedOrganization == null) {
+      throw new DomainValidationException("organization_required");
     }
 
     OrganizationMemberMfa mfa = new OrganizationMemberMfa();
     mfa.setId(UUID.randomUUID());
     mfa.member = member;
-    mfa.organization = organization;
+    mfa.organization = resolvedOrganization;
     mfa.encryptedSecret = secret.encryptedValue();
     mfa.enabled = false;
     mfa.verifiedAt = null;
@@ -92,7 +108,7 @@ public class OrganizationMemberMfa extends BaseAuditEntity {
         UUID.randomUUID(),
         mfa.getId(),
         member.getId(),
-        organization.getId(),
+        resolvedOrganization.getId(),
         Instant.now()
     ));
 
@@ -153,7 +169,7 @@ public class OrganizationMemberMfa extends BaseAuditEntity {
    * Checks if MFA is enabled and verified.
    */
   public boolean isEnabled() {
-    return Boolean.TRUE.equals(this.enabled);
+    return Boolean.TRUE.equals(this.enabled) && this.verifiedAt != null;
   }
 
   /**

@@ -17,6 +17,7 @@ import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.mfa.MfaChallenge;
 import dev.auctoritas.auth.domain.mfa.MfaChallengeRepositoryPort;
 import dev.auctoritas.auth.domain.mfa.MfaRecoveryCode;
+import dev.auctoritas.auth.domain.mfa.RecoveryCodeUsedEvent;
 import dev.auctoritas.auth.domain.mfa.RecoveryCodeRepositoryPort;
 import dev.auctoritas.auth.domain.project.ApiKey;
 import dev.auctoritas.auth.domain.project.Project;
@@ -26,6 +27,7 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -35,7 +37,7 @@ import static net.logstash.logback.argument.StructuredArguments.kv;
 
 /**
  * Service for using recovery codes to complete MFA challenges.
- * Implements UC-005: UseRecoveryCodeUseCase from the PRD.
+ * Implements UC-004: UseRecoveryCodeUseCase from the PRD.
  */
 @Service
 public class UseRecoveryCodeService implements UseRecoveryCodeUseCase {
@@ -111,22 +113,29 @@ public class UseRecoveryCodeService implements UseRecoveryCodeUseCase {
       throw new DomainValidationException("mfa_challenge_invalid");
     }
 
-    // Validate recovery code
+    // Validate recovery code with atomic update
     String codeHash = RecoveryCodeHasher.hash(recoveryCode);
     List<MfaRecoveryCode> userCodes = recoveryCodeRepository.findByUserId(user.getId());
-
     MfaRecoveryCode matchingCode = userCodes.stream()
         .filter(code -> codeHash.equals(code.getCodeHash()) && !code.isUsed())
         .findFirst()
         .orElseThrow(() -> new DomainValidationException("recovery_code_invalid"));
+    boolean updated = recoveryCodeRepository.markUnusedCodeAsUsedForUser(user.getId(), codeHash);
+    if (!updated) {
+      throw new DomainValidationException("recovery_code_invalid");
+    }
 
-    // Mark recovery code as used
     matchingCode.markUsed();
     recoveryCodeRepository.saveAll(List.of(matchingCode));
 
-    // Publish recovery code used event
-    // Note: The event is registered in the aggregate, so we need to publish domain events
-    // from the recovery code if it has any events registered
+    RecoveryCodeUsedEvent recoveryEvent = new RecoveryCodeUsedEvent(
+        UUID.randomUUID(),
+        matchingCode.getId(),
+        user.getId(),
+        project.getId(),
+        codeHash,
+        Instant.now());
+    domainEventPublisherPort.publish(recoveryEvent.eventType(), recoveryEvent);
 
     log.info("Recovery code used for user {}", kv("userId", user.getId()));
 

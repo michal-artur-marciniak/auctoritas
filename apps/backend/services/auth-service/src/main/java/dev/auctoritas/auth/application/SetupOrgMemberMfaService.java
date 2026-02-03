@@ -62,7 +62,7 @@ public class SetupOrgMemberMfaService implements SetupOrgMemberMfaUseCase {
     }
 
     // Check if MFA already exists for this member
-    orgMemberMfaRepository.findByMemberId(member.getId()).ifPresent(existing -> {
+    orgMemberMfaRepository.findByMemberIdForUpdate(member.getId()).ifPresent(existing -> {
       throw new DomainConflictException("mfa_already_setup");
     });
 
@@ -91,7 +91,7 @@ public class SetupOrgMemberMfaService implements SetupOrgMemberMfaUseCase {
 
     log.info("MFA setup completed for org member {}", kv("memberId", member.getId()));
 
-    // Return result with plain secret, QR code, and backup codes
+    // Return result with plain secret and QR code (recovery codes are returned on verification)
     return new SetupMfaResult(
         plainSecret,
         qrCodeUrl,

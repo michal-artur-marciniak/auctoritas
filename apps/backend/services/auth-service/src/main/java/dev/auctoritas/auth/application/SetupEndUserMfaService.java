@@ -99,12 +99,6 @@ public class SetupEndUserMfaService implements SetupMfaUseCase {
     // Persist the MFA settings
     EndUserMfa savedMfa = endUserMfaRepository.save(mfa);
 
-    // Hash and persist recovery codes
-    List<MfaRecoveryCode> recoveryCodeEntities = Arrays.stream(recoveryCodes)
-        .map(codePlain -> MfaRecoveryCode.createForUser(user, RecoveryCodeHasher.hash(codePlain)))
-        .collect(Collectors.toList());
-    recoveryCodeRepository.saveAll(recoveryCodeEntities);
-
     // Publish domain events
     savedMfa.getDomainEvents().forEach(event -> {
       domainEventPublisherPort.publish(event.eventType(), event);
@@ -117,6 +111,12 @@ public class SetupEndUserMfaService implements SetupMfaUseCase {
     // Generate QR code URL
     String issuer = project.getName() != null ? project.getName() : "Auctoritas";
     String qrCodeUrl = qrCodeGeneratorPort.generateQrCodeDataUrl(plainSecret, user.getEmail(), issuer);
+
+    // Hash and persist recovery codes
+    List<MfaRecoveryCode> recoveryCodeEntities = Arrays.stream(recoveryCodes)
+        .map(codePlain -> MfaRecoveryCode.createForUser(user, RecoveryCodeHasher.hash(codePlain)))
+        .collect(Collectors.toList());
+    recoveryCodeRepository.saveAll(recoveryCodeEntities);
 
     log.info("MFA setup completed for user {}", kv("userId", user.getId()));
 

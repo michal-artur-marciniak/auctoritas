@@ -4,8 +4,8 @@ import java.util.List;
 
 /**
  * Result payload for MFA setup.
- * Contains the TOTP secret, QR code URL, and recovery codes.
- * Recovery codes are shown only once during setup.
+ * Contains the TOTP secret, QR code URL, and optional recovery codes.
+ * Recovery codes are shown only once; org member setup returns them on verification.
  *
  * @param secret the plain TOTP secret (Base32 encoded)
  * @param qrCodeUrl the QR code URL for authenticator apps

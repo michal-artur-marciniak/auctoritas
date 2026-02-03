@@ -10,11 +10,11 @@ import dev.auctoritas.auth.application.port.in.ApplicationPrincipal;
 public interface SetupOrgMemberMfaUseCase {
   /**
    * Initiates MFA setup for an organization member.
-   * Generates TOTP secret, recovery codes, and creates the OrganizationMemberMfa aggregate.
+   * Generates TOTP secret and creates the OrganizationMemberMfa aggregate.
    * MFA is not enabled until verified.
    *
    * @param principal the authenticated organization member
-   * @return setup result containing secret, QR code URL, and backup codes
+   * @return setup result containing secret and QR code URL
    */
   SetupMfaResult setupMfa(ApplicationPrincipal principal);
 }

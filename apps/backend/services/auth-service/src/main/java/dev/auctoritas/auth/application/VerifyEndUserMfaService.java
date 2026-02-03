@@ -1,7 +1,6 @@
 package dev.auctoritas.auth.application;
 
 import dev.auctoritas.auth.application.apikey.ApiKeyService;
-import dev.auctoritas.auth.application.mfa.RecoveryCodeHasher;
 import dev.auctoritas.auth.application.port.in.mfa.EndUserMfaPrincipal;
 import dev.auctoritas.auth.application.port.in.mfa.VerifyMfaUseCase;
 import dev.auctoritas.auth.application.port.out.messaging.DomainEventPublisherPort;
@@ -18,9 +17,7 @@ import dev.auctoritas.auth.domain.mfa.MfaRecoveryCode;
 import dev.auctoritas.auth.domain.mfa.RecoveryCodeRepositoryPort;
 import dev.auctoritas.auth.domain.project.ApiKey;
 import dev.auctoritas.auth.domain.project.Project;
-import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -36,7 +33,6 @@ import static net.logstash.logback.argument.StructuredArguments.kv;
 public class VerifyEndUserMfaService implements VerifyMfaUseCase {
 
   private static final Logger log = LoggerFactory.getLogger(VerifyEndUserMfaService.class);
-  private static final int RECOVERY_CODE_COUNT = 10;
   private final ApiKeyService apiKeyService;
   private final EndUserRepositoryPort endUserRepository;
   private final EndUserMfaRepositoryPort endUserMfaRepository;
@@ -111,12 +107,15 @@ public class VerifyEndUserMfaService implements VerifyMfaUseCase {
     // Persist enabled MFA state
     EndUserMfa savedMfa = endUserMfaRepository.save(mfa);
 
-    // Generate and persist recovery codes
-    String[] recoveryCodes = encryptionPort.generateRecoveryCodes(RECOVERY_CODE_COUNT);
-    List<MfaRecoveryCode> recoveryCodeEntities = Arrays.stream(recoveryCodes)
-        .map(codePlain -> MfaRecoveryCode.createForUser(user, RecoveryCodeHasher.hash(codePlain)))
-        .collect(Collectors.toList());
-    recoveryCodeRepository.saveAll(recoveryCodeEntities);
+    // Load recovery codes generated during setup
+    List<MfaRecoveryCode> recoveryCodeEntities = recoveryCodeRepository.findByUserId(user.getId());
+    if (recoveryCodeEntities.isEmpty()) {
+      throw new DomainValidationException("recovery_codes_missing");
+    }
+    boolean hasUnusedRecoveryCodes = recoveryCodeEntities.stream().anyMatch(recoveryCode -> !recoveryCode.isUsed());
+    if (!hasUnusedRecoveryCodes) {
+      throw new DomainValidationException("recovery_codes_missing");
+    }
 
     // Publish domain events (MfaEnabledEvent)
     savedMfa.getDomainEvents().forEach(event -> {

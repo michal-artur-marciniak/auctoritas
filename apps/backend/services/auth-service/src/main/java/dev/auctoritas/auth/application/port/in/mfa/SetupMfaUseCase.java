@@ -3,8 +3,8 @@ package dev.auctoritas.auth.application.port.in.mfa;
 import dev.auctoritas.auth.application.mfa.SetupMfaResult;
 
 /**
- * Use case for setting up MFA for an end user.
- * Implements SetupMfaPort (UC-001 from PRD).
+ * MFA setup port for end-user setup flows.
+ * See US-002/US-003 from PRD.
  */
 public interface SetupMfaUseCase {
   /**

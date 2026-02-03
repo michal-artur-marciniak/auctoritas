@@ -70,4 +70,10 @@ public class RecoveryCodeJpaRepositoryAdapter implements RecoveryCodeRepositoryP
   public boolean markUnusedCodeAsUsedForMember(UUID memberId, String codeHash) {
     return recoveryCodeRepository.markUnusedCodeAsUsedForMember(memberId, codeHash, Instant.now()) > 0;
   }
+
+  @Override
+  @Transactional
+  public boolean markUnusedCodeAsUsedForUser(UUID userId, String codeHash) {
+    return recoveryCodeRepository.markUnusedCodeAsUsedForUser(userId, codeHash, Instant.now()) > 0;
+  }
 }

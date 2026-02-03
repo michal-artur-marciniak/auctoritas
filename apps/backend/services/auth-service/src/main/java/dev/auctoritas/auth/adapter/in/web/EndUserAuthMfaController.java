@@ -5,6 +5,9 @@ import dev.auctoritas.auth.application.port.in.mfa.CompleteMfaChallengeUseCase;
 import dev.auctoritas.auth.application.port.in.mfa.UseRecoveryCodeUseCase;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import java.util.List;
+import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -22,15 +25,23 @@ public class EndUserAuthMfaController {
 
   private static final String API_KEY_HEADER = "X-API-Key";
   private static final String FORWARDED_FOR_HEADER = "X-Forwarded-For";
+  private final List<String> trustedProxies;
 
   private final CompleteMfaChallengeUseCase completeMfaChallengeUseCase;
   private final UseRecoveryCodeUseCase useRecoveryCodeUseCase;
 
   public EndUserAuthMfaController(
       CompleteMfaChallengeUseCase completeMfaChallengeUseCase,
-      UseRecoveryCodeUseCase useRecoveryCodeUseCase) {
+      UseRecoveryCodeUseCase useRecoveryCodeUseCase,
+      @Value("${auth.security.trusted-proxies:}") List<String> trustedProxies) {
     this.completeMfaChallengeUseCase = completeMfaChallengeUseCase;
     this.useRecoveryCodeUseCase = useRecoveryCodeUseCase;
+    this.trustedProxies = trustedProxies == null
+        ? List.of()
+        : trustedProxies.stream()
+            .map(String::trim)
+            .filter(value -> !value.isBlank())
+            .collect(Collectors.toUnmodifiableList());
   }
 
   /**
@@ -81,6 +92,9 @@ public class EndUserAuthMfaController {
       return EndUserLoginResponse.mfaChallenge(result.mfaToken());
     }
     EndUserLoginResult.EndUserSummary user = result.user();
+    if (user == null) {
+      throw new IllegalStateException("EndUserLoginResult.user was null when mfaRequired=false");
+    }
     return EndUserLoginResponse.success(
         new EndUserLoginResponse.EndUserSummary(
             user.id(),
@@ -92,14 +106,23 @@ public class EndUserAuthMfaController {
   }
 
   private String resolveIpAddress(HttpServletRequest request) {
-    String forwarded = request.getHeader(FORWARDED_FOR_HEADER);
-    if (forwarded != null && !forwarded.isBlank()) {
-      String[] parts = forwarded.split(",");
-      if (parts.length > 0) {
-        return parts[0].trim();
+    if (isFromTrustedProxy(request)) {
+      String forwarded = request.getHeader(FORWARDED_FOR_HEADER);
+      if (forwarded != null && !forwarded.isBlank()) {
+        String[] parts = forwarded.split(",");
+        if (parts.length > 0) {
+          return parts[0].trim();
+        }
       }
     }
     return request.getRemoteAddr();
+  }
+
+  private boolean isFromTrustedProxy(HttpServletRequest request) {
+    if (trustedProxies.isEmpty()) {
+      return false;
+    }
+    return trustedProxies.contains(request.getRemoteAddr());
   }
 
   private String resolveUserAgent(HttpServletRequest request) {

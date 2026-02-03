@@ -194,6 +194,9 @@ public class EndUserAuthController {
       return EndUserLoginResponse.mfaChallenge(result.mfaToken());
     }
     EndUserLoginResult.EndUserSummary user = result.user();
+    if (user == null) {
+      throw new IllegalStateException("EndUserLoginResult.user was null when mfaRequired=false");
+    }
     return EndUserLoginResponse.success(
         new EndUserLoginResponse.EndUserSummary(
             user.id(),

@@ -5,7 +5,7 @@ import dev.auctoritas.auth.application.port.in.enduser.EndUserLoginResult;
 /**
  * Use case for using a recovery code to complete login.
  * Validates the recovery code, marks it as used, and issues tokens.
- * Implements UC-005 from PRD.
+ * Implements UC-004 from PRD.
  */
 public interface UseRecoveryCodeUseCase {
   /**
