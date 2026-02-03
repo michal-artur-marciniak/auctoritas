@@ -61,6 +61,9 @@ public class VerifyEndUserMfaService implements VerifyMfaUseCase {
   @Override
   @Transactional
   public void verifyMfa(String apiKey, EndUserMfaPrincipal principal, String code) {
+    if (code == null || code.isBlank()) {
+      throw new DomainValidationException("totp_code_invalid");
+    }
     // Validate API key and get project
     ApiKey resolvedKey = apiKeyService.validateActiveKey(apiKey);
     Project project = resolvedKey.getProject();

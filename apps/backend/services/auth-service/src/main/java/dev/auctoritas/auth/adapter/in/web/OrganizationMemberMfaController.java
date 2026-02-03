@@ -46,7 +46,7 @@ public class OrganizationMemberMfaController {
 
   /**
    * Initiates MFA setup for the authenticated organization member.
-   * Returns TOTP secret and QR code URL. Recovery codes are returned on verification.
+   * Returns TOTP secret and QR code URL. Recovery codes are empty until verification.
    * MFA is not enabled until verified.
    *
    * @param principal the authenticated organization member
