@@ -1,6 +1,7 @@
 package dev.auctoritas.auth.application.rbac;
 
 import dev.auctoritas.auth.adapter.in.web.RoleCreateRequest;
+import dev.auctoritas.auth.adapter.in.web.RolePermissionUpdateRequest;
 import dev.auctoritas.auth.adapter.in.web.RoleSummaryResponse;
 import dev.auctoritas.auth.adapter.in.web.RoleUpdateRequest;
 import dev.auctoritas.auth.application.port.in.ApplicationPrincipal;
@@ -14,13 +15,20 @@ import dev.auctoritas.auth.domain.exception.DomainValidationException;
 import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
 import dev.auctoritas.auth.domain.project.Project;
 import dev.auctoritas.auth.domain.project.ProjectRepositoryPort;
+import dev.auctoritas.auth.domain.rbac.Permission;
+import dev.auctoritas.auth.domain.rbac.PermissionCode;
+import dev.auctoritas.auth.domain.rbac.PermissionRepositoryPort;
 import dev.auctoritas.auth.domain.rbac.Role;
 import dev.auctoritas.auth.domain.rbac.RoleDeletedEvent;
 import dev.auctoritas.auth.domain.rbac.RoleName;
 import dev.auctoritas.auth.domain.rbac.RolePermissionRepositoryPort;
 import dev.auctoritas.auth.domain.rbac.RoleRepositoryPort;
+import dev.auctoritas.auth.domain.rbac.RolePermissionsUpdatedEvent;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -34,16 +42,19 @@ public class RoleApplicationService implements RoleManagementUseCase, RoleQueryU
   private final ProjectRepositoryPort projectRepository;
   private final RoleRepositoryPort roleRepository;
   private final RolePermissionRepositoryPort rolePermissionRepository;
+  private final PermissionRepositoryPort permissionRepository;
   private final DomainEventPublisherPort domainEventPublisherPort;
 
   public RoleApplicationService(
       ProjectRepositoryPort projectRepository,
       RoleRepositoryPort roleRepository,
       RolePermissionRepositoryPort rolePermissionRepository,
+      PermissionRepositoryPort permissionRepository,
       DomainEventPublisherPort domainEventPublisherPort) {
     this.projectRepository = projectRepository;
     this.roleRepository = roleRepository;
     this.rolePermissionRepository = rolePermissionRepository;
+    this.permissionRepository = permissionRepository;
     this.domainEventPublisherPort = domainEventPublisherPort;
   }
 
@@ -107,6 +118,31 @@ public class RoleApplicationService implements RoleManagementUseCase, RoleQueryU
     } catch (DataIntegrityViolationException ex) {
       throw new DomainConflictException("role_name_taken", ex);
     }
+  }
+
+  @Override
+  @Transactional
+  public RoleSummaryResponse updateRolePermissions(
+      UUID orgId,
+      UUID projectId,
+      UUID roleId,
+      ApplicationPrincipal principal,
+      RolePermissionUpdateRequest request) {
+    enforceOrgAccess(orgId, principal);
+    enforceAdminAccess(principal);
+    loadProject(orgId, projectId);
+    Role role = loadRole(projectId, roleId);
+
+    List<String> requestedCodes = request.permissionCodes() == null
+        ? List.of()
+        : request.permissionCodes();
+    ResolvedPermissions resolved = resolvePermissions(requestedCodes);
+
+    rolePermissionRepository.setPermissions(roleId, resolved.permissions());
+    publishPermissionsUpdated(role, resolved.codes());
+
+    int permissionCount = rolePermissionRepository.listByRoleId(roleId).size();
+    return toSummary(role, permissionCount);
   }
 
   @Override
@@ -193,5 +229,32 @@ public class RoleApplicationService implements RoleManagementUseCase, RoleQueryU
   private void publishDomainEvents(Role role) {
     role.getDomainEvents().forEach(event -> domainEventPublisherPort.publish(event.eventType(), event));
     role.clearDomainEvents();
+  }
+
+  private ResolvedPermissions resolvePermissions(List<String> permissionCodes) {
+    if (permissionCodes == null || permissionCodes.isEmpty()) {
+      return new ResolvedPermissions(List.of(), List.of());
+    }
+    Map<String, Permission> resolved = new LinkedHashMap<>(permissionCodes.size());
+    for (String rawCode : permissionCodes) {
+      PermissionCode code = PermissionCode.of(rawCode);
+      if (resolved.containsKey(code.value())) {
+        continue;
+      }
+      Permission permission = permissionRepository.findByCode(code.value())
+          .orElseThrow(() -> new DomainValidationException("permission_code_invalid"));
+      resolved.put(code.value(), permission);
+    }
+    return new ResolvedPermissions(List.copyOf(resolved.values()), List.copyOf(resolved.keySet()));
+  }
+
+  private void publishPermissionsUpdated(Role role, List<String> permissionCodes) {
+    List<String> codes = permissionCodes == null ? List.of() : List.copyOf(permissionCodes);
+    domainEventPublisherPort.publish(
+        "role.permissions.updated",
+        new RolePermissionsUpdatedEvent(UUID.randomUUID(), role.getId(), codes, Instant.now()));
+  }
+
+  private record ResolvedPermissions(List<Permission> permissions, List<String> codes) {
   }
 }

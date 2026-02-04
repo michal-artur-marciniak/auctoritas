@@ -78,6 +78,18 @@ public class RoleController {
     return ResponseEntity.noContent().build();
   }
 
+  @PreAuthorize("isAuthenticated()")
+  @PutMapping("/{roleId}/permissions")
+  public ResponseEntity<RoleSummaryResponse> updateRolePermissions(
+      @PathVariable UUID orgId,
+      @PathVariable UUID projectId,
+      @PathVariable UUID roleId,
+      @Valid @RequestBody RolePermissionUpdateRequest request,
+      @AuthenticationPrincipal OrganizationMemberPrincipal principal) {
+    return ResponseEntity.ok(roleManagementUseCase.updateRolePermissions(
+        orgId, projectId, roleId, toApplicationPrincipal(principal), request));
+  }
+
   private ApplicationPrincipal toApplicationPrincipal(OrganizationMemberPrincipal principal) {
     if (principal == null) {
       return null;
