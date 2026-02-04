@@ -71,3 +71,4 @@ MFA challenge flow for organization members mirrors the end-user flow with key d
 
 - Seed RBAC permissions in the Flyway migration that creates RBAC tables.
 - Default project roles (admin, user) are created in the project creation service and published via domain events.
+- Role management endpoints live under `/api/v1/org/{orgId}/projects/{projectId}/roles` and enforce OWNER/ADMIN access via application-layer checks.
