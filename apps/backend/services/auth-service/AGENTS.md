@@ -66,3 +66,8 @@ MFA challenge flow for organization members mirrors the end-user flow with key d
 - End-user MFA endpoints require end-user JWT + X-API-Key; org-member endpoints use JWT-only (no X-API-Key header)
 - Run `./gradlew :services:auth-service:test` before committing
 - Ensure type safety with no compiler warnings
+
+## RBAC Persistence Notes
+
+- Seed RBAC permissions in the Flyway migration that creates RBAC tables.
+- Default project roles (admin, user) are created in the project creation service and published via domain events.

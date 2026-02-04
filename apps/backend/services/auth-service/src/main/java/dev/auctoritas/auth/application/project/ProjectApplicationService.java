@@ -6,6 +6,7 @@ import dev.auctoritas.auth.adapter.in.web.ProjectCreateResponse;
 import dev.auctoritas.auth.adapter.in.web.ProjectSummaryResponse;
 import dev.auctoritas.auth.adapter.in.web.ProjectUpdateRequest;
 import dev.auctoritas.auth.application.apikey.ApiKeyApplicationService;
+import dev.auctoritas.auth.application.rbac.RoleSeedService;
 import dev.auctoritas.auth.domain.exception.DomainConflictException;
 import dev.auctoritas.auth.domain.exception.DomainForbiddenException;
 import dev.auctoritas.auth.domain.exception.DomainNotFoundException;
@@ -33,14 +34,17 @@ public class ProjectApplicationService {
   private final OrganizationRepositoryPort organizationRepository;
   private final ProjectRepositoryPort projectRepository;
   private final ApiKeyApplicationService apiKeyApplicationService;
+  private final RoleSeedService roleSeedService;
 
   public ProjectApplicationService(
       OrganizationRepositoryPort organizationRepository,
       ProjectRepositoryPort projectRepository,
-      ApiKeyApplicationService apiKeyApplicationService) {
+      ApiKeyApplicationService apiKeyApplicationService,
+      RoleSeedService roleSeedService) {
     this.organizationRepository = organizationRepository;
     this.projectRepository = projectRepository;
     this.apiKeyApplicationService = apiKeyApplicationService;
+    this.roleSeedService = roleSeedService;
   }
 
   @Transactional
@@ -64,6 +68,7 @@ public class ProjectApplicationService {
       Project project = Project.create(organization, name, slug);
       Project savedProject = projectRepository.save(project);
       ApiKeySecretResponse apiKeySecret = apiKeyApplicationService.createDefaultKey(savedProject);
+      roleSeedService.createDefaultRoles(savedProject);
 
       return new ProjectCreateResponse(toSummary(savedProject), apiKeySecret);
     } catch (DataIntegrityViolationException ex) {
