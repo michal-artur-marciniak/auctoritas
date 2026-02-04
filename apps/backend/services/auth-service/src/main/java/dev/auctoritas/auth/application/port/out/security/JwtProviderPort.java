@@ -3,6 +3,7 @@ package dev.auctoritas.auth.application.port.out.security;
 import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
 import io.jsonwebtoken.Claims;
 import java.security.PublicKey;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -16,6 +17,8 @@ public interface JwtProviderPort {
       UUID projectId,
       String email,
       boolean emailVerified,
+      List<String> roles,
+      List<String> permissions,
       long ttlSeconds);
 
   JwtValidationResult validateToken(String token);

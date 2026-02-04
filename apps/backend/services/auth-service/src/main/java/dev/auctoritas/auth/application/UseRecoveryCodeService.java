@@ -3,6 +3,7 @@ package dev.auctoritas.auth.application;
 import dev.auctoritas.auth.application.apikey.ApiKeyService;
 import dev.auctoritas.auth.application.mfa.RecoveryCodeHasher;
 import dev.auctoritas.auth.application.port.in.enduser.EndUserLoginResult;
+import dev.auctoritas.auth.application.rbac.EndUserPermissionResolver;
 import dev.auctoritas.auth.application.port.in.mfa.UseRecoveryCodeUseCase;
 import dev.auctoritas.auth.application.port.out.messaging.DomainEventPublisherPort;
 import dev.auctoritas.auth.application.port.out.security.JwtProviderPort;
@@ -48,6 +49,7 @@ public class UseRecoveryCodeService implements UseRecoveryCodeUseCase {
   private final EndUserRefreshTokenRepositoryPort endUserRefreshTokenRepository;
   private final TokenHasherPort tokenHasherPort;
   private final JwtProviderPort jwtProviderPort;
+  private final EndUserPermissionResolver permissionResolver;
   private final DomainEventPublisherPort domainEventPublisherPort;
 
   public UseRecoveryCodeService(
@@ -58,7 +60,8 @@ public class UseRecoveryCodeService implements UseRecoveryCodeUseCase {
       EndUserRefreshTokenRepositoryPort endUserRefreshTokenRepository,
       TokenHasherPort tokenHasherPort,
       JwtProviderPort jwtProviderPort,
-      DomainEventPublisherPort domainEventPublisherPort) {
+      DomainEventPublisherPort domainEventPublisherPort,
+      EndUserPermissionResolver permissionResolver) {
     this.apiKeyService = apiKeyService;
     this.mfaChallengeRepository = mfaChallengeRepository;
     this.recoveryCodeRepository = recoveryCodeRepository;
@@ -67,6 +70,7 @@ public class UseRecoveryCodeService implements UseRecoveryCodeUseCase {
     this.tokenHasherPort = tokenHasherPort;
     this.jwtProviderPort = jwtProviderPort;
     this.domainEventPublisherPort = domainEventPublisherPort;
+    this.permissionResolver = permissionResolver;
   }
 
   @Override
@@ -133,11 +137,15 @@ public class UseRecoveryCodeService implements UseRecoveryCodeUseCase {
     // Create session and issue tokens
     String rawRefreshToken = createSession(user, ipAddress, userAgent, settings);
 
+    EndUserPermissionResolver.ResolvedPermissions resolvedPermissions =
+        permissionResolver.resolvePermissions(user.getId());
     String accessToken = jwtProviderPort.generateEndUserAccessToken(
         user.getId(),
         project.getId(),
         user.getEmail(),
         user.isEmailVerified(),
+        resolvedPermissions.roles(),
+        resolvedPermissions.permissions(),
         settings.getAccessTokenTtlSeconds());
 
     return EndUserLoginResult.success(

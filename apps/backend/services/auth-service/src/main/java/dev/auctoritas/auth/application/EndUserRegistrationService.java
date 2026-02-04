@@ -3,6 +3,7 @@ import dev.auctoritas.auth.application.apikey.ApiKeyService;
 
 import dev.auctoritas.auth.application.enduser.EndUserRegistrationCommand;
 import dev.auctoritas.auth.application.enduser.EndUserRegistrationResult;
+import dev.auctoritas.auth.application.rbac.EndUserPermissionResolver;
 import dev.auctoritas.auth.domain.exception.DomainConflictException;
 import dev.auctoritas.auth.domain.enduser.EndUser;
 import dev.auctoritas.auth.domain.enduser.EndUserRefreshToken;
@@ -50,6 +51,7 @@ public class EndUserRegistrationService implements dev.auctoritas.auth.applicati
   private final PasswordEncoder passwordEncoder;
   private final TokenHasherPort tokenHasherPort;
   private final JwtProviderPort jwtProviderPort;
+  private final EndUserPermissionResolver permissionResolver;
   private final EndUserEmailVerificationService endUserEmailVerificationService;
   private final DomainEventPublisherPort domainEventPublisherPort;
   private final EndUserRegistrationDomainService registrationDomainService;
@@ -68,7 +70,8 @@ public class EndUserRegistrationService implements dev.auctoritas.auth.applicati
       DomainEventPublisherPort domainEventPublisherPort,
       EndUserRegistrationDomainService registrationDomainService,
       @Value("${auctoritas.auth.email-verification.log-challenge:true}") boolean logVerificationChallenge,
-      PlatformTransactionManager transactionManager) {
+      PlatformTransactionManager transactionManager,
+      EndUserPermissionResolver permissionResolver) {
     this.apiKeyService = apiKeyService;
     this.endUserRepository = endUserRepository;
     this.endUserSessionRepository = endUserSessionRepository;
@@ -81,6 +84,7 @@ public class EndUserRegistrationService implements dev.auctoritas.auth.applicati
     this.registrationDomainService = registrationDomainService;
     this.logVerificationChallenge = logVerificationChallenge;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
+    this.permissionResolver = permissionResolver;
   }
 
   public EndUserRegistrationResult register(
@@ -111,12 +115,16 @@ public class EndUserRegistrationService implements dev.auctoritas.auth.applicati
       throw new IllegalStateException("end_user_registration_failed");
     }
 
+    EndUserPermissionResolver.ResolvedPermissions resolvedPermissions =
+        permissionResolver.resolvePermissions(context.userId());
     String accessToken =
         jwtProviderPort.generateEndUserAccessToken(
             context.userId(),
             context.projectId(),
             context.email(),
             context.emailVerified(),
+            resolvedPermissions.roles(),
+            resolvedPermissions.permissions(),
             context.accessTokenTtlSeconds());
 
     return new EndUserRegistrationResult(

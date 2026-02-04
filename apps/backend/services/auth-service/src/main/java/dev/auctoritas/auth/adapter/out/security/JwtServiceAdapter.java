@@ -4,6 +4,7 @@ import dev.auctoritas.auth.application.port.out.security.JwtProviderPort;
 import dev.auctoritas.auth.application.JwtService;
 import dev.auctoritas.auth.domain.organization.OrganizationMemberRole;
 import java.security.PublicKey;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
@@ -29,9 +30,11 @@ public class JwtServiceAdapter implements JwtProviderPort {
       UUID projectId,
       String email,
       boolean emailVerified,
+      List<String> roles,
+      List<String> permissions,
       long ttlSeconds) {
     return jwtService.generateEndUserAccessToken(
-        endUserId, projectId, email, emailVerified, ttlSeconds);
+        endUserId, projectId, email, emailVerified, roles, permissions, ttlSeconds);
   }
 
   @Override
