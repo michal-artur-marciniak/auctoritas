@@ -12,8 +12,12 @@ import java.security.PublicKey;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.Date;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 
@@ -30,6 +34,8 @@ public class JwtService implements dev.auctoritas.auth.application.port.in.syste
   public static final String CLAIM_PROJECT_ID = "project_id";
   public static final String CLAIM_END_USER_ID = "end_user_id";
   public static final String CLAIM_EMAIL_VERIFIED = "email_verified";
+  public static final String CLAIM_ROLES = "roles";
+  public static final String CLAIM_PERMISSIONS = "permissions";
 
   private final JwtProperties jwtProperties;
   private final PrivateKey privateKey;
@@ -60,10 +66,19 @@ public class JwtService implements dev.auctoritas.auth.application.port.in.syste
   }
 
   public String generateEndUserAccessToken(
-      UUID endUserId, UUID projectId, String email, boolean emailVerified, long ttlSeconds) {
+      UUID endUserId,
+      UUID projectId,
+      String email,
+      boolean emailVerified,
+      List<String> roles,
+      List<String> permissions,
+      long ttlSeconds) {
     long resolvedTtl = ttlSeconds > 0 ? ttlSeconds : jwtProperties.accessTokenTtlSeconds();
     Instant now = Instant.now();
     Instant expiresAt = now.plusSeconds(resolvedTtl);
+
+    List<String> resolvedRoles = sanitizeClaimsList(roles);
+    List<String> resolvedPermissions = sanitizeClaimsList(permissions);
 
     return Jwts.builder()
         .subject(endUserId.toString())
@@ -71,11 +86,35 @@ public class JwtService implements dev.auctoritas.auth.application.port.in.syste
         .claim(CLAIM_PROJECT_ID, projectId.toString())
         .claim(CLAIM_EMAIL, email)
         .claim(CLAIM_EMAIL_VERIFIED, emailVerified)
+        .claim(CLAIM_ROLES, resolvedRoles)
+        .claim(CLAIM_PERMISSIONS, resolvedPermissions)
         .issuer(jwtProperties.issuer())
         .issuedAt(Date.from(now))
         .expiration(Date.from(expiresAt))
         .signWith(privateKey, Jwts.SIG.RS256)
         .compact();
+  }
+
+  private List<String> sanitizeClaimsList(List<String> values) {
+    if (values == null || values.isEmpty()) {
+      return List.of();
+    }
+    LinkedHashSet<String> unique = new LinkedHashSet<>();
+    for (String value : values) {
+      if (value == null) {
+        continue;
+      }
+      String trimmed = value.trim();
+      if (!trimmed.isEmpty()) {
+        unique.add(trimmed);
+      }
+    }
+    if (unique.isEmpty()) {
+      return List.of();
+    }
+    ArrayList<String> sorted = new ArrayList<>(unique);
+    Collections.sort(sorted);
+    return List.copyOf(sorted);
   }
 
   public JwtValidationResult validateToken(String token) {

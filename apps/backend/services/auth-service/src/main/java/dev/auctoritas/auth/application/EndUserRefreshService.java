@@ -1,5 +1,6 @@
 package dev.auctoritas.auth.application;
 import dev.auctoritas.auth.application.apikey.ApiKeyService;
+import dev.auctoritas.auth.application.rbac.EndUserPermissionResolver;
 
 import dev.auctoritas.auth.adapter.in.web.EndUserRefreshRequest;
 import dev.auctoritas.auth.adapter.in.web.EndUserRefreshResponse;
@@ -31,6 +32,7 @@ public class EndUserRefreshService implements dev.auctoritas.auth.application.po
   private final EndUserSessionRepositoryPort endUserSessionRepository;
   private final TokenService tokenService;
   private final JwtService jwtService;
+  private final EndUserPermissionResolver permissionResolver;
   private final DomainEventPublisherPort domainEventPublisherPort;
   private final TransactionTemplate transactionTemplate;
 
@@ -41,7 +43,8 @@ public class EndUserRefreshService implements dev.auctoritas.auth.application.po
       TokenService tokenService,
       JwtService jwtService,
       DomainEventPublisherPort domainEventPublisherPort,
-      PlatformTransactionManager transactionManager) {
+      PlatformTransactionManager transactionManager,
+      EndUserPermissionResolver permissionResolver) {
     this.apiKeyService = apiKeyService;
     this.refreshTokenRepository = refreshTokenRepository;
     this.endUserSessionRepository = endUserSessionRepository;
@@ -49,6 +52,7 @@ public class EndUserRefreshService implements dev.auctoritas.auth.application.po
     this.jwtService = jwtService;
     this.domainEventPublisherPort = domainEventPublisherPort;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
+    this.permissionResolver = permissionResolver;
   }
 
   public EndUserRefreshResponse refresh(
@@ -63,12 +67,16 @@ public class EndUserRefreshService implements dev.auctoritas.auth.application.po
       throw new IllegalStateException("end_user_refresh_failed");
     }
 
+    EndUserPermissionResolver.ResolvedPermissions resolvedPermissions =
+        permissionResolver.resolvePermissions(context.userId());
     String accessToken =
         jwtService.generateEndUserAccessToken(
             context.userId(),
             context.projectId(),
             context.email(),
             context.emailVerified(),
+            resolvedPermissions.roles(),
+            resolvedPermissions.permissions(),
             context.accessTokenTtlSeconds());
 
     return new EndUserRefreshResponse(accessToken, context.rawRefreshToken());

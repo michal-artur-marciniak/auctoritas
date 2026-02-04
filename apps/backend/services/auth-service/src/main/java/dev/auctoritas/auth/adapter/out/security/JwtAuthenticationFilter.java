@@ -11,6 +11,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpHeaders;
@@ -84,8 +88,38 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     UUID endUserId = parseRequiredUuid(claims, JwtService.CLAIM_END_USER_ID);
     UUID projectId = parseRequiredUuid(claims, JwtService.CLAIM_PROJECT_ID);
     String email = requireClaim(claims, JwtService.CLAIM_EMAIL);
+    java.util.List<String> roles = parseStringListClaim(claims, JwtService.CLAIM_ROLES);
+    java.util.List<String> permissions = parseStringListClaim(claims, JwtService.CLAIM_PERMISSIONS);
 
-    return new EndUserPrincipal(endUserId, projectId, email);
+    return new EndUserPrincipal(endUserId, projectId, email, roles, permissions);
+  }
+
+  private List<String> parseStringListClaim(Claims claims, String name) {
+    Object rawValue = claims.get(name);
+    if (rawValue == null) {
+      return List.of();
+    }
+    List<String> values = new ArrayList<>();
+    if (rawValue instanceof java.util.Collection<?> collection) {
+      for (Object item : collection) {
+        String value = item == null ? null : item.toString();
+        if (value != null && !value.isBlank()) {
+          values.add(value.trim());
+        }
+      }
+    } else if (rawValue instanceof String rawString) {
+      String trimmed = rawString.trim();
+      if (!trimmed.isEmpty()) {
+        values.add(trimmed);
+      }
+    }
+    if (values.isEmpty()) {
+      return List.of();
+    }
+    LinkedHashSet<String> unique = new LinkedHashSet<>(values);
+    ArrayList<String> sorted = new ArrayList<>(unique);
+    Collections.sort(sorted);
+    return List.copyOf(sorted);
   }
 
   private OrganizationMemberPrincipal extractOrganizationMemberPrincipal(Claims claims) {

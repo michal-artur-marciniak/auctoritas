@@ -11,13 +11,28 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 /**
  * Represents the authenticated end user in Spring Security context.
  */
-public record EndUserPrincipal(UUID endUserId, UUID projectId, String email)
+public record EndUserPrincipal(
+    UUID endUserId,
+    UUID projectId,
+    String email,
+    List<String> roles,
+    List<String> permissions)
     implements Authentication {
 
   public EndUserPrincipal {
     Objects.requireNonNull(endUserId, "endUserId");
     Objects.requireNonNull(projectId, "projectId");
     Objects.requireNonNull(email, "email");
+    if (roles == null) {
+      roles = List.of();
+    }
+    if (permissions == null) {
+      permissions = List.of();
+    }
+  }
+
+  public EndUserPrincipal(UUID endUserId, UUID projectId, String email) {
+    this(endUserId, projectId, email, List.of(), List.of());
   }
 
   @Override

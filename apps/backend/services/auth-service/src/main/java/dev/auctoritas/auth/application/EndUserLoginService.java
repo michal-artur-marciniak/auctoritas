@@ -3,6 +3,7 @@ package dev.auctoritas.auth.application;
 import dev.auctoritas.auth.adapter.in.web.EndUserLoginRequest;
 import dev.auctoritas.auth.application.apikey.ApiKeyService;
 import dev.auctoritas.auth.application.port.in.enduser.EndUserLoginResult;
+import dev.auctoritas.auth.application.rbac.EndUserPermissionResolver;
 import dev.auctoritas.auth.application.port.out.messaging.DomainEventPublisherPort;
 import dev.auctoritas.auth.application.port.out.security.JwtProviderPort;
 import dev.auctoritas.auth.application.port.out.security.TokenHasherPort;
@@ -47,6 +48,7 @@ public class EndUserLoginService implements dev.auctoritas.auth.application.port
   private final PasswordEncoder passwordEncoder;
   private final TokenHasherPort tokenHasherPort;
   private final JwtProviderPort jwtProviderPort;
+  private final EndUserPermissionResolver permissionResolver;
   private final DomainEventPublisherPort domainEventPublisherPort;
   private final EndUserMfaRepositoryPort endUserMfaRepository;
   private final MfaChallengeRepositoryPort mfaChallengeRepository;
@@ -63,7 +65,8 @@ public class EndUserLoginService implements dev.auctoritas.auth.application.port
       DomainEventPublisherPort domainEventPublisherPort,
       EndUserMfaRepositoryPort endUserMfaRepository,
       MfaChallengeRepositoryPort mfaChallengeRepository,
-      PlatformTransactionManager transactionManager) {
+      PlatformTransactionManager transactionManager,
+      EndUserPermissionResolver permissionResolver) {
     this.apiKeyService = apiKeyService;
     this.endUserRepository = endUserRepository;
     this.endUserSessionRepository = endUserSessionRepository;
@@ -75,6 +78,7 @@ public class EndUserLoginService implements dev.auctoritas.auth.application.port
     this.endUserMfaRepository = endUserMfaRepository;
     this.mfaChallengeRepository = mfaChallengeRepository;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
+    this.permissionResolver = permissionResolver;
   }
 
   public EndUserLoginResult login(
@@ -94,12 +98,16 @@ public class EndUserLoginService implements dev.auctoritas.auth.application.port
     }
 
     LoginResult.Success success = (LoginResult.Success) result;
+    EndUserPermissionResolver.ResolvedPermissions resolvedPermissions =
+        permissionResolver.resolvePermissions(success.user().getId());
     String accessToken =
         jwtProviderPort.generateEndUserAccessToken(
             success.user().getId(),
             success.project().getId(),
             success.user().getEmail(),
             success.user().isEmailVerified(),
+            resolvedPermissions.roles(),
+            resolvedPermissions.permissions(),
             success.project().getSettings().getAccessTokenTtlSeconds());
 
     return EndUserLoginResult.success(

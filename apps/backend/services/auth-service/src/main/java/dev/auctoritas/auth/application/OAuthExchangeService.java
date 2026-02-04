@@ -3,6 +3,7 @@ package dev.auctoritas.auth.application;
 import dev.auctoritas.auth.adapter.in.web.OAuthExchangeRequest;
 import dev.auctoritas.auth.application.apikey.ApiKeyService;
 import dev.auctoritas.auth.application.port.in.enduser.EndUserLoginResult;
+import dev.auctoritas.auth.application.rbac.EndUserPermissionResolver;
 import dev.auctoritas.auth.application.port.out.messaging.DomainEventPublisherPort;
 import dev.auctoritas.auth.domain.enduser.EndUser;
 import dev.auctoritas.auth.domain.enduser.EndUserRefreshToken;
@@ -34,6 +35,7 @@ public class OAuthExchangeService implements dev.auctoritas.auth.application.por
   private final EndUserSessionRepositoryPort endUserSessionRepository;
   private final TokenService tokenService;
   private final JwtService jwtService;
+  private final EndUserPermissionResolver permissionResolver;
   private final DomainEventPublisherPort domainEventPublisherPort;
   private final TransactionTemplate transactionTemplate;
 
@@ -45,7 +47,8 @@ public class OAuthExchangeService implements dev.auctoritas.auth.application.por
       TokenService tokenService,
       JwtService jwtService,
       DomainEventPublisherPort domainEventPublisherPort,
-      PlatformTransactionManager transactionManager) {
+      PlatformTransactionManager transactionManager,
+      EndUserPermissionResolver permissionResolver) {
     this.apiKeyService = apiKeyService;
     this.oauthExchangeCodeRepository = oauthExchangeCodeRepository;
     this.refreshTokenRepository = refreshTokenRepository;
@@ -54,6 +57,7 @@ public class OAuthExchangeService implements dev.auctoritas.auth.application.por
     this.jwtService = jwtService;
     this.domainEventPublisherPort = domainEventPublisherPort;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
+    this.permissionResolver = permissionResolver;
   }
 
   public EndUserLoginResult exchange(
@@ -65,12 +69,16 @@ public class OAuthExchangeService implements dev.auctoritas.auth.application.por
       throw new IllegalStateException("oauth_exchange_failed");
     }
 
+    EndUserPermissionResolver.ResolvedPermissions resolvedPermissions =
+        permissionResolver.resolvePermissions(context.userId());
     String accessToken =
         jwtService.generateEndUserAccessToken(
             context.userId(),
             context.projectId(),
             context.email(),
             context.emailVerified(),
+            resolvedPermissions.roles(),
+            resolvedPermissions.permissions(),
             context.accessTokenTtlSeconds());
 
     return EndUserLoginResult.success(
