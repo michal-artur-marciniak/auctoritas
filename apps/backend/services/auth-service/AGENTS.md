@@ -73,3 +73,4 @@ MFA challenge flow for organization members mirrors the end-user flow with key d
 - Default project roles (admin, user) are created in the project creation service and published via domain events.
 - Role management endpoints live under `/api/v1/org/{orgId}/projects/{projectId}/roles` and enforce OWNER/ADMIN access via application-layer checks.
 - Role permission updates accept permission codes (not IDs); normalize with `PermissionCode`, de-duplicate, validate each code via `PermissionRepositoryPort`, then replace all role permissions and publish `RolePermissionsUpdatedEvent`.
+- User role assignments live under `/api/v1/org/{orgId}/projects/{projectId}/users/{userId}/roles`; assignments replace existing roles and responses return role summaries plus resolved permission codes from `role_permissions`.
