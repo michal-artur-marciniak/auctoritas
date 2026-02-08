@@ -1,6 +1,8 @@
 package com.example.api.application.auth;
 
 import com.example.api.application.auth.dto.LoginRequest;
+import com.example.api.domain.environment.EnvironmentId;
+import com.example.api.domain.project.ProjectId;
 import com.example.api.domain.user.Email;
 import com.example.api.domain.user.Password;
 import com.example.api.domain.user.PasswordEncoder;
@@ -66,6 +68,8 @@ class LoginUseCaseTest {
                 true,
                 "reason",
                 null,
+                null,
+                null,
                 LocalDateTime.now()
         );
         when(userRepository.findByEmail(new Email("user@example.com"))).thenReturn(Optional.of(user));
@@ -99,6 +103,8 @@ class LoginUseCaseTest {
                 "User",
                 Role.USER,
                 false,
+                null,
+                null,
                 null,
                 null,
                 LocalDateTime.now()

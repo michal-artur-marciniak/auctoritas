@@ -21,9 +21,9 @@ import com.example.api.domain.organization.exception.OrganizationOwnerRequiredEx
 import com.example.api.domain.user.Email;
 import com.example.api.domain.user.Password;
 import com.example.api.domain.user.PasswordEncoder;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -53,14 +53,24 @@ class OrganizationMemberManagementUseCaseTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
-    @InjectMocks
     private OrganizationMemberManagementUseCase useCase;
+
+    @BeforeEach
+    void setUp() {
+        useCase = new OrganizationMemberManagementUseCase(
+                organizationRepository,
+                memberRepository,
+                invitationRepository,
+                passwordEncoder,
+                72
+        );
+    }
 
     @Test
     void inviteMemberRequiresOwnerOrAdmin() {
         final var actor = sampleMember(OrganizationMemberRole.MEMBER);
         when(memberRepository.findById(any())).thenReturn(Optional.of(actor));
-        when(organizationRepository.findById(actor.getOrganizationId())).thenReturn(Optional.of(sampleOrganization()));
+        // No need to stub organizationRepository since role check fails first
 
         assertThrows(IllegalArgumentException.class, () ->
                 useCase.inviteMember(new InviteMemberRequest(
@@ -133,8 +143,7 @@ class OrganizationMemberManagementUseCaseTest {
     void changeRoleRequiresOwner() {
         final var actor = sampleMember(OrganizationMemberRole.ADMIN);
         when(memberRepository.findById(any())).thenReturn(Optional.of(actor));
-
-        when(organizationRepository.findById(actor.getOrganizationId())).thenReturn(Optional.of(sampleOrganization()));
+        // No need to stub organizationRepository since role check fails first
 
         assertThrows(IllegalArgumentException.class, () ->
                 useCase.changeRole(new UpdateMemberRoleRequest(
@@ -150,7 +159,7 @@ class OrganizationMemberManagementUseCaseTest {
         final var target = sampleMember(OrganizationMemberRole.OWNER);
         when(memberRepository.findById(eq(actor.getId()))).thenReturn(Optional.of(actor));
         when(memberRepository.findById(eq(target.getId()))).thenReturn(Optional.of(target));
-        when(organizationRepository.findById(actor.getOrganizationId())).thenReturn(Optional.of(sampleOrganization()));
+        // No need to stub organizationRepository since count check happens before organization check
         when(memberRepository.countByOrganizationIdAndRole(actor.getOrganizationId(), OrganizationMemberRole.OWNER))
                 .thenReturn(1L);
 
@@ -168,7 +177,7 @@ class OrganizationMemberManagementUseCaseTest {
         final var target = sampleMember(OrganizationMemberRole.OWNER);
         when(memberRepository.findById(eq(actor.getId()))).thenReturn(Optional.of(actor));
         when(memberRepository.findById(eq(target.getId()))).thenReturn(Optional.of(target));
-        when(organizationRepository.findById(actor.getOrganizationId())).thenReturn(Optional.of(sampleOrganization()));
+        // No need to stub organizationRepository since count check happens before organization check
         when(memberRepository.countByOrganizationIdAndRole(actor.getOrganizationId(), OrganizationMemberRole.OWNER))
                 .thenReturn(1L);
 
@@ -182,7 +191,7 @@ class OrganizationMemberManagementUseCaseTest {
         final var target = sampleMember(OrganizationMemberRole.MEMBER, OrganizationId.of("other-org"));
         when(memberRepository.findById(eq(actor.getId()))).thenReturn(Optional.of(actor));
         when(memberRepository.findById(eq(target.getId()))).thenReturn(Optional.of(target));
-        when(organizationRepository.findById(actor.getOrganizationId())).thenReturn(Optional.of(sampleOrganization()));
+        // No need to stub organizationRepository since org mismatch check happens first
 
         assertThrows(OrganizationMemberNotFoundException.class, () ->
                 useCase.removeMember(actor.getOrganizationId().value(), actor.getId().value(), target.getId().value()));

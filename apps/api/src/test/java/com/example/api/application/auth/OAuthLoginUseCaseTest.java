@@ -81,6 +81,8 @@ class OAuthLoginUseCaseTest {
                 false,
                 null,
                 null,
+                null,
+                null,
                 LocalDateTime.now()
         );
     }

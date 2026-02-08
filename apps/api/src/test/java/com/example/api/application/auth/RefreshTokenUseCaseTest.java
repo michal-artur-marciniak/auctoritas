@@ -92,6 +92,8 @@ class RefreshTokenUseCaseTest {
                 false,
                 null,
                 null,
+                null,
+                null,
                 LocalDateTime.now()
         );
     }

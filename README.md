@@ -120,6 +120,23 @@ The API runs on `http://localhost:8080` by default.
 
 SDK authentication requires the `X-API-Key` header with a valid project API key (format: `pk_prod_*` or `pk_dev_*`). The API key scopes the user to a specific project and environment. Users registered with one API key cannot authenticate with a different API key.
 
+### SDK User
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/api/v1/users/me` | Get current SDK user profile | SDK JWT |
+
+### Project-Level Isolation
+
+End users are strictly isolated per project and environment (US-005). Key features:
+
+- **Repository Filtering**: User queries include `projectId` and `environmentId` filters
+- **Cross-Project Protection**: Accessing a user from a different project returns 404 Not Found
+- **API Key Scoping**: Each SDK request includes project context from the API key
+- **JWT Enforcement**: SDK endpoints validate the user belongs to the requesting project
+
+This ensures data never leaks between tenants, even with the same email address across different projects.
+
 ### Organization
 
 | Method | Endpoint | Description | Auth Required |
