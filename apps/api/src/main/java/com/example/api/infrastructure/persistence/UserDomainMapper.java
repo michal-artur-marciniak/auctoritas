@@ -1,5 +1,7 @@
 package com.example.api.infrastructure.persistence;
 
+import com.example.api.domain.environment.EnvironmentId;
+import com.example.api.domain.project.ProjectId;
 import com.example.api.domain.user.Email;
 import com.example.api.domain.user.Password;
 import com.example.api.domain.user.User;
@@ -27,6 +29,8 @@ final class UserDomainMapper {
                 entity.isBanned(),
                 entity.getBanReason(),
                 entity.getStripeCustomerId(),
+                entity.getProjectId() != null ? ProjectId.of(entity.getProjectId()) : null,
+                entity.getEnvironmentId() != null ? EnvironmentId.of(entity.getEnvironmentId()) : null,
                 entity.getCreatedAt()
         );
     }
@@ -44,6 +48,8 @@ final class UserDomainMapper {
                 user.isBanned(),
                 user.getBanReason(),
                 user.getStripeCustomerId(),
+                user.getProjectId().map(ProjectId::value).orElse(null),
+                user.getEnvironmentId().map(EnvironmentId::value).orElse(null),
                 user.getCreatedAt()
         );
     }

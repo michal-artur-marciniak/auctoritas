@@ -45,6 +45,12 @@ public class UserJpaEntity {
     @Column(name = "stripe_customer_id")
     private String stripeCustomerId;
 
+    @Column(name = "project_id", length = 36)
+    private String projectId;
+
+    @Column(name = "environment_id", length = 36)
+    private String environmentId;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -53,7 +59,8 @@ public class UserJpaEntity {
     }
 
     public UserJpaEntity(String id, String email, String passwordHash, String name,
-                         Role role, boolean banned, String banReason, String stripeCustomerId, LocalDateTime createdAt) {
+                         Role role, boolean banned, String banReason, String stripeCustomerId,
+                         String projectId, String environmentId, LocalDateTime createdAt) {
         this.id = id;
         this.email = email;
         this.passwordHash = passwordHash;
@@ -62,6 +69,8 @@ public class UserJpaEntity {
         this.banned = banned;
         this.banReason = banReason;
         this.stripeCustomerId = stripeCustomerId;
+        this.projectId = projectId;
+        this.environmentId = environmentId;
         this.createdAt = createdAt;
     }
 
@@ -127,6 +136,22 @@ public class UserJpaEntity {
 
     public void setStripeCustomerId(String stripeCustomerId) {
         this.stripeCustomerId = stripeCustomerId;
+    }
+
+    public String getProjectId() {
+        return projectId;
+    }
+
+    public void setProjectId(String projectId) {
+        this.projectId = projectId;
+    }
+
+    public String getEnvironmentId() {
+        return environmentId;
+    }
+
+    public void setEnvironmentId(String environmentId) {
+        this.environmentId = environmentId;
     }
 
     public LocalDateTime getCreatedAt() {

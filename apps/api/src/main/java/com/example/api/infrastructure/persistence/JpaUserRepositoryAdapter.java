@@ -1,5 +1,7 @@
 package com.example.api.infrastructure.persistence;
 
+import com.example.api.domain.environment.EnvironmentId;
+import com.example.api.domain.project.ProjectId;
 import com.example.api.domain.user.Email;
 import com.example.api.domain.user.User;
 import com.example.api.domain.user.UserId;
@@ -35,6 +37,20 @@ public class JpaUserRepositoryAdapter implements UserRepository {
     @Override
     public Optional<User> findByStripeCustomerId(String stripeCustomerId) {
         return jpaRepository.findByStripeCustomerId(stripeCustomerId)
+                .map(UserDomainMapper::toDomain);
+    }
+
+    @Override
+    public Optional<User> findByEmailAndProjectId(Email email, ProjectId projectId, EnvironmentId environmentId) {
+        return jpaRepository.findByEmailAndProjectIdAndEnvironmentId(
+                        email.value(), projectId.value(), environmentId.value())
+                .map(UserDomainMapper::toDomain);
+    }
+
+    @Override
+    public Optional<User> findByIdAndProjectId(UserId id, ProjectId projectId, EnvironmentId environmentId) {
+        return jpaRepository.findByIdAndProjectIdAndEnvironmentId(
+                        id.value(), projectId.value(), environmentId.value())
                 .map(UserDomainMapper::toDomain);
     }
 

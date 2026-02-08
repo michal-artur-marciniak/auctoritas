@@ -1,7 +1,11 @@
 package com.example.api.domain.user;
 
+import com.example.api.domain.environment.EnvironmentId;
+import com.example.api.domain.project.ProjectId;
+
 import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Aggregate root for the User domain.
@@ -19,13 +23,16 @@ public class User {
     private boolean banned;
     private String banReason;
     private String stripeCustomerId;
+    private final ProjectId projectId;
+    private final EnvironmentId environmentId;
     private final LocalDateTime createdAt;
 
     /**
      * Full constructor for reconstitution from persistence.
      */
     public User(UserId id, Email email, Password password, String name,
-                Role role, boolean banned, String banReason, String stripeCustomerId, LocalDateTime createdAt) {
+                Role role, boolean banned, String banReason, String stripeCustomerId,
+                ProjectId projectId, EnvironmentId environmentId, LocalDateTime createdAt) {
         Objects.requireNonNull(id, "User ID required");
         Objects.requireNonNull(email, "Email required");
         Objects.requireNonNull(password, "Password required");
@@ -43,6 +50,8 @@ public class User {
         this.banned = banned;
         this.banReason = banReason;
         this.stripeCustomerId = stripeCustomerId;
+        this.projectId = projectId;
+        this.environmentId = environmentId;
         this.createdAt = createdAt;
     }
 
@@ -59,6 +68,30 @@ public class User {
                 false,
                 null,
                 null,
+                null,
+                null,
+                LocalDateTime.now()
+        );
+    }
+
+    /**
+     * Factory method for registering a new SDK end user scoped to a project/environment.
+     */
+    public static User registerEndUser(Email email, Password password, String name,
+                                       ProjectId projectId, EnvironmentId environmentId) {
+        Objects.requireNonNull(projectId, "Project ID required");
+        Objects.requireNonNull(environmentId, "Environment ID required");
+        return new User(
+                UserId.generate(),
+                email,
+                password,
+                name,
+                Role.USER,
+                false,
+                null,
+                null,
+                projectId,
+                environmentId,
                 LocalDateTime.now()
         );
     }
@@ -168,5 +201,23 @@ public class User {
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public Optional<ProjectId> getProjectId() {
+        return Optional.ofNullable(projectId);
+    }
+
+    public Optional<EnvironmentId> getEnvironmentId() {
+        return Optional.ofNullable(environmentId);
+    }
+
+    /**
+     * Checks if this user belongs to the given project and environment.
+     */
+    public boolean belongsTo(ProjectId projectId, EnvironmentId environmentId) {
+        return this.projectId != null
+                && this.environmentId != null
+                && this.projectId.equals(projectId)
+                && this.environmentId.equals(environmentId);
     }
 }

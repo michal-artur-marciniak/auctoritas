@@ -24,6 +24,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final OrgJwtAuthenticationFilter orgJwtAuthenticationFilter;
+    private final ApiKeyAuthenticationFilter apiKeyAuthenticationFilter;
     private final OAuth2AuthenticationSuccessHandler oAuthSuccessHandler;
     private final OAuth2AuthenticationFailureHandler oAuthFailureHandler;
     private final HttpCookieOAuth2AuthorizationRequestRepository authorizationRequestRepository;
@@ -31,12 +32,14 @@ public class SecurityConfig {
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
                           OrgJwtAuthenticationFilter orgJwtAuthenticationFilter,
+                          ApiKeyAuthenticationFilter apiKeyAuthenticationFilter,
                           OAuth2AuthenticationSuccessHandler oAuthSuccessHandler,
                           OAuth2AuthenticationFailureHandler oAuthFailureHandler,
                           HttpCookieOAuth2AuthorizationRequestRepository authorizationRequestRepository,
                           FrontendCorsProperties frontendCorsProperties) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.orgJwtAuthenticationFilter = orgJwtAuthenticationFilter;
+        this.apiKeyAuthenticationFilter = apiKeyAuthenticationFilter;
         this.oAuthSuccessHandler = oAuthSuccessHandler;
         this.oAuthFailureHandler = oAuthFailureHandler;
         this.authorizationRequestRepository = authorizationRequestRepository;
@@ -51,17 +54,18 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/v1/org/register").permitAll()
-                        .requestMatchers("/api/v1/org/auth/login").permitAll()
-                        .requestMatchers("/api/v1/org/*/members/accept").permitAll()
-                        .requestMatchers("/api/stripe/webhook").permitAll()
-                        .requestMatchers("/oauth2/**").permitAll()
-                        .requestMatchers("/login/oauth2/**").permitAll()
-                        .requestMatchers("/api/health").permitAll()
-                        .requestMatchers("/api/hello").permitAll()
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .anyRequest().authenticated()
+                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/v1/auth/**").permitAll()
+                .requestMatchers("/api/v1/org/register").permitAll()
+                .requestMatchers("/api/v1/org/auth/login").permitAll()
+                .requestMatchers("/api/v1/org/*/members/accept").permitAll()
+                .requestMatchers("/api/stripe/webhook").permitAll()
+                .requestMatchers("/oauth2/**").permitAll()
+                .requestMatchers("/login/oauth2/**").permitAll()
+                .requestMatchers("/api/health").permitAll()
+                .requestMatchers("/api/hello").permitAll()
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth -> oauth
                         .authorizationEndpoint(authorization ->
@@ -69,6 +73,7 @@ public class SecurityConfig {
                         .successHandler(oAuthSuccessHandler)
                         .failureHandler(oAuthFailureHandler)
                 )
+                .addFilterBefore(apiKeyAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(orgJwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -97,7 +102,7 @@ public class SecurityConfig {
                 HttpMethod.DELETE.name(),
                 HttpMethod.OPTIONS.name()
         ));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-API-Key"));
         config.setAllowCredentials(true);
 
         final var source = new UrlBasedCorsConfigurationSource();

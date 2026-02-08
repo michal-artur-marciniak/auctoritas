@@ -111,6 +111,15 @@ The API runs on `http://localhost:8080` by default.
 | GET | `/api/auth/oauth/github` | Initiate GitHub OAuth | No |
 | GET | `/api/auth/oauth/google` | Initiate Google OAuth | No |
 
+### SDK Authentication
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST | `/api/v1/auth/register` | Register SDK end user (scoped to project/env) | API Key |
+| POST | `/api/v1/auth/login` | Login SDK end user (scoped to project/env) | API Key |
+
+SDK authentication requires the `X-API-Key` header with a valid project API key (format: `pk_prod_*` or `pk_dev_*`). The API key scopes the user to a specific project and environment. Users registered with one API key cannot authenticate with a different API key.
+
 ### Organization
 
 | Method | Endpoint | Description | Auth Required |
@@ -245,6 +254,18 @@ curl http://localhost:8080/api/v1/org/org-id/projects/project-id \
 # Archive project
 curl -X DELETE http://localhost:8080/api/v1/org/org-id/projects/project-id \
   -H "Authorization: Bearer org-jwt"
+
+# SDK end user registration (requires API key from project creation)
+curl -X POST http://localhost:8080/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: pk_prod_xxxxx" \
+  -d '{"email":"user@app.com","password":"password123","name":"App User"}'
+
+# SDK end user login (requires API key)
+curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: pk_prod_xxxxx" \
+  -d '{"email":"user@app.com","password":"password123"}'
 ```
 
 ## Development
