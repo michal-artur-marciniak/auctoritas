@@ -180,7 +180,20 @@ Organization member authentication and SDK end-user authentication are strictly 
 | GET | `/api/v1/org/{orgId}/projects/{projectId}` | Get project details with environments | Org JWT |
 | DELETE | `/api/v1/org/{orgId}/projects/{projectId}` | Archive project | Org JWT (OWNER/ADMIN) |
 
-\* Can use refresh token from cookie or request body
+### API Key Management
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/api/v1/org/{orgId}/projects/{projectId}/keys` | List API keys for project (redacted) | Org JWT |
+| POST | `/api/v1/org/{orgId}/projects/{projectId}/keys` | Rotate API key for environment | Org JWT (OWNER/ADMIN) |
+
+**API Key Rotation:**
+- POST body: `{"environmentId": "PROD"}` or `{"environmentId": "DEV"}`
+- Returns new raw key once (cannot be retrieved again)
+- Old key is immediately revoked
+- New key has prefix `pk_prod_*` or `pk_dev_*`
+
+* Can use refresh token from cookie or request body
 
 ### Sessions
 
@@ -299,6 +312,16 @@ curl http://localhost:8080/api/v1/org/org-id/projects/project-id \
 # Archive project
 curl -X DELETE http://localhost:8080/api/v1/org/org-id/projects/project-id \
   -H "Authorization: Bearer org-jwt"
+
+# List API keys for project (returns metadata, no raw keys)
+curl http://localhost:8080/api/v1/org/org-id/projects/project-id/keys \
+  -H "Authorization: Bearer org-jwt"
+
+# Rotate API key (returns new raw key once)
+curl -X POST http://localhost:8080/api/v1/org/org-id/projects/project-id/keys \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer org-jwt" \
+  -d '{"environmentId":"PROD"}'
 
 # SDK end user registration (requires API key from project creation)
 curl -X POST http://localhost:8080/api/v1/auth/register \
