@@ -49,6 +49,8 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/v1/org/register").permitAll()
+                        .requestMatchers("/api/v1/org/auth/login").permitAll()
                         .requestMatchers("/api/stripe/webhook").permitAll()
                         .requestMatchers("/oauth2/**").permitAll()
                         .requestMatchers("/login/oauth2/**").permitAll()
@@ -72,6 +74,7 @@ public class SecurityConfig {
     public BCryptPasswordEncoder bCryptPasswordEncoder() {
         return new BCryptPasswordEncoder();
     }
+
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {

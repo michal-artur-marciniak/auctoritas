@@ -10,7 +10,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class PasswordEncoderAdapter implements PasswordEncoder {
 
-    private final BCryptPasswordEncoder bcrypt = new BCryptPasswordEncoder();
+    private final BCryptPasswordEncoder bcrypt;
+
+    public PasswordEncoderAdapter(BCryptPasswordEncoder bcrypt) {
+        this.bcrypt = bcrypt;
+    }
 
     @Override
     public String encode(String rawPassword) {
@@ -22,10 +26,4 @@ public class PasswordEncoderAdapter implements PasswordEncoder {
         return bcrypt.matches(rawPassword, encodedPassword);
     }
 
-    /**
-     * Exposes the underlying Spring PasswordEncoder for SecurityConfig.
-     */
-    public BCryptPasswordEncoder springEncoder() {
-        return bcrypt;
-    }
 }

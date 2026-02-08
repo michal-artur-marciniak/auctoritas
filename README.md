@@ -111,6 +111,13 @@ The API runs on `http://localhost:8080` by default.
 | GET | `/api/auth/oauth/github` | Initiate GitHub OAuth | No |
 | GET | `/api/auth/oauth/google` | Initiate Google OAuth | No |
 
+### Organization
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST | `/api/v1/org/register` | Create organization + owner | No |
+| POST | `/api/v1/org/auth/login` | Org member login (returns org JWT) | No |
+
 \* Can use refresh token from cookie or request body
 
 ### Sessions
@@ -176,6 +183,16 @@ curl http://localhost:8080/api/sessions \
 
 # OAuth (redirects to provider)
 curl -L http://localhost:8080/api/auth/oauth/github
+
+# Create organization with owner
+curl -X POST http://localhost:8080/api/v1/org/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Acme Inc","slug":"acme","ownerEmail":"owner@acme.com","ownerPassword":"password123","ownerName":"Owner"}'
+
+# Org member login
+curl -X POST http://localhost:8080/api/v1/org/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"organizationId":"org-id","email":"owner@acme.com","password":"password123"}'
 ```
 
 ## Development

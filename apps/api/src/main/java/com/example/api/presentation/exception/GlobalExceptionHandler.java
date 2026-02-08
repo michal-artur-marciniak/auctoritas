@@ -6,6 +6,7 @@ import com.example.api.domain.user.exception.InvalidCredentialsException;
 import com.example.api.domain.user.exception.InvalidEmailException;
 import com.example.api.domain.user.exception.UserBannedException;
 import com.example.api.domain.user.exception.UserNotFoundException;
+import com.example.api.domain.organization.exception.OrganizationSlugAlreadyExistsException;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +35,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(EmailAlreadyExistsException.class)
     public ResponseEntity<ApiError> handleEmailAlreadyExists(EmailAlreadyExistsException ex) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(new ApiError(409, ex.getMessage()));
+    }
+
+    @ExceptionHandler(OrganizationSlugAlreadyExistsException.class)
+    public ResponseEntity<ApiError> handleOrganizationSlugConflict(OrganizationSlugAlreadyExistsException ex) {
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(new ApiError(409, ex.getMessage()));
