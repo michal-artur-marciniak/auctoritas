@@ -111,6 +111,14 @@ The API runs on `http://localhost:8080` by default.
 | GET | `/api/auth/oauth/github` | Initiate GitHub OAuth | No |
 | GET | `/api/auth/oauth/google` | Initiate Google OAuth | No |
 
+### Platform Admin
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST | `/api/platform/admin` | Create platform admin (initial setup) | No |
+
+Platform admins are internal platform operators with cross-tenant access to all organizations, projects, and end users for support and management purposes. The creation endpoint is intentionally unprotected for initial setup; protect or disable it in production after creating the first admin.
+
 ### SDK Authentication
 
 | Method | Endpoint | Description | Auth Required |
@@ -334,6 +342,11 @@ curl -X POST http://localhost:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -H "X-API-Key: pk_prod_xxxxx" \
   -d '{"email":"user@app.com","password":"password123"}'
+
+# Create platform admin (initial setup - unprotected endpoint)
+curl -X POST http://localhost:8080/api/platform/admin \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@platform.com","password":"password123","name":"Platform Admin"}'
 ```
 
 ## Development
