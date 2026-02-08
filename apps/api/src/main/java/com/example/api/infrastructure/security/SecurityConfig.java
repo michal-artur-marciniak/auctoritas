@@ -23,17 +23,20 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final OrgJwtAuthenticationFilter orgJwtAuthenticationFilter;
     private final OAuth2AuthenticationSuccessHandler oAuthSuccessHandler;
     private final OAuth2AuthenticationFailureHandler oAuthFailureHandler;
     private final HttpCookieOAuth2AuthorizationRequestRepository authorizationRequestRepository;
     private final FrontendCorsProperties frontendCorsProperties;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                          OrgJwtAuthenticationFilter orgJwtAuthenticationFilter,
                           OAuth2AuthenticationSuccessHandler oAuthSuccessHandler,
                           OAuth2AuthenticationFailureHandler oAuthFailureHandler,
                           HttpCookieOAuth2AuthorizationRequestRepository authorizationRequestRepository,
                           FrontendCorsProperties frontendCorsProperties) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.orgJwtAuthenticationFilter = orgJwtAuthenticationFilter;
         this.oAuthSuccessHandler = oAuthSuccessHandler;
         this.oAuthFailureHandler = oAuthFailureHandler;
         this.authorizationRequestRepository = authorizationRequestRepository;
@@ -51,6 +54,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/v1/org/register").permitAll()
                         .requestMatchers("/api/v1/org/auth/login").permitAll()
+                        .requestMatchers("/api/v1/org/*/members/accept").permitAll()
                         .requestMatchers("/api/stripe/webhook").permitAll()
                         .requestMatchers("/oauth2/**").permitAll()
                         .requestMatchers("/login/oauth2/**").permitAll()
@@ -65,7 +69,8 @@ public class SecurityConfig {
                         .successHandler(oAuthSuccessHandler)
                         .failureHandler(oAuthFailureHandler)
                 )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(orgJwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

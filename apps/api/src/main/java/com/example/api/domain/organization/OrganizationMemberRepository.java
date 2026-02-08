@@ -13,5 +13,9 @@ public interface OrganizationMemberRepository {
 
     Optional<OrganizationMember> findByEmailAndOrganizationId(Email email, OrganizationId organizationId);
 
+    long countByOrganizationIdAndRole(OrganizationId organizationId, OrganizationMemberRole role);
+
     OrganizationMember save(OrganizationMember member);
+
+    void delete(OrganizationMemberId id);
 }

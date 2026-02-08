@@ -69,6 +69,26 @@ public class OrganizationMember {
         );
     }
 
+    public static OrganizationMember createMember(OrganizationId organizationId,
+                                                   Email email,
+                                                   Password password,
+                                                   String name,
+                                                   OrganizationMemberRole role) {
+        return new OrganizationMember(
+                OrganizationMemberId.generate(),
+                organizationId,
+                email,
+                password,
+                name,
+                role,
+                false,
+                OrganizationStatus.ACTIVE,
+                null,
+                LocalDateTime.now(),
+                null
+        );
+    }
+
     public void markEmailVerified() {
         this.emailVerified = true;
         this.updatedAt = LocalDateTime.now();

@@ -117,6 +117,10 @@ The API runs on `http://localhost:8080` by default.
 |--------|----------|-------------|---------------|
 | POST | `/api/v1/org/register` | Create organization + owner | No |
 | POST | `/api/v1/org/auth/login` | Org member login (returns org JWT) | No |
+| POST | `/api/v1/org/{orgId}/members/invite` | Invite org member | Org JWT |
+| POST | `/api/v1/org/{orgId}/members/accept` | Accept invitation | No |
+| PUT | `/api/v1/org/{orgId}/members/{memberId}/role` | Update member role | Org JWT (OWNER) |
+| DELETE | `/api/v1/org/{orgId}/members/{memberId}` | Remove member | Org JWT (OWNER/ADMIN) |
 
 \* Can use refresh token from cookie or request body
 
@@ -193,6 +197,27 @@ curl -X POST http://localhost:8080/api/v1/org/register \
 curl -X POST http://localhost:8080/api/v1/org/auth/login \
   -H "Content-Type: application/json" \
   -d '{"organizationId":"org-id","email":"owner@acme.com","password":"password123"}'
+
+# Invite org member
+curl -X POST http://localhost:8080/api/v1/org/org-id/members/invite \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer org-jwt" \
+  -d '{"email":"member@acme.com","role":"ADMIN"}'
+
+# Accept invitation
+curl -X POST http://localhost:8080/api/v1/org/org-id/members/accept \
+  -H "Content-Type: application/json" \
+  -d '{"token":"invitation-token","name":"Member Name","password":"password123"}'
+
+# Update member role
+curl -X PUT http://localhost:8080/api/v1/org/org-id/members/member-id/role \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer org-jwt" \
+  -d '{"role":"MEMBER"}'
+
+# Remove member
+curl -X DELETE http://localhost:8080/api/v1/org/org-id/members/member-id \
+  -H "Authorization: Bearer org-jwt"
 ```
 
 ## Development

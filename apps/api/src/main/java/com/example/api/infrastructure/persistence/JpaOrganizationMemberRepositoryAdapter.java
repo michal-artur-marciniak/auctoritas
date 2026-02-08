@@ -4,6 +4,7 @@ import com.example.api.domain.organization.OrganizationId;
 import com.example.api.domain.organization.OrganizationMember;
 import com.example.api.domain.organization.OrganizationMemberId;
 import com.example.api.domain.organization.OrganizationMemberRepository;
+import com.example.api.domain.organization.OrganizationMemberRole;
 import com.example.api.domain.user.Email;
 import org.springframework.stereotype.Repository;
 
@@ -34,9 +35,19 @@ public class JpaOrganizationMemberRepositoryAdapter implements OrganizationMembe
     }
 
     @Override
+    public long countByOrganizationIdAndRole(OrganizationId organizationId, OrganizationMemberRole role) {
+        return jpaRepository.countByOrganizationIdAndRole(organizationId.value(), role);
+    }
+
+    @Override
     public OrganizationMember save(OrganizationMember member) {
         final var entity = OrganizationMemberDomainMapper.toEntity(member);
         jpaRepository.save(entity);
         return member;
+    }
+
+    @Override
+    public void delete(OrganizationMemberId id) {
+        jpaRepository.deleteById(id.value());
     }
 }

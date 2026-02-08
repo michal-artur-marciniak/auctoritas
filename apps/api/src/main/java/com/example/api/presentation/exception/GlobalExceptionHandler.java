@@ -6,6 +6,12 @@ import com.example.api.domain.user.exception.InvalidCredentialsException;
 import com.example.api.domain.user.exception.InvalidEmailException;
 import com.example.api.domain.user.exception.UserBannedException;
 import com.example.api.domain.user.exception.UserNotFoundException;
+import com.example.api.domain.organization.exception.OrganizationInvitationExpiredException;
+import com.example.api.domain.organization.exception.OrganizationInvitationNotFoundException;
+import com.example.api.domain.organization.exception.OrganizationMemberAlreadyExistsException;
+import com.example.api.domain.organization.exception.OrganizationMemberNotFoundException;
+import com.example.api.domain.organization.exception.OrganizationNotFoundException;
+import com.example.api.domain.organization.exception.OrganizationOwnerRequiredException;
 import com.example.api.domain.organization.exception.OrganizationSlugAlreadyExistsException;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.slf4j.Logger;
@@ -45,6 +51,48 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(new ApiError(409, ex.getMessage()));
+    }
+
+    @ExceptionHandler(OrganizationMemberAlreadyExistsException.class)
+    public ResponseEntity<ApiError> handleOrganizationMemberConflict(OrganizationMemberAlreadyExistsException ex) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(new ApiError(409, ex.getMessage()));
+    }
+
+    @ExceptionHandler(OrganizationOwnerRequiredException.class)
+    public ResponseEntity<ApiError> handleOrganizationOwnerRequired(OrganizationOwnerRequiredException ex) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(new ApiError(400, ex.getMessage()));
+    }
+
+    @ExceptionHandler(OrganizationInvitationNotFoundException.class)
+    public ResponseEntity<ApiError> handleInvitationNotFound(OrganizationInvitationNotFoundException ex) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(new ApiError(404, ex.getMessage()));
+    }
+
+    @ExceptionHandler(OrganizationInvitationExpiredException.class)
+    public ResponseEntity<ApiError> handleInvitationExpired(OrganizationInvitationExpiredException ex) {
+        return ResponseEntity
+                .status(HttpStatus.GONE)
+                .body(new ApiError(410, ex.getMessage()));
+    }
+
+    @ExceptionHandler(OrganizationNotFoundException.class)
+    public ResponseEntity<ApiError> handleOrganizationNotFound(OrganizationNotFoundException ex) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(new ApiError(404, ex.getMessage()));
+    }
+
+    @ExceptionHandler(OrganizationMemberNotFoundException.class)
+    public ResponseEntity<ApiError> handleOrganizationMemberNotFound(OrganizationMemberNotFoundException ex) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(new ApiError(404, ex.getMessage()));
     }
 
     @ExceptionHandler(InvalidEmailException.class)

@@ -1,5 +1,6 @@
 package com.example.api.infrastructure.persistence;
 
+import com.example.api.domain.organization.OrganizationMemberRole;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
@@ -10,4 +11,6 @@ import java.util.Optional;
 public interface OrganizationMemberJpaRepository extends JpaRepository<OrganizationMemberJpaEntity, String> {
 
     Optional<OrganizationMemberJpaEntity> findByEmailAndOrganizationId(String email, String organizationId);
+
+    long countByOrganizationIdAndRole(String organizationId, OrganizationMemberRole role);
 }
