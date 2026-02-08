@@ -40,6 +40,11 @@ public class JpaPlatformAdminRepositoryAdapter implements PlatformAdminRepositor
     }
 
     @Override
+    public long count() {
+        return jpaRepository.count();
+    }
+
+    @Override
     public PlatformAdmin save(PlatformAdmin admin) {
         final var entity = toEntity(admin);
         jpaRepository.save(entity);

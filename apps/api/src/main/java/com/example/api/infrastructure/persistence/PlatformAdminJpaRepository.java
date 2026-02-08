@@ -14,4 +14,6 @@ public interface PlatformAdminJpaRepository extends JpaRepository<PlatformAdminJ
     Optional<PlatformAdminJpaEntity> findByEmail(String email);
 
     long countByStatus(String status);
+
+    long count();
 }

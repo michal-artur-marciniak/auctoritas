@@ -15,6 +15,8 @@ public interface PlatformAdminRepository {
 
     long countByStatus(PlatformAdminStatus status);
 
+    long count();
+
     PlatformAdmin save(PlatformAdmin admin);
 
     void delete(PlatformAdminId id);

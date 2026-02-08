@@ -113,11 +113,19 @@ The API runs on `http://localhost:8080` by default.
 
 ### Platform Admin
 
+**First Admin Creation (CLI Only):**
+```bash
+cd apps/api
+./gradlew bootRun --args="create-admin admin@platform.com password123 'Platform Admin'"
+```
+
 | Method | Endpoint | Description | Auth Required |
 |--------|----------|-------------|---------------|
-| POST | `/api/platform/admin` | Create platform admin (initial setup) | No |
+| POST | `/api/platform/admin` | Create platform admin | Platform Admin JWT |
 
-Platform admins are internal platform operators with cross-tenant access to all organizations, projects, and end users for support and management purposes. The creation endpoint is intentionally unprotected for initial setup; protect or disable it in production after creating the first admin.
+Platform admins are internal platform operators with cross-tenant access to all organizations, projects, and end users for support and management purposes.
+
+**Security Note:** The first platform admin must be created via CLI when no admins exist. After the first admin is created, additional admins can only be created via the HTTP API by an existing platform admin.
 
 ### SDK Authentication
 
@@ -342,11 +350,22 @@ curl -X POST http://localhost:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -H "X-API-Key: pk_prod_xxxxx" \
   -d '{"email":"user@app.com","password":"password123"}'
+```
 
-# Create platform admin (initial setup - unprotected endpoint)
+### Platform Admin Creation
+
+**First admin via CLI (when no admins exist):**
+```bash
+cd apps/api
+./gradlew bootRun --args="create-admin admin@platform.com password123 'Platform Admin'"
+```
+
+**Additional admins via API (requires platform admin JWT - implemented in US-PA-002):**
+```bash
 curl -X POST http://localhost:8080/api/platform/admin \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@platform.com","password":"password123","name":"Platform Admin"}'
+  -H "Authorization: Bearer platform-jwt" \
+  -d '{"email":"admin2@platform.com","password":"password123","name":"Second Admin"}'
 ```
 
 ## Development
