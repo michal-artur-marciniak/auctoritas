@@ -4,6 +4,7 @@ import com.example.api.domain.session.exception.SessionNotFoundException;
 import com.example.api.domain.user.exception.EmailAlreadyExistsException;
 import com.example.api.domain.user.exception.InvalidCredentialsException;
 import com.example.api.domain.user.exception.InvalidEmailException;
+import com.example.api.domain.user.exception.InvalidTokenException;
 import com.example.api.domain.user.exception.UserBannedException;
 import com.example.api.domain.user.exception.UserNotFoundException;
 import com.example.api.domain.organization.exception.OrganizationInvitationExpiredException;
@@ -36,6 +37,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(InvalidCredentialsException.class)
     public ResponseEntity<ApiError> handleInvalidCredentials(InvalidCredentialsException ex) {
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(new ApiError(401, ex.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidTokenException.class)
+    public ResponseEntity<ApiError> handleInvalidToken(InvalidTokenException ex) {
         return ResponseEntity
                 .status(HttpStatus.UNAUTHORIZED)
                 .body(new ApiError(401, ex.getMessage()));

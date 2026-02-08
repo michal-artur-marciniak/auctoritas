@@ -8,4 +8,12 @@ import com.example.api.domain.organization.OrganizationMember;
 public interface OrgTokenProvider {
 
     String generateAccessToken(OrganizationMember member);
+
+    String generateRefreshToken(OrganizationMember member);
+
+    boolean validateAccessToken(String token);
+
+    boolean validateRefreshToken(String token);
+
+    String getMemberIdFromToken(String token);
 }

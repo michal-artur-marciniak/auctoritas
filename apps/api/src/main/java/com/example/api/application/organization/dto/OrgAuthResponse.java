@@ -5,6 +5,7 @@ package com.example.api.application.organization.dto;
  */
 public record OrgAuthResponse(
         String accessToken,
+        String refreshToken,
         OrganizationMemberResponse member
 ) {
 }

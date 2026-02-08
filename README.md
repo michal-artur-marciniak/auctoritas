@@ -137,12 +137,35 @@ End users are strictly isolated per project and environment (US-005). Key featur
 
 This ensures data never leaks between tenants, even with the same email address across different projects.
 
+### Authentication Flow Isolation (US-006)
+
+Organization member authentication and SDK end-user authentication are strictly isolated with separate filters and token types:
+
+| Flow | Endpoints | Token Type | Filter |
+|------|-----------|------------|--------|
+| **Org Member** | `/api/v1/org/**` | Org JWT (`type: "org"`) | `OrgJwtAuthenticationFilter` |
+| **SDK End User** | `/api/v1/auth/**`, `/api/v1/users/**` | SDK JWT + API Key | `ApiKeyAuthenticationFilter` + `JwtAuthenticationFilter` |
+| **Legacy Auth** | `/api/auth/**`, `/api/user/**` | Legacy JWT | `JwtAuthenticationFilter` |
+
+**Isolation Guarantees:**
+- Org JWTs cannot access SDK endpoints (returns 401)
+- SDK JWTs cannot access org endpoints (returns 401)
+- API keys are only processed on SDK routes
+- Each filter only processes requests for its designated path prefix
+
+**Org Authentication Flow:**
+1. `POST /api/v1/org/auth/login` - Authenticate with organization ID, email, password
+2. Receive `accessToken` and `refreshToken` (both org-scoped)
+3. Use `Authorization: Bearer {accessToken}` for org endpoints
+4. `POST /api/v1/org/auth/refresh` - Exchange refresh token for new tokens
+
 ### Organization
 
 | Method | Endpoint | Description | Auth Required |
 |--------|----------|-------------|---------------|
 | POST | `/api/v1/org/register` | Create organization + owner | No |
 | POST | `/api/v1/org/auth/login` | Org member login (returns org JWT) | No |
+| POST | `/api/v1/org/auth/refresh` | Refresh org access token | No |
 | POST | `/api/v1/org/{orgId}/members/invite` | Invite org member | Org JWT |
 | POST | `/api/v1/org/{orgId}/members/accept` | Accept invitation | No |
 | PUT | `/api/v1/org/{orgId}/members/{memberId}/role` | Update member role | Org JWT (OWNER) |
@@ -232,6 +255,11 @@ curl -X POST http://localhost:8080/api/v1/org/register \
 curl -X POST http://localhost:8080/api/v1/org/auth/login \
   -H "Content-Type: application/json" \
   -d '{"organizationId":"org-id","email":"owner@acme.com","password":"password123"}'
+
+# Refresh org token
+curl -X POST http://localhost:8080/api/v1/org/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{"refreshToken":"refresh-token-from-login"}'
 
 # Invite org member
 curl -X POST http://localhost:8080/api/v1/org/org-id/members/invite \

@@ -60,6 +60,10 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         final var path = request.getRequestURI();
+        // Skip org endpoints and non-SDK endpoints
+        if (path.startsWith("/api/v1/org/")) {
+            return true;
+        }
         // Only filter SDK auth endpoints
         return !path.startsWith("/api/v1/auth/");
     }

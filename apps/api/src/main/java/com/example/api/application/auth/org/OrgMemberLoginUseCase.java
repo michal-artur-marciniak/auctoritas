@@ -42,6 +42,7 @@ public class OrgMemberLoginUseCase {
         memberRepository.save(member);
 
         final var accessToken = tokenProvider.generateAccessToken(member);
-        return new OrgAuthResponse(accessToken, OrganizationMemberResponse.from(member));
+        final var refreshToken = tokenProvider.generateRefreshToken(member);
+        return new OrgAuthResponse(accessToken, refreshToken, OrganizationMemberResponse.from(member));
     }
 }

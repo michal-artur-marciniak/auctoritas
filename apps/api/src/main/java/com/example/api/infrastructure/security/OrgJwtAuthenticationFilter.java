@@ -98,6 +98,13 @@ public class OrgJwtAuthenticationFilter extends OncePerRequestFilter {
         return null;
     }
 
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        final var path = request.getRequestURI();
+        // Only filter org endpoints
+        return !path.startsWith("/api/v1/org/");
+    }
+
     private SecretKey secretKey() {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }

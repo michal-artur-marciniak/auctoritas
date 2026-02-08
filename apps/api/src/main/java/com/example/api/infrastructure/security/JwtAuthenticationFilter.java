@@ -73,4 +73,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
         return authCookieService.readAccessToken(request).orElse(null);
     }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        final var path = request.getRequestURI();
+        // Skip org and SDK endpoints - this filter is for legacy /api/auth/** only
+        return path.startsWith("/api/v1/org/") || path.startsWith("/api/v1/auth/");
+    }
 }
