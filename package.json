@@ -1,0 +1,19 @@
+{
+  "name": "@monorepo/root",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Monorepo with pnpm workspaces",
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm -r build",
+    "clean": "pnpm -r clean"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0"
+  },
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=10"
+  },
+  "packageManager": "pnpm@10.0.0"
+}
