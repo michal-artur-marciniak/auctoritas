@@ -122,6 +122,15 @@ The API runs on `http://localhost:8080` by default.
 | PUT | `/api/v1/org/{orgId}/members/{memberId}/role` | Update member role | Org JWT (OWNER) |
 | DELETE | `/api/v1/org/{orgId}/members/{memberId}` | Remove member | Org JWT (OWNER/ADMIN) |
 
+### Projects
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST | `/api/v1/org/{orgId}/projects` | Create project with PROD/DEV environments + API keys | Org JWT (OWNER/ADMIN) |
+| GET | `/api/v1/org/{orgId}/projects` | List organization projects | Org JWT |
+| GET | `/api/v1/org/{orgId}/projects/{projectId}` | Get project details with environments | Org JWT |
+| DELETE | `/api/v1/org/{orgId}/projects/{projectId}` | Archive project | Org JWT (OWNER/ADMIN) |
+
 \* Can use refresh token from cookie or request body
 
 ### Sessions
@@ -217,6 +226,24 @@ curl -X PUT http://localhost:8080/api/v1/org/org-id/members/member-id/role \
 
 # Remove member
 curl -X DELETE http://localhost:8080/api/v1/org/org-id/members/member-id \
+  -H "Authorization: Bearer org-jwt"
+
+# Create project with PROD/DEV environments (returns API keys once)
+curl -X POST http://localhost:8080/api/v1/org/org-id/projects \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer org-jwt" \
+  -d '{"name":"My App","slug":"my-app","description":"Production application"}'
+
+# List projects
+curl http://localhost:8080/api/v1/org/org-id/projects \
+  -H "Authorization: Bearer org-jwt"
+
+# Get project details
+curl http://localhost:8080/api/v1/org/org-id/projects/project-id \
+  -H "Authorization: Bearer org-jwt"
+
+# Archive project
+curl -X DELETE http://localhost:8080/api/v1/org/org-id/projects/project-id \
   -H "Authorization: Bearer org-jwt"
 ```
 

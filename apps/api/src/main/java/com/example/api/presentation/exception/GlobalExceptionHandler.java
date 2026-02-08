@@ -13,6 +13,8 @@ import com.example.api.domain.organization.exception.OrganizationMemberNotFoundE
 import com.example.api.domain.organization.exception.OrganizationNotFoundException;
 import com.example.api.domain.organization.exception.OrganizationOwnerRequiredException;
 import com.example.api.domain.organization.exception.OrganizationSlugAlreadyExistsException;
+import com.example.api.domain.project.exception.ProjectNotFoundException;
+import com.example.api.domain.project.exception.ProjectSlugAlreadyExistsException;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -147,6 +149,20 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(new ApiError(400, message));
+    }
+
+    @ExceptionHandler(ProjectNotFoundException.class)
+    public ResponseEntity<ApiError> handleProjectNotFound(ProjectNotFoundException ex) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(new ApiError(404, ex.getMessage()));
+    }
+
+    @ExceptionHandler(ProjectSlugAlreadyExistsException.class)
+    public ResponseEntity<ApiError> handleProjectSlugConflict(ProjectSlugAlreadyExistsException ex) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(new ApiError(409, ex.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)
