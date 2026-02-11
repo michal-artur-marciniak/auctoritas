@@ -121,11 +121,36 @@ cd apps/api
 
 | Method | Endpoint | Description | Auth Required |
 |--------|----------|-------------|---------------|
+| POST | `/api/platform/auth/login` | Platform admin login | No |
+| POST | `/api/platform/auth/refresh` | Refresh platform admin token | No |
 | POST | `/api/platform/admin` | Create platform admin | Platform Admin JWT |
 
 Platform admins are internal platform operators with cross-tenant access to all organizations, projects, and end users for support and management purposes.
 
 **Security Note:** The first platform admin must be created via CLI when no admins exist. After the first admin is created, additional admins can only be created via the HTTP API by an existing platform admin.
+
+**Platform Admin Authentication:**
+```bash
+# Login (returns access and refresh tokens)
+curl -X POST http://localhost:8080/api/platform/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@platform.com","password":"password123"}'
+
+# Refresh token
+curl -X POST http://localhost:8080/api/platform/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{"refreshToken":"refresh-token-from-login"}'
+
+# Create additional admin (requires platform admin JWT)
+curl -X POST http://localhost:8080/api/platform/admin \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer platform-jwt" \
+  -d '{"email":"admin2@platform.com","password":"password123","name":"Second Admin"}'
+```
+
+**Token Claims:**
+- Platform admin tokens include `type: "platform"` claim
+- Inactive platform admins cannot login
 
 ### SDK Authentication
 
