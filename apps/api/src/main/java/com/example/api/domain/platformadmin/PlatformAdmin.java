@@ -68,6 +68,11 @@ public class PlatformAdmin {
         this.updatedAt = LocalDateTime.now();
     }
 
+    public void changeEmail(Email newEmail) {
+        this.email = Objects.requireNonNull(newEmail, "Email required");
+        this.updatedAt = LocalDateTime.now();
+    }
+
     public void deactivate() {
         this.status = PlatformAdminStatus.INACTIVE;
         this.updatedAt = LocalDateTime.now();

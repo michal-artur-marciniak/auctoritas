@@ -123,6 +123,8 @@ cd apps/api
 |--------|----------|-------------|---------------|
 | POST | `/api/platform/auth/login` | Platform admin login | No |
 | POST | `/api/platform/auth/refresh` | Refresh platform admin token | No |
+| GET | `/api/platform/admin/me` | Get current platform admin profile | Platform Admin JWT |
+| PATCH | `/api/platform/admin/me` | Update platform admin profile | Platform Admin JWT |
 | POST | `/api/platform/admin` | Create platform admin | Platform Admin JWT |
 
 Platform admins are internal platform operators with cross-tenant access to all organizations, projects, and end users for support and management purposes.
@@ -146,6 +148,22 @@ curl -X POST http://localhost:8080/api/platform/admin \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer platform-jwt" \
   -d '{"email":"admin2@platform.com","password":"password123","name":"Second Admin"}'
+
+# Get current admin profile (requires platform admin JWT)
+curl http://localhost:8080/api/platform/admin/me \
+  -H "Authorization: Bearer platform-jwt"
+
+# Update admin profile (requires platform admin JWT)
+curl -X PATCH http://localhost:8080/api/platform/admin/me \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer platform-jwt" \
+  -d '{"name":"Updated Name","email":"new@platform.com"}'
+
+# Change password (requires current password)
+curl -X PATCH http://localhost:8080/api/platform/admin/me \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer platform-jwt" \
+  -d '{"currentPassword":"oldpass","newPassword":"newpass123"}'
 ```
 
 **Token Claims:**

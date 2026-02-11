@@ -1,12 +1,16 @@
 package com.example.api.presentation.platformadmin;
 
 import com.example.api.application.platformadmin.CreatePlatformAdminUseCase;
+import com.example.api.application.platformadmin.GetPlatformAdminProfileUseCase;
 import com.example.api.application.platformadmin.PlatformAdminResponse;
+import com.example.api.application.platformadmin.UpdatePlatformAdminProfileUseCase;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,9 +26,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class PlatformAdminController {
 
     private final CreatePlatformAdminUseCase createPlatformAdminUseCase;
+    private final GetPlatformAdminProfileUseCase getPlatformAdminProfileUseCase;
+    private final UpdatePlatformAdminProfileUseCase updatePlatformAdminProfileUseCase;
 
-    public PlatformAdminController(CreatePlatformAdminUseCase createPlatformAdminUseCase) {
+    public PlatformAdminController(CreatePlatformAdminUseCase createPlatformAdminUseCase,
+                                    GetPlatformAdminProfileUseCase getPlatformAdminProfileUseCase,
+                                    UpdatePlatformAdminProfileUseCase updatePlatformAdminProfileUseCase) {
         this.createPlatformAdminUseCase = createPlatformAdminUseCase;
+        this.getPlatformAdminProfileUseCase = getPlatformAdminProfileUseCase;
+        this.updatePlatformAdminProfileUseCase = updatePlatformAdminProfileUseCase;
     }
 
     @PostMapping
@@ -34,5 +44,23 @@ public class PlatformAdminController {
             @Valid @RequestBody CreatePlatformAdminRequestDto dto) {
         final var response = createPlatformAdminUseCase.execute(dto.toRequest());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping("/me")
+    @PreAuthorize("hasAuthority('PLATFORM_ADMIN')")
+    public ResponseEntity<PlatformAdminResponse> getProfile(Authentication authentication) {
+        final var adminId = authentication.getName();
+        final var response = getPlatformAdminProfileUseCase.execute(adminId);
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/me")
+    @PreAuthorize("hasAuthority('PLATFORM_ADMIN')")
+    public ResponseEntity<PlatformAdminResponse> updateProfile(
+            Authentication authentication,
+            @Valid @RequestBody UpdatePlatformAdminProfileRequestDto dto) {
+        final var adminId = authentication.getName();
+        final var response = updatePlatformAdminProfileUseCase.execute(adminId, dto.toRequest());
+        return ResponseEntity.ok(response);
     }
 }

@@ -24,6 +24,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final OrgJwtAuthenticationFilter orgJwtAuthenticationFilter;
+    private final PlatformAdminJwtAuthenticationFilter platformAdminJwtAuthenticationFilter;
     private final ApiKeyAuthenticationFilter apiKeyAuthenticationFilter;
     private final OAuth2AuthenticationSuccessHandler oAuthSuccessHandler;
     private final OAuth2AuthenticationFailureHandler oAuthFailureHandler;
@@ -32,6 +33,7 @@ public class SecurityConfig {
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
                           OrgJwtAuthenticationFilter orgJwtAuthenticationFilter,
+                          PlatformAdminJwtAuthenticationFilter platformAdminJwtAuthenticationFilter,
                           ApiKeyAuthenticationFilter apiKeyAuthenticationFilter,
                           OAuth2AuthenticationSuccessHandler oAuthSuccessHandler,
                           OAuth2AuthenticationFailureHandler oAuthFailureHandler,
@@ -39,6 +41,7 @@ public class SecurityConfig {
                           FrontendCorsProperties frontendCorsProperties) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.orgJwtAuthenticationFilter = orgJwtAuthenticationFilter;
+        this.platformAdminJwtAuthenticationFilter = platformAdminJwtAuthenticationFilter;
         this.apiKeyAuthenticationFilter = apiKeyAuthenticationFilter;
         this.oAuthSuccessHandler = oAuthSuccessHandler;
         this.oAuthFailureHandler = oAuthFailureHandler;
@@ -56,6 +59,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/v1/auth/**").permitAll()
+                .requestMatchers("/api/platform/auth/**").permitAll()
                 .requestMatchers("/api/v1/org/register").permitAll()
                 .requestMatchers("/api/v1/org/auth/login").permitAll()
                 .requestMatchers("/api/v1/org/*/members/accept").permitAll()
@@ -75,7 +79,8 @@ public class SecurityConfig {
                 )
                 .addFilterBefore(apiKeyAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(orgJwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(orgJwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(platformAdminJwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
