@@ -11,11 +11,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.net.URI;
 import java.util.Objects;
 
 /**
@@ -81,5 +83,33 @@ public class SdkAuthController {
             throw new MissingApiKeyException();
         }
         return context;
+    }
+
+    /**
+     * Initiates OAuth login with GitHub for SDK end users.
+     * Requires X-API-Key header for project context.
+     *
+     * @return redirect to GitHub OAuth authorization
+     */
+    @GetMapping("/oauth/github")
+    public ResponseEntity<Void> oauthGithub(HttpServletRequest request) {
+        getContextOrThrow(request);
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .location(URI.create("/oauth2/authorization/github"))
+                .build();
+    }
+
+    /**
+     * Initiates OAuth login with Google for SDK end users.
+     * Requires X-API-Key header for project context.
+     *
+     * @return redirect to Google OAuth authorization
+     */
+    @GetMapping("/oauth/google")
+    public ResponseEntity<Void> oauthGoogle(HttpServletRequest request) {
+        getContextOrThrow(request);
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .location(URI.create("/oauth2/authorization/google"))
+                .build();
     }
 }

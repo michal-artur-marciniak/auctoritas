@@ -176,8 +176,12 @@ curl -X PATCH http://localhost:8080/api/platform/admin/me \
 |--------|----------|-------------|---------------|
 | POST | `/api/v1/auth/register` | Register SDK end user (scoped to project/env) | API Key |
 | POST | `/api/v1/auth/login` | Login SDK end user (scoped to project/env) | API Key |
+| GET | `/api/v1/auth/oauth/github` | Initiate GitHub OAuth for SDK users | API Key |
+| GET | `/api/v1/auth/oauth/google` | Initiate Google OAuth for SDK users | API Key |
 
 SDK authentication requires the `X-API-Key` header with a valid project API key (format: `pk_prod_*` or `pk_dev_*`). The API key scopes the user to a specific project and environment. Users registered with one API key cannot authenticate with a different API key.
+
+**Banned Users:** Banned users cannot login via password or OAuth. Returns `403 Forbidden` with "User account is banned" message.
 
 ### SDK User
 
@@ -393,6 +397,14 @@ curl -X POST http://localhost:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -H "X-API-Key: pk_prod_xxxxx" \
   -d '{"email":"user@app.com","password":"password123"}'
+
+# SDK end user OAuth via GitHub (requires API key, redirects to GitHub)
+curl -L http://localhost:8080/api/v1/auth/oauth/github \
+  -H "X-API-Key: pk_prod_xxxxx"
+
+# SDK end user OAuth via Google (requires API key, redirects to Google)
+curl -L http://localhost:8080/api/v1/auth/oauth/google \
+  -H "X-API-Key: pk_prod_xxxxx"
 ```
 
 ### Platform Admin Creation

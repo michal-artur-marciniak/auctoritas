@@ -10,6 +10,7 @@ import com.example.api.domain.user.Email;
 import com.example.api.domain.user.PasswordEncoder;
 import com.example.api.domain.user.UserRepository;
 import com.example.api.domain.user.exception.InvalidCredentialsException;
+import com.example.api.domain.user.exception.UserBannedException;
 import org.springframework.stereotype.Component;
 
 import java.util.Objects;
@@ -50,7 +51,7 @@ public class LoginEndUserUseCase {
                 .orElseThrow(InvalidCredentialsException::new);
 
         if (!user.canLogin()) {
-            throw new InvalidCredentialsException();
+            throw new UserBannedException();
         }
 
         if (!user.getPassword().matches(request.password(), passwordEncoder)) {
