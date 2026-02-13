@@ -89,7 +89,7 @@ The **marketing site** (`www`) is fully static with no authentication dependenci
 | Vite | 6.0.x |
 | Tailwind CSS | 4.1.18 |
 
-**Note**: Previously had authentication (better-auth, Stripe, Drizzle), now fully static.
+**Note**: Previously had authentication (better-auth, Drizzle), now fully static.
 
 ## Prerequisites
 
@@ -266,14 +266,6 @@ Organization member authentication and SDK end-user authentication are strictly 
 | POST | `/api/sessions` | Create new session | Yes |
 | PATCH | `/api/sessions/{id}` | Extend session expiry | Yes |
 | DELETE | `/api/sessions/{id}` | Revoke session | Yes |
-
-### Stripe
-
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| POST | `/api/stripe/webhook` | Handle Stripe events | No* |
-
-\* Uses Stripe signature verification
 
 ### User
 
@@ -501,11 +493,6 @@ app:
     cookies:
       secure: true
       same-site: Lax
-
-# Stripe integration
-stripe:
-  secret-key: ${STRIPE_SECRET_KEY}
-  webhook-secret: ${STRIPE_WEBHOOK_SECRET}
 ```
 
 ### React App Configuration
@@ -532,14 +519,12 @@ Previously, authentication was handled by `apps/www` using better-auth with SQLi
 | better-auth library in Node.js | Spring Security + JWT in Java |
 | Database: better-sqlite3 | Database: SQLite + JPA |
 | Auth logic in Astro pages | Auth logic in API with pragmatic DDD |
-| Stripe subscriptions in www | Stripe webhooks in API |
 | Tokens in localStorage | httpOnly cookies |
 
 **Key Features**:
 - OAuth login (GitHub, Google) with email fallback
 - Session management (create, extend, revoke, list)
 - Profile updates with email uniqueness checks
-- Stripe customer mapping and subscription sync
 - httpOnly cookie-based token storage for XSS protection
 
 ## Scripts
@@ -559,7 +544,6 @@ pnpm test     # Run all tests
 - Passwords hashed with BCrypt
 - CORS configured for localhost development
 - OAuth2 state parameter protection
-- Stripe webhook signature verification
 - No secrets in repositories (use environment variables)
 
 ## License

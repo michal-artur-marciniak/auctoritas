@@ -63,7 +63,6 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/org/register").permitAll()
                 .requestMatchers("/api/v1/org/auth/login").permitAll()
                 .requestMatchers("/api/v1/org/*/members/accept").permitAll()
-                .requestMatchers("/api/stripe/webhook").permitAll()
                 .requestMatchers("/oauth2/**").permitAll()
                 .requestMatchers("/login/oauth2/**").permitAll()
                 .requestMatchers("/api/health").permitAll()

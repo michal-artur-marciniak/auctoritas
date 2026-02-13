@@ -18,7 +18,6 @@ final class OrganizationDomainMapper {
                 entity.getName(),
                 entity.getSlug(),
                 entity.getStatus(),
-                entity.getStripeCustomerId(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()
         );
@@ -30,7 +29,6 @@ final class OrganizationDomainMapper {
                 organization.getName(),
                 organization.getSlug(),
                 organization.getStatus(),
-                organization.getStripeCustomerId(),
                 organization.getCreatedAt(),
                 organization.getUpdatedAt()
         );

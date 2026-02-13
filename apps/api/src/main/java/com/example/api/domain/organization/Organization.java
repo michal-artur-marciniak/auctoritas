@@ -12,7 +12,6 @@ public class Organization {
     private String name;
     private String slug;
     private OrganizationStatus status;
-    private String stripeCustomerId;
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -20,7 +19,6 @@ public class Organization {
                         String name,
                         String slug,
                         OrganizationStatus status,
-                        String stripeCustomerId,
                         LocalDateTime createdAt,
                         LocalDateTime updatedAt) {
         this.id = Objects.requireNonNull(id, "Organization ID required");
@@ -33,7 +31,6 @@ public class Organization {
         this.name = name;
         this.slug = slug;
         this.status = Objects.requireNonNull(status, "Status required");
-        this.stripeCustomerId = stripeCustomerId;
         this.createdAt = Objects.requireNonNull(createdAt, "Created timestamp required");
         this.updatedAt = updatedAt;
     }
@@ -44,7 +41,6 @@ public class Organization {
                 name,
                 slug,
                 OrganizationStatus.ACTIVE,
-                null,
                 LocalDateTime.now(),
                 null
         );
@@ -68,14 +64,6 @@ public class Organization {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void assignStripeCustomerId(String stripeCustomerId) {
-        if (stripeCustomerId == null || stripeCustomerId.isBlank()) {
-            throw new IllegalArgumentException("Stripe customer ID required");
-        }
-        this.stripeCustomerId = stripeCustomerId;
-        this.updatedAt = LocalDateTime.now();
-    }
-
     public OrganizationId getId() {
         return id;
     }
@@ -90,10 +78,6 @@ public class Organization {
 
     public OrganizationStatus getStatus() {
         return status;
-    }
-
-    public String getStripeCustomerId() {
-        return stripeCustomerId;
     }
 
     public LocalDateTime getCreatedAt() {

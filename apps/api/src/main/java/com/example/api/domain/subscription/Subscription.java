@@ -14,30 +14,26 @@ public class Subscription {
     private final UserId userId;
     private SubscriptionPlan plan;
     private SubscriptionStatus status;
-    private String stripeSubscriptionId;
     private Instant currentPeriodEnd;
 
     public Subscription(SubscriptionId id,
                         UserId userId,
                         SubscriptionPlan plan,
                         SubscriptionStatus status,
-                        String stripeSubscriptionId,
                         Instant currentPeriodEnd) {
         this.id = Objects.requireNonNull(id, "Subscription ID required");
         this.userId = Objects.requireNonNull(userId, "User ID required");
         this.plan = Objects.requireNonNull(plan, "Plan required");
         this.status = Objects.requireNonNull(status, "Status required");
-        this.stripeSubscriptionId = stripeSubscriptionId;
         this.currentPeriodEnd = currentPeriodEnd;
     }
 
-    public static Subscription start(UserId userId, SubscriptionPlan plan, String stripeSubscriptionId) {
+    public static Subscription start(UserId userId, SubscriptionPlan plan) {
         return new Subscription(
                 SubscriptionId.generate(),
                 userId,
                 plan,
                 SubscriptionStatus.ACTIVE,
-                stripeSubscriptionId,
                 null
         );
     }
@@ -61,10 +57,6 @@ public class Subscription {
 
     public SubscriptionStatus getStatus() {
         return status;
-    }
-
-    public String getStripeSubscriptionId() {
-        return stripeSubscriptionId;
     }
 
     public Instant getCurrentPeriodEnd() {

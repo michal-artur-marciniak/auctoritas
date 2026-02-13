@@ -10,6 +10,4 @@ import java.util.Optional;
 public interface SubscriptionJpaRepository extends JpaRepository<SubscriptionJpaEntity, String> {
 
     Optional<SubscriptionJpaEntity> findByUserId(String userId);
-
-    Optional<SubscriptionJpaEntity> findByStripeSubscriptionId(String stripeSubscriptionId);
 }

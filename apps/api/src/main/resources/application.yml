@@ -51,7 +51,3 @@ app:
       refresh-max-age-seconds: ${AUTH_COOKIE_REFRESH_MAX_AGE:604800}
       access-token-name: ${AUTH_COOKIE_ACCESS_NAME:access_token}
       refresh-token-name: ${AUTH_COOKIE_REFRESH_NAME:refresh_token}
-
-stripe:
-  secret-key: ${STRIPE_SECRET_KEY:}
-  webhook-secret: ${STRIPE_WEBHOOK_SECRET:}

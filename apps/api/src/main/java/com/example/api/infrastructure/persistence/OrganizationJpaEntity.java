@@ -32,9 +32,6 @@ public class OrganizationJpaEntity {
     @Column(nullable = false)
     private OrganizationStatus status;
 
-    @Column(name = "stripe_customer_id", length = 100)
-    private String stripeCustomerId;
-
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -49,14 +46,12 @@ public class OrganizationJpaEntity {
                                  String name,
                                  String slug,
                                  OrganizationStatus status,
-                                 String stripeCustomerId,
                                  LocalDateTime createdAt,
                                  LocalDateTime updatedAt) {
         this.id = id;
         this.name = name;
         this.slug = slug;
         this.status = status;
-        this.stripeCustomerId = stripeCustomerId;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -91,14 +86,6 @@ public class OrganizationJpaEntity {
 
     public void setStatus(OrganizationStatus status) {
         this.status = status;
-    }
-
-    public String getStripeCustomerId() {
-        return stripeCustomerId;
-    }
-
-    public void setStripeCustomerId(String stripeCustomerId) {
-        this.stripeCustomerId = stripeCustomerId;
     }
 
     public LocalDateTime getCreatedAt() {

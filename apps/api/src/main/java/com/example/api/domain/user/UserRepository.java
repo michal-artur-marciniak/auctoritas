@@ -16,8 +16,6 @@ public interface UserRepository {
 
     Optional<User> findByEmail(Email email);
 
-    Optional<User> findByStripeCustomerId(String stripeCustomerId);
-
     /**
      * Finds a user by email scoped to a specific project and environment.
      */

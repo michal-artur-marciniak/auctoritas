@@ -33,12 +33,6 @@ public class JpaSubscriptionRepositoryAdapter implements SubscriptionRepository 
     }
 
     @Override
-    public Optional<Subscription> findByStripeSubscriptionId(String stripeSubscriptionId) {
-        return jpaRepository.findByStripeSubscriptionId(stripeSubscriptionId)
-                .map(SubscriptionDomainMapper::toDomain);
-    }
-
-    @Override
     public Subscription save(Subscription subscription) {
         final var entity = SubscriptionDomainMapper.toEntity(subscription);
         jpaRepository.save(entity);

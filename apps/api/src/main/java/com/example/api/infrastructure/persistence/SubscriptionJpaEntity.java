@@ -33,9 +33,6 @@ public class SubscriptionJpaEntity {
     @Column(nullable = false)
     private SubscriptionStatus status;
 
-    @Column(name = "stripe_subscription_id")
-    private String stripeSubscriptionId;
-
     @Column(name = "current_period_end")
     private Instant currentPeriodEnd;
 
@@ -47,13 +44,11 @@ public class SubscriptionJpaEntity {
                                  String userId,
                                  SubscriptionPlan plan,
                                  SubscriptionStatus status,
-                                 String stripeSubscriptionId,
                                  Instant currentPeriodEnd) {
         this.id = id;
         this.userId = userId;
         this.plan = plan;
         this.status = status;
-        this.stripeSubscriptionId = stripeSubscriptionId;
         this.currentPeriodEnd = currentPeriodEnd;
     }
 
@@ -87,14 +82,6 @@ public class SubscriptionJpaEntity {
 
     public void setStatus(SubscriptionStatus status) {
         this.status = status;
-    }
-
-    public String getStripeSubscriptionId() {
-        return stripeSubscriptionId;
-    }
-
-    public void setStripeSubscriptionId(String stripeSubscriptionId) {
-        this.stripeSubscriptionId = stripeSubscriptionId;
     }
 
     public Instant getCurrentPeriodEnd() {

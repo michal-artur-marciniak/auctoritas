@@ -19,7 +19,6 @@ final class SubscriptionDomainMapper {
                 UserId.of(entity.getUserId()),
                 entity.getPlan(),
                 entity.getStatus(),
-                entity.getStripeSubscriptionId(),
                 entity.getCurrentPeriodEnd()
         );
     }
@@ -30,7 +29,6 @@ final class SubscriptionDomainMapper {
                 subscription.getUserId().value(),
                 subscription.getPlan(),
                 subscription.getStatus(),
-                subscription.getStripeSubscriptionId(),
                 subscription.getCurrentPeriodEnd()
         );
     }

@@ -250,7 +250,6 @@ class OrganizationMemberManagementUseCaseTest {
                 "Acme",
                 "acme",
                 OrganizationStatus.ACTIVE,
-                null,
                 LocalDateTime.now(),
                 null
         );

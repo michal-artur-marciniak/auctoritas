@@ -22,7 +22,6 @@ public class User {
     private Role role;
     private boolean banned;
     private String banReason;
-    private String stripeCustomerId;
     private final ProjectId projectId;
     private final EnvironmentId environmentId;
     private final LocalDateTime createdAt;
@@ -31,7 +30,7 @@ public class User {
      * Full constructor for reconstitution from persistence.
      */
     public User(UserId id, Email email, Password password, String name,
-                Role role, boolean banned, String banReason, String stripeCustomerId,
+                Role role, boolean banned, String banReason,
                 ProjectId projectId, EnvironmentId environmentId, LocalDateTime createdAt) {
         Objects.requireNonNull(id, "User ID required");
         Objects.requireNonNull(email, "Email required");
@@ -49,7 +48,6 @@ public class User {
         this.role = role;
         this.banned = banned;
         this.banReason = banReason;
-        this.stripeCustomerId = stripeCustomerId;
         this.projectId = projectId;
         this.environmentId = environmentId;
         this.createdAt = createdAt;
@@ -66,7 +64,6 @@ public class User {
                 name,
                 Role.USER,
                 false,
-                null,
                 null,
                 null,
                 null,
@@ -88,7 +85,6 @@ public class User {
                 name,
                 Role.USER,
                 false,
-                null,
                 null,
                 projectId,
                 environmentId,
@@ -128,16 +124,6 @@ public class User {
     public void assignRole(Role role) {
         Objects.requireNonNull(role, "Role required");
         this.role = role;
-    }
-
-    /**
-     * Associates the user with a Stripe customer ID.
-     */
-    public void assignStripeCustomerId(String stripeCustomerId) {
-        if (stripeCustomerId == null || stripeCustomerId.isBlank()) {
-            throw new IllegalArgumentException("Stripe customer ID required");
-        }
-        this.stripeCustomerId = stripeCustomerId;
     }
 
     /**
@@ -193,10 +179,6 @@ public class User {
 
     public String getBanReason() {
         return banReason;
-    }
-
-    public String getStripeCustomerId() {
-        return stripeCustomerId;
     }
 
     public LocalDateTime getCreatedAt() {

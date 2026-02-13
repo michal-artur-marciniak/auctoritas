@@ -28,7 +28,6 @@ final class UserDomainMapper {
                 entity.getRole(),
                 entity.isBanned(),
                 entity.getBanReason(),
-                entity.getStripeCustomerId(),
                 entity.getProjectId() != null ? ProjectId.of(entity.getProjectId()) : null,
                 entity.getEnvironmentId() != null ? EnvironmentId.of(entity.getEnvironmentId()) : null,
                 entity.getCreatedAt()
@@ -47,7 +46,6 @@ final class UserDomainMapper {
                 user.getRole(),
                 user.isBanned(),
                 user.getBanReason(),
-                user.getStripeCustomerId(),
                 user.getProjectId().map(ProjectId::value).orElse(null),
                 user.getEnvironmentId().map(EnvironmentId::value).orElse(null),
                 user.getCreatedAt()

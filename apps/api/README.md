@@ -43,7 +43,6 @@ This API follows a **pragmatic Domain-Driven Design (DDD)** approach with clean 
 | Java | 25 (LTS) | Language |
 | Spring Security | 6.5 | Security & JWT |
 | JJWT | 0.12.6 | JWT implementation |
-| Stripe Java | 24.0.0 | Stripe API |
 | SQLite | 3.51.1.0 | Database |
 | Gradle | Kotlin DSL | Build tool |
 
@@ -89,12 +88,6 @@ This API follows a **pragmatic Domain-Driven Design (DDD)** approach with clean 
 |--------|----------|-------------|
 | GET | `/api/hello` | Hello message |
 | GET | `/api/health` | Health check |
-
-### Stripe
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/stripe/webhook` | Stripe webhook listener |
 
 ## Authentication
 
@@ -257,12 +250,6 @@ src/main/java/com/example/api/
 │       ├── HttpCookieOAuth2AuthorizationRequestRepository.java
 │       ├── FrontendCorsProperties.java
 │       └── SecurityConfig.java
-├── infrastructure/                  # Infrastructure layer
-│   └── stripe/
-│       ├── StripeProperties.java
-│       ├── StripeClientConfig.java
-│       ├── StripeSubscriptionService.java
-│       └── StripeWebhookHandler.java
 └── presentation/                    # Presentation layer
     ├── auth/
     │   ├── AuthController.java
@@ -348,13 +335,3 @@ The API returns structured error responses:
 - [ ] Email verification
 - [ ] Password reset
 - [ ] Admin endpoints for user management
-- [ ] Subscription management (Stripe)
-### Stripe
-
-Set the Stripe secrets in `src/main/resources/application.yml`:
-
-```yaml
-stripe:
-  secret-key: ${STRIPE_SECRET_KEY}
-  webhook-secret: ${STRIPE_WEBHOOK_SECRET}
-```

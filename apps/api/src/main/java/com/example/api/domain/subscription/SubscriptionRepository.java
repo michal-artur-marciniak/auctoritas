@@ -13,8 +13,6 @@ public interface SubscriptionRepository {
 
     Optional<Subscription> findByUserId(UserId userId);
 
-    Optional<Subscription> findByStripeSubscriptionId(String stripeSubscriptionId);
-
     Subscription save(Subscription subscription);
 
     void delete(SubscriptionId id);

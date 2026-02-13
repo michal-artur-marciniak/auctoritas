@@ -35,12 +35,6 @@ public class JpaUserRepositoryAdapter implements UserRepository {
     }
 
     @Override
-    public Optional<User> findByStripeCustomerId(String stripeCustomerId) {
-        return jpaRepository.findByStripeCustomerId(stripeCustomerId)
-                .map(UserDomainMapper::toDomain);
-    }
-
-    @Override
     public Optional<User> findByEmailAndProjectId(Email email, ProjectId projectId, EnvironmentId environmentId) {
         return jpaRepository.findByEmailAndProjectIdAndEnvironmentId(
                         email.value(), projectId.value(), environmentId.value())

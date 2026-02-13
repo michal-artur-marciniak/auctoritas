@@ -36,9 +36,6 @@ dependencies {
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.3")
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.3")
 
-    // Stripe
-    implementation("com.stripe:stripe-java:24.0.0")
-
     // Database
     implementation("org.xerial:sqlite-jdbc:3.51.1.0")
     implementation("org.hibernate.orm:hibernate-community-dialects")

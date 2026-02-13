@@ -42,9 +42,6 @@ public class UserJpaEntity {
     @Column(name = "ban_reason")
     private String banReason;
 
-    @Column(name = "stripe_customer_id")
-    private String stripeCustomerId;
-
     @Column(name = "project_id", length = 36)
     private String projectId;
 
@@ -59,7 +56,7 @@ public class UserJpaEntity {
     }
 
     public UserJpaEntity(String id, String email, String passwordHash, String name,
-                         Role role, boolean banned, String banReason, String stripeCustomerId,
+                         Role role, boolean banned, String banReason,
                          String projectId, String environmentId, LocalDateTime createdAt) {
         this.id = id;
         this.email = email;
@@ -68,7 +65,6 @@ public class UserJpaEntity {
         this.role = role;
         this.banned = banned;
         this.banReason = banReason;
-        this.stripeCustomerId = stripeCustomerId;
         this.projectId = projectId;
         this.environmentId = environmentId;
         this.createdAt = createdAt;
@@ -128,14 +124,6 @@ public class UserJpaEntity {
 
     public void setBanReason(String banReason) {
         this.banReason = banReason;
-    }
-
-    public String getStripeCustomerId() {
-        return stripeCustomerId;
-    }
-
-    public void setStripeCustomerId(String stripeCustomerId) {
-        this.stripeCustomerId = stripeCustomerId;
     }
 
     public String getProjectId() {

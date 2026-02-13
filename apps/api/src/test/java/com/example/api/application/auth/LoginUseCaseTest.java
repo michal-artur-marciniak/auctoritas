@@ -69,7 +69,6 @@ class LoginUseCaseTest {
                 "reason",
                 null,
                 null,
-                null,
                 LocalDateTime.now()
         );
         when(userRepository.findByEmail(new Email("user@example.com"))).thenReturn(Optional.of(user));
@@ -103,7 +102,6 @@ class LoginUseCaseTest {
                 "User",
                 Role.USER,
                 false,
-                null,
                 null,
                 null,
                 null,
