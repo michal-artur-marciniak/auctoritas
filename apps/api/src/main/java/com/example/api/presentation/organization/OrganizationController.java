@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
  * REST controller for organization onboarding.
  */
 @RestController
-@RequestMapping("/api/v1/org")
+@RequestMapping("/api/v1/customers/orgs")
 public class OrganizationController {
 
     private final CreateOrganizationUseCase createOrganizationUseCase;

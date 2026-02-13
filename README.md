@@ -206,7 +206,7 @@ Organization member authentication and SDK end-user authentication are strictly 
 
 | Flow | Endpoints | Token Type | Filter |
 |------|-----------|------------|--------|
-| **Org Member** | `/api/v1/org/**` | Org JWT (`type: "org"`) | `OrgJwtAuthenticationFilter` |
+| **Org Member** | `/api/v1/customers/**` | Org JWT (`type: "org"`) | `OrgJwtAuthenticationFilter` |
 | **SDK End User** | `/api/v1/auth/**`, `/api/v1/users/**` | SDK JWT + API Key | `ApiKeyAuthenticationFilter` + `JwtAuthenticationFilter` |
 | **Legacy Auth** | `/api/auth/**`, `/api/user/**` | Legacy JWT | `JwtAuthenticationFilter` |
 
@@ -217,38 +217,38 @@ Organization member authentication and SDK end-user authentication are strictly 
 - Each filter only processes requests for its designated path prefix
 
 **Org Authentication Flow:**
-1. `POST /api/v1/org/auth/login` - Authenticate with organization ID, email, password
+1. `POST /api/v1/customers/auth/login` - Authenticate with organization ID, email, password
 2. Receive `accessToken` and `refreshToken` (both org-scoped)
 3. Use `Authorization: Bearer {accessToken}` for org endpoints
-4. `POST /api/v1/org/auth/refresh` - Exchange refresh token for new tokens
+4. `POST /api/v1/customers/auth/refresh` - Exchange refresh token for new tokens
 
 ### Organization
 
 | Method | Endpoint | Description | Auth Required |
 |--------|----------|-------------|---------------|
-| POST | `/api/v1/org/register` | Create organization + owner | No |
-| POST | `/api/v1/org/auth/login` | Org member login (returns org JWT) | No |
-| POST | `/api/v1/org/auth/refresh` | Refresh org access token | No |
-| POST | `/api/v1/org/{orgId}/members/invite` | Invite org member | Org JWT |
-| POST | `/api/v1/org/{orgId}/members/accept` | Accept invitation | No |
-| PUT | `/api/v1/org/{orgId}/members/{memberId}/role` | Update member role | Org JWT (OWNER) |
-| DELETE | `/api/v1/org/{orgId}/members/{memberId}` | Remove member | Org JWT (OWNER/ADMIN) |
+| POST | `/api/v1/customers/orgs/register` | Create organization + owner | No |
+| POST | `/api/v1/customers/auth/login` | Org member login (returns org JWT) | No |
+| POST | `/api/v1/customers/auth/refresh` | Refresh org access token | No |
+| POST | `/api/v1/customers/orgs/{orgId}/members/invite` | Invite org member | Org JWT |
+| POST | `/api/v1/customers/orgs/{orgId}/members/accept` | Accept invitation | No |
+| PUT | `/api/v1/customers/orgs/{orgId}/members/{memberId}/role` | Update member role | Org JWT (OWNER) |
+| DELETE | `/api/v1/customers/orgs/{orgId}/members/{memberId}` | Remove member | Org JWT (OWNER/ADMIN) |
 
 ### Projects
 
 | Method | Endpoint | Description | Auth Required |
 |--------|----------|-------------|---------------|
-| POST | `/api/v1/org/{orgId}/projects` | Create project with PROD/DEV environments + API keys | Org JWT (OWNER/ADMIN) |
-| GET | `/api/v1/org/{orgId}/projects` | List organization projects | Org JWT |
-| GET | `/api/v1/org/{orgId}/projects/{projectId}` | Get project details with environments | Org JWT |
-| DELETE | `/api/v1/org/{orgId}/projects/{projectId}` | Archive project | Org JWT (OWNER/ADMIN) |
+| POST | `/api/v1/customers/orgs/{orgId}/projects` | Create project with PROD/DEV environments + API keys | Org JWT (OWNER/ADMIN) |
+| GET | `/api/v1/customers/orgs/{orgId}/projects` | List organization projects | Org JWT |
+| GET | `/api/v1/customers/orgs/{orgId}/projects/{projectId}` | Get project details with environments | Org JWT |
+| DELETE | `/api/v1/customers/orgs/{orgId}/projects/{projectId}` | Archive project | Org JWT (OWNER/ADMIN) |
 
 ### API Key Management
 
 | Method | Endpoint | Description | Auth Required |
 |--------|----------|-------------|---------------|
-| GET | `/api/v1/org/{orgId}/projects/{projectId}/keys` | List API keys for project (redacted) | Org JWT |
-| POST | `/api/v1/org/{orgId}/projects/{projectId}/keys` | Rotate API key for environment | Org JWT (OWNER/ADMIN) |
+| GET | `/api/v1/customers/orgs/{orgId}/projects/{projectId}/keys` | List API keys for project (redacted) | Org JWT |
+| POST | `/api/v1/customers/orgs/{orgId}/projects/{projectId}/keys` | Rotate API key for environment | Org JWT (OWNER/ADMIN) |
 
 **API Key Rotation:**
 - POST body: `{"environmentId": "PROD"}` or `{"environmentId": "DEV"}`
@@ -315,65 +315,65 @@ curl http://localhost:8080/api/sessions \
 curl -L http://localhost:8080/api/auth/oauth/github
 
 # Create organization with owner
-curl -X POST http://localhost:8080/api/v1/org/register \
+curl -X POST http://localhost:8080/api/v1/customers/orgs/register \
   -H "Content-Type: application/json" \
   -d '{"name":"Acme Inc","slug":"acme","ownerEmail":"owner@acme.com","ownerPassword":"password123","ownerName":"Owner"}'
 
 # Org member login
-curl -X POST http://localhost:8080/api/v1/org/auth/login \
+curl -X POST http://localhost:8080/api/v1/customers/auth/login \
   -H "Content-Type: application/json" \
   -d '{"organizationId":"org-id","email":"owner@acme.com","password":"password123"}'
 
 # Refresh org token
-curl -X POST http://localhost:8080/api/v1/org/auth/refresh \
+curl -X POST http://localhost:8080/api/v1/customers/auth/refresh \
   -H "Content-Type: application/json" \
   -d '{"refreshToken":"refresh-token-from-login"}'
 
 # Invite org member
-curl -X POST http://localhost:8080/api/v1/org/org-id/members/invite \
+curl -X POST http://localhost:8080/api/v1/customers/orgs/org-id/members/invite \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer org-jwt" \
   -d '{"email":"member@acme.com","role":"ADMIN"}'
 
 # Accept invitation
-curl -X POST http://localhost:8080/api/v1/org/org-id/members/accept \
+curl -X POST http://localhost:8080/api/v1/customers/orgs/org-id/members/accept \
   -H "Content-Type: application/json" \
   -d '{"token":"invitation-token","name":"Member Name","password":"password123"}'
 
 # Update member role
-curl -X PUT http://localhost:8080/api/v1/org/org-id/members/member-id/role \
+curl -X PUT http://localhost:8080/api/v1/customers/orgs/org-id/members/member-id/role \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer org-jwt" \
   -d '{"role":"MEMBER"}'
 
 # Remove member
-curl -X DELETE http://localhost:8080/api/v1/org/org-id/members/member-id \
+curl -X DELETE http://localhost:8080/api/v1/customers/orgs/org-id/members/member-id \
   -H "Authorization: Bearer org-jwt"
 
 # Create project with PROD/DEV environments (returns API keys once)
-curl -X POST http://localhost:8080/api/v1/org/org-id/projects \
+curl -X POST http://localhost:8080/api/v1/customers/orgs/org-id/projects \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer org-jwt" \
   -d '{"name":"My App","slug":"my-app","description":"Production application"}'
 
 # List projects
-curl http://localhost:8080/api/v1/org/org-id/projects \
+curl http://localhost:8080/api/v1/customers/orgs/org-id/projects \
   -H "Authorization: Bearer org-jwt"
 
 # Get project details
-curl http://localhost:8080/api/v1/org/org-id/projects/project-id \
+curl http://localhost:8080/api/v1/customers/orgs/org-id/projects/project-id \
   -H "Authorization: Bearer org-jwt"
 
 # Archive project
-curl -X DELETE http://localhost:8080/api/v1/org/org-id/projects/project-id \
+curl -X DELETE http://localhost:8080/api/v1/customers/orgs/org-id/projects/project-id \
   -H "Authorization: Bearer org-jwt"
 
 # List API keys for project (returns metadata, no raw keys)
-curl http://localhost:8080/api/v1/org/org-id/projects/project-id/keys \
+curl http://localhost:8080/api/v1/customers/orgs/org-id/projects/project-id/keys \
   -H "Authorization: Bearer org-jwt"
 
 # Rotate API key (returns new raw key once)
-curl -X POST http://localhost:8080/api/v1/org/org-id/projects/project-id/keys \
+curl -X POST http://localhost:8080/api/v1/customers/orgs/org-id/projects/project-id/keys \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer org-jwt" \
   -d '{"environmentId":"PROD"}'

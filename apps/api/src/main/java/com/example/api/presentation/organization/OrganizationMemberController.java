@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
  * REST controller for organization member management.
  */
 @RestController
-@RequestMapping("/api/v1/org/{orgId}/members")
+@RequestMapping("/api/v1/customers/orgs/{orgId}/members")
 public class OrganizationMemberController {
 
     private final OrganizationMemberManagementUseCase memberManagementUseCase;

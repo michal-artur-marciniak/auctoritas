@@ -22,7 +22,7 @@ import java.util.List;
  * REST controller for API key management.
  */
 @RestController
-@RequestMapping("/api/v1/org/{orgId}/projects/{projectId}/keys")
+@RequestMapping("/api/v1/customers/orgs/{orgId}/projects/{projectId}/keys")
 public class ProjectApiKeyController {
 
     private final ListProjectApiKeysUseCase listProjectApiKeysUseCase;

@@ -25,7 +25,7 @@ import java.util.List;
  * REST controller for project management.
  */
 @RestController
-@RequestMapping("/api/v1/org/{orgId}/projects")
+@RequestMapping("/api/v1/customers/orgs/{orgId}/projects")
 public class ProjectController {
 
     private final CreateProjectUseCase createProjectUseCase;

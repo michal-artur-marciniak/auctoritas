@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
  * REST controller for org member authentication.
  */
 @RestController
-@RequestMapping("/api/v1/org/auth")
+@RequestMapping("/api/v1/customers/auth")
 public class OrganizationAuthController {
 
     private final OrgMemberLoginUseCase loginUseCase;

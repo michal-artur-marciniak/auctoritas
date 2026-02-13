@@ -102,7 +102,7 @@ public class OrgJwtAuthenticationFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         final var path = request.getRequestURI();
         // Only filter org endpoints
-        return !path.startsWith("/api/v1/org/");
+        return !path.startsWith("/api/v1/customers/");
     }
 
     private SecretKey secretKey() {
