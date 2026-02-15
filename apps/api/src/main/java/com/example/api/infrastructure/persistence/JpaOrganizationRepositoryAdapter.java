@@ -5,6 +5,7 @@ import com.example.api.domain.organization.OrganizationId;
 import com.example.api.domain.organization.OrganizationRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -36,5 +37,12 @@ public class JpaOrganizationRepositoryAdapter implements OrganizationRepository 
         final var entity = OrganizationDomainMapper.toEntity(organization);
         jpaRepository.save(entity);
         return organization;
+    }
+
+    @Override
+    public List<Organization> findAll() {
+        return jpaRepository.findAll().stream()
+                .map(OrganizationDomainMapper::toDomain)
+                .toList();
     }
 }

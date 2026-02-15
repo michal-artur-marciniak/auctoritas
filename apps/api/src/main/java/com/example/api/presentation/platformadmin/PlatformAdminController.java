@@ -2,7 +2,11 @@ package com.example.api.presentation.platformadmin;
 
 import com.example.api.application.platformadmin.CreatePlatformAdminUseCase;
 import com.example.api.application.platformadmin.DeactivatePlatformAdminUseCase;
+import com.example.api.application.platformadmin.GetOrganizationDetailsUseCase;
 import com.example.api.application.platformadmin.GetPlatformAdminProfileUseCase;
+import com.example.api.application.platformadmin.ListAllOrganizationsUseCase;
+import com.example.api.application.platformadmin.OrganizationDetailsResponse;
+import com.example.api.application.platformadmin.OrganizationSummaryResponse;
 import com.example.api.application.platformadmin.PlatformAdminResponse;
 import com.example.api.application.platformadmin.UpdatePlatformAdminProfileUseCase;
 import jakarta.validation.Valid;
@@ -19,6 +23,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 /**
  * REST controller for platform admin management.
  * Creating platform admins via HTTP requires platform admin authentication.
@@ -32,15 +38,21 @@ public class PlatformAdminController {
     private final GetPlatformAdminProfileUseCase getPlatformAdminProfileUseCase;
     private final UpdatePlatformAdminProfileUseCase updatePlatformAdminProfileUseCase;
     private final DeactivatePlatformAdminUseCase deactivatePlatformAdminUseCase;
+    private final ListAllOrganizationsUseCase listAllOrganizationsUseCase;
+    private final GetOrganizationDetailsUseCase getOrganizationDetailsUseCase;
 
     public PlatformAdminController(CreatePlatformAdminUseCase createPlatformAdminUseCase,
                                      GetPlatformAdminProfileUseCase getPlatformAdminProfileUseCase,
                                      UpdatePlatformAdminProfileUseCase updatePlatformAdminProfileUseCase,
-                                     DeactivatePlatformAdminUseCase deactivatePlatformAdminUseCase) {
+                                     DeactivatePlatformAdminUseCase deactivatePlatformAdminUseCase,
+                                     ListAllOrganizationsUseCase listAllOrganizationsUseCase,
+                                     GetOrganizationDetailsUseCase getOrganizationDetailsUseCase) {
         this.createPlatformAdminUseCase = createPlatformAdminUseCase;
         this.getPlatformAdminProfileUseCase = getPlatformAdminProfileUseCase;
         this.updatePlatformAdminProfileUseCase = updatePlatformAdminProfileUseCase;
         this.deactivatePlatformAdminUseCase = deactivatePlatformAdminUseCase;
+        this.listAllOrganizationsUseCase = listAllOrganizationsUseCase;
+        this.getOrganizationDetailsUseCase = getOrganizationDetailsUseCase;
     }
 
     @PostMapping
@@ -77,5 +89,22 @@ public class PlatformAdminController {
             @PathVariable String adminId) {
         deactivatePlatformAdminUseCase.execute(adminId);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/organizations")
+    @PreAuthorize("hasAuthority('PLATFORM_ADMIN')")
+    public ResponseEntity<List<OrganizationSummaryResponse>> listAllOrganizations(
+            Authentication authentication) {
+        final var response = listAllOrganizationsUseCase.execute();
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/organizations/{orgId}")
+    @PreAuthorize("hasAuthority('PLATFORM_ADMIN')")
+    public ResponseEntity<OrganizationDetailsResponse> getOrganizationDetails(
+            Authentication authentication,
+            @PathVariable String orgId) {
+        final var response = getOrganizationDetailsUseCase.execute(orgId);
+        return ResponseEntity.ok(response);
     }
 }

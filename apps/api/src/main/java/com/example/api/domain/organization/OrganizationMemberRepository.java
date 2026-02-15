@@ -2,6 +2,7 @@ package com.example.api.domain.organization;
 
 import com.example.api.domain.user.Email;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -14,6 +15,8 @@ public interface OrganizationMemberRepository {
     Optional<OrganizationMember> findByEmailAndOrganizationId(Email email, OrganizationId organizationId);
 
     long countByOrganizationIdAndRole(OrganizationId organizationId, OrganizationMemberRole role);
+
+    List<OrganizationMember> findByOrganizationId(OrganizationId organizationId);
 
     OrganizationMember save(OrganizationMember member);
 

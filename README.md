@@ -127,6 +127,8 @@ cd apps/api
 | PATCH | `/api/platform/admin/me` | Update platform admin profile | Platform Admin JWT |
 | POST | `/api/platform/admin` | Create platform admin | Platform Admin JWT |
 | DELETE | `/api/platform/admin/{adminId}` | Deactivate platform admin | Platform Admin JWT |
+| GET | `/api/platform/admin/organizations` | List all organizations (cross-tenant) | Platform Admin JWT |
+| GET | `/api/platform/admin/organizations/{orgId}` | Get organization details with members/projects | Platform Admin JWT |
 
 Platform admins are internal platform operators with cross-tenant access to all organizations, projects, and end users for support and management purposes.
 
@@ -169,6 +171,38 @@ curl -X PATCH http://localhost:8080/api/platform/admin/me \
 # Deactivate another platform admin (cannot deactivate last active admin)
 curl -X DELETE http://localhost:8080/api/platform/admin/admin-id-to-deactivate \
   -H "Authorization: Bearer platform-jwt"
+
+# List all organizations (cross-tenant access)
+curl http://localhost:8080/api/platform/admin/organizations \
+  -H "Authorization: Bearer platform-jwt"
+
+# Get organization details with members and projects
+curl http://localhost:8080/api/platform/admin/organizations/org-id \
+  -H "Authorization: Bearer platform-jwt"
+```
+
+**Cross-Tenant Organization Access (US-PA-005):**
+
+Platform admins can view all organizations across all tenants for customer support:
+
+```bash
+# List all organizations with member counts
+curl http://localhost:8080/api/platform/admin/organizations \
+  -H "Authorization: Bearer platform-jwt"
+
+# Response includes:
+# - id, name, slug, status
+# - memberCount (computed)
+# - createdAt
+
+# Get detailed organization view
+curl http://localhost:8080/api/platform/admin/organizations/org-id \
+  -H "Authorization: Bearer platform-jwt"
+
+# Response includes:
+# - Organization details (id, name, slug, status, timestamps)
+# - members: array of all organization members
+# - projects: array of all projects with environments
 ```
 
 **Token Claims:**

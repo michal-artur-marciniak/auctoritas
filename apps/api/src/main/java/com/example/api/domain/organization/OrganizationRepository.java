@@ -1,5 +1,6 @@
 package com.example.api.domain.organization;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -12,4 +13,6 @@ public interface OrganizationRepository {
     Optional<Organization> findBySlug(String slug);
 
     Organization save(Organization organization);
+
+    List<Organization> findAll();
 }

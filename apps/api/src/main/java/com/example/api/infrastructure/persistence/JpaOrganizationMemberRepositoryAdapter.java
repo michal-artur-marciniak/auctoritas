@@ -8,6 +8,7 @@ import com.example.api.domain.organization.OrganizationMemberRole;
 import com.example.api.domain.user.Email;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -37,6 +38,13 @@ public class JpaOrganizationMemberRepositoryAdapter implements OrganizationMembe
     @Override
     public long countByOrganizationIdAndRole(OrganizationId organizationId, OrganizationMemberRole role) {
         return jpaRepository.countByOrganizationIdAndRole(organizationId.value(), role);
+    }
+
+    @Override
+    public List<OrganizationMember> findByOrganizationId(OrganizationId organizationId) {
+        return jpaRepository.findAllByOrganizationId(organizationId.value()).stream()
+                .map(OrganizationMemberDomainMapper::toDomain)
+                .toList();
     }
 
     @Override
