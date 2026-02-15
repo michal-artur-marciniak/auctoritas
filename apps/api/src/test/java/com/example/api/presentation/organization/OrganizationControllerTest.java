@@ -32,7 +32,7 @@ class OrganizationControllerTest {
     void registerReturnsCreated() throws Exception {
         when(createOrganizationUseCase.execute(any())).thenReturn(sampleResponse());
 
-        mockMvc.perform(post("/api/v1/org/register")
+        mockMvc.perform(post("/api/v1/customers/orgs/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"Acme\",\"slug\":\"acme\",\"ownerEmail\":\"owner@acme.com\",\"ownerPassword\":\"password123\",\"ownerName\":\"Owner\"}"))
                 .andExpect(status().isCreated())

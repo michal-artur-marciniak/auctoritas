@@ -295,6 +295,40 @@ Organization member authentication and SDK end-user authentication are strictly 
 | PUT | `/api/v1/customers/orgs/{orgId}/members/{memberId}/role` | Update member role | Org JWT (OWNER) |
 | DELETE | `/api/v1/customers/orgs/{orgId}/members/{memberId}` | Remove member | Org JWT (OWNER/ADMIN) |
 
+**Organization Member Management (US-ORG-002):**
+
+Invite flow creates tokenized invitations with configurable expiry (default 72 hours). Role changes restricted to OWNER only. Cannot remove the last OWNER from organization.
+
+```bash
+# Invite org member (requires OWNER or ADMIN role)
+curl -X POST http://localhost:8080/api/v1/customers/orgs/org-id/members/invite \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer org-jwt" \
+  -d '{"email":"member@acme.com","role":"ADMIN"}'
+
+# Accept invitation (no auth required, uses invitation token)
+curl -X POST http://localhost:8080/api/v1/customers/orgs/org-id/members/accept \
+  -H "Content-Type: application/json" \
+  -d '{"token":"invitation-token","name":"Member Name","password":"password123"}'
+
+# Update member role (requires OWNER role, cannot demote last OWNER)
+curl -X PUT http://localhost:8080/api/v1/customers/orgs/org-id/members/member-id/role \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer org-jwt" \
+  -d '{"role":"MEMBER"}'
+
+# Remove member (requires OWNER or ADMIN role, cannot remove last OWNER)
+curl -X DELETE http://localhost:8080/api/v1/customers/orgs/org-id/members/member-id \
+  -H "Authorization: Bearer org-jwt"
+```
+
+**Security Features:**
+- Invitations expire after 72 hours (configurable via `app.org.invitation-expiry-hours`)
+- Invitation tokens are single-use and deleted after acceptance
+- Member email uniqueness enforced within organization
+- Role-based access control: OWNER can manage roles and remove members, ADMIN can only invite and remove non-OWNER members
+- Last OWNER protection prevents removing or demoting the sole organization owner
+
 ### Projects
 
 | Method | Endpoint | Description | Auth Required |
