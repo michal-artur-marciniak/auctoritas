@@ -1,6 +1,7 @@
 package com.example.api.presentation.platformadmin;
 
 import com.example.api.application.platformadmin.CreatePlatformAdminUseCase;
+import com.example.api.application.platformadmin.DeactivatePlatformAdminUseCase;
 import com.example.api.application.platformadmin.GetPlatformAdminProfileUseCase;
 import com.example.api.application.platformadmin.PlatformAdminResponse;
 import com.example.api.application.platformadmin.UpdatePlatformAdminProfileUseCase;
@@ -9,8 +10,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -28,13 +31,16 @@ public class PlatformAdminController {
     private final CreatePlatformAdminUseCase createPlatformAdminUseCase;
     private final GetPlatformAdminProfileUseCase getPlatformAdminProfileUseCase;
     private final UpdatePlatformAdminProfileUseCase updatePlatformAdminProfileUseCase;
+    private final DeactivatePlatformAdminUseCase deactivatePlatformAdminUseCase;
 
     public PlatformAdminController(CreatePlatformAdminUseCase createPlatformAdminUseCase,
-                                    GetPlatformAdminProfileUseCase getPlatformAdminProfileUseCase,
-                                    UpdatePlatformAdminProfileUseCase updatePlatformAdminProfileUseCase) {
+                                     GetPlatformAdminProfileUseCase getPlatformAdminProfileUseCase,
+                                     UpdatePlatformAdminProfileUseCase updatePlatformAdminProfileUseCase,
+                                     DeactivatePlatformAdminUseCase deactivatePlatformAdminUseCase) {
         this.createPlatformAdminUseCase = createPlatformAdminUseCase;
         this.getPlatformAdminProfileUseCase = getPlatformAdminProfileUseCase;
         this.updatePlatformAdminProfileUseCase = updatePlatformAdminProfileUseCase;
+        this.deactivatePlatformAdminUseCase = deactivatePlatformAdminUseCase;
     }
 
     @PostMapping
@@ -62,5 +68,14 @@ public class PlatformAdminController {
         final var adminId = authentication.getName();
         final var response = updatePlatformAdminProfileUseCase.execute(adminId, dto.toRequest());
         return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{adminId}")
+    @PreAuthorize("hasAuthority('PLATFORM_ADMIN')")
+    public ResponseEntity<Void> deactivate(
+            Authentication authentication,
+            @PathVariable String adminId) {
+        deactivatePlatformAdminUseCase.execute(adminId);
+        return ResponseEntity.noContent().build();
     }
 }

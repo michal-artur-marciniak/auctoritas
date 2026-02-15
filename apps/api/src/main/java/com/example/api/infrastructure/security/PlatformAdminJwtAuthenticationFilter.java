@@ -59,12 +59,15 @@ public class PlatformAdminJwtAuthenticationFilter extends OncePerRequestFilter {
                             && claims.getExpiration().after(new Date())) {
                         final var adminId = claims.getSubject();
                         platformAdminRepository.findById(PlatformAdminId.of(adminId)).ifPresent(admin -> {
-                            final var authority = new SimpleGrantedAuthority("PLATFORM_ADMIN");
-                            final var authentication = new UsernamePasswordAuthenticationToken(
-                                    adminId, null, List.of(authority)
-                            );
-                            authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                            SecurityContextHolder.getContext().setAuthentication(authentication);
+                            // Only authenticate if admin is active
+                            if (admin.isActive()) {
+                                final var authority = new SimpleGrantedAuthority("PLATFORM_ADMIN");
+                                final var authentication = new UsernamePasswordAuthenticationToken(
+                                        adminId, null, List.of(authority)
+                                );
+                                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                                SecurityContextHolder.getContext().setAuthentication(authentication);
+                            }
                         });
                     }
                 } catch (JwtException | IllegalArgumentException ignored) {

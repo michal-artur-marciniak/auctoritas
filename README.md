@@ -126,6 +126,7 @@ cd apps/api
 | GET | `/api/platform/admin/me` | Get current platform admin profile | Platform Admin JWT |
 | PATCH | `/api/platform/admin/me` | Update platform admin profile | Platform Admin JWT |
 | POST | `/api/platform/admin` | Create platform admin | Platform Admin JWT |
+| DELETE | `/api/platform/admin/{adminId}` | Deactivate platform admin | Platform Admin JWT |
 
 Platform admins are internal platform operators with cross-tenant access to all organizations, projects, and end users for support and management purposes.
 
@@ -164,6 +165,10 @@ curl -X PATCH http://localhost:8080/api/platform/admin/me \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer platform-jwt" \
   -d '{"currentPassword":"oldpass","newPassword":"newpass123"}'
+
+# Deactivate another platform admin (cannot deactivate last active admin)
+curl -X DELETE http://localhost:8080/api/platform/admin/admin-id-to-deactivate \
+  -H "Authorization: Bearer platform-jwt"
 ```
 
 **Token Claims:**

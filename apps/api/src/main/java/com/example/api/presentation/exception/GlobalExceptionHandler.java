@@ -173,6 +173,20 @@ public class GlobalExceptionHandler {
                 .body(new ApiError(409, ex.getMessage()));
     }
 
+    @ExceptionHandler(com.example.api.domain.platformadmin.CannotDeactivateLastAdminException.class)
+    public ResponseEntity<ApiError> handleCannotDeactivateLastAdmin(com.example.api.domain.platformadmin.CannotDeactivateLastAdminException ex) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(new ApiError(400, ex.getMessage()));
+    }
+
+    @ExceptionHandler(com.example.api.domain.platformadmin.PlatformAdminNotFoundException.class)
+    public ResponseEntity<ApiError> handlePlatformAdminNotFound(com.example.api.domain.platformadmin.PlatformAdminNotFoundException ex) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(new ApiError(404, ex.getMessage()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleGeneral(Exception ex) {
         log.error("Unhandled exception", ex);
