@@ -194,6 +194,10 @@ SDK authentication requires the `X-API-Key` header with a valid project API key 
 |--------|----------|-------------|---------------|
 | GET | `/api/v1/end-users/me` | Get current SDK end user profile | SDK JWT + API Key |
 | PATCH | `/api/v1/end-users/me` | Update SDK end user profile | SDK JWT + API Key |
+| GET | `/api/v1/end-users/sessions` | List active sessions | SDK JWT |
+| POST | `/api/v1/end-users/sessions` | Create new session | SDK JWT |
+| PATCH | `/api/v1/end-users/sessions/{sessionId}` | Extend session expiry | SDK JWT |
+| DELETE | `/api/v1/end-users/sessions/{sessionId}` | Revoke session | SDK JWT |
 
 **Profile Management (US-EU-002):**
 
@@ -210,6 +214,36 @@ curl -X PATCH http://localhost:8080/api/v1/end-users/me \
   -H "X-API-Key: pk_prod_xxxxx" \
   -d '{"email":"new@app.com","name":"New Name"}'
 ```
+
+**Session Management (US-EU-003):**
+
+```bash
+# List active sessions for the current end user (requires SDK JWT)
+curl http://localhost:8080/api/v1/end-users/sessions \
+  -H "Authorization: Bearer sdk-jwt"
+
+# Create a new session (requires SDK JWT)
+curl -X POST http://localhost:8080/api/v1/end-users/sessions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer sdk-jwt" \
+  -d '{"expiresAt":"2026-12-31T23:59:59Z"}'
+
+# Extend a session expiry (requires SDK JWT)
+curl -X PATCH http://localhost:8080/api/v1/end-users/sessions/session-id \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer sdk-jwt" \
+  -d '{"expiresAt":"2026-12-31T23:59:59Z"}'
+
+# Revoke a session (requires SDK JWT)
+curl -X DELETE http://localhost:8080/api/v1/end-users/sessions/session-id \
+  -H "Authorization: Bearer sdk-jwt"
+```
+
+**Session Security:**
+- Sessions are scoped to the authenticated end user
+- Users can only view and manage their own sessions
+- Revoked sessions cannot be used for authentication
+- Sessions have configurable expiration times
 
 **Project-Level Isolation:**
 - Email uniqueness is enforced within project and environment scope
