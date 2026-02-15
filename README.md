@@ -440,11 +440,28 @@ curl -X DELETE http://localhost:8080/api/v1/customers/orgs/org-id/members/member
 | GET | `/api/v1/customers/orgs/{orgId}/projects/{projectId}/keys` | List API keys for project (redacted) | Org JWT |
 | POST | `/api/v1/customers/orgs/{orgId}/projects/{projectId}/keys` | Rotate API key for environment | Org JWT (OWNER/ADMIN) |
 
-**API Key Rotation:**
-- POST body: `{"environmentId": "PROD"}` or `{"environmentId": "DEV"}`
-- Returns new raw key once (cannot be retrieved again)
-- Old key is immediately revoked
-- New key has prefix `pk_prod_*` or `pk_dev_*`
+**API Key Management (US-KEY-001):**
+
+Org admins can list and rotate API keys per environment:
+
+```bash
+# List API keys for project (returns metadata, no raw keys)
+curl http://localhost:8080/api/v1/customers/orgs/org-id/projects/project-id/keys \
+  -H "Authorization: Bearer org-jwt"
+
+# Rotate API key (returns new raw key once)
+curl -X POST http://localhost:8080/api/v1/customers/orgs/org-id/projects/project-id/keys \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer org-jwt" \
+  -d '{"environmentId":"PROD"}'
+```
+
+**Key Features:**
+- GET returns redacted key metadata (no raw keys exposed)
+- POST rotates key: revokes old key, generates new one with proper prefix
+- Only OWNER/ADMIN can rotate keys
+- Raw key is returned only once at rotation time
+- Keys prefixed with `pk_prod_*` or `pk_dev_*` based on environment
 
 * Can use refresh token from cookie or request body
 
