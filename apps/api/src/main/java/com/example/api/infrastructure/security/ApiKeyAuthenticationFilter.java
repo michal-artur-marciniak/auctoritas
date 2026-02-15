@@ -19,6 +19,10 @@ import java.util.Base64;
 /**
  * API key authentication filter for SDK endpoints.
  * Validates X-API-Key header and resolves project/environment context.
+ * 
+ * <p>This filter enforces that SDK routes (both auth and end-user endpoints)
+ * require a valid, non-revoked API key. Revoked keys are rejected with 401.
+ * Context is automatically cleared after each request.</p>
  */
 @Component
 public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
@@ -38,20 +42,41 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
         try {
             final var apiKey = request.getHeader(API_KEY_HEADER);
-            if (apiKey != null && !apiKey.isBlank()) {
+            
+            // SDK routes require API key
+            if (isSdkRoute(request.getRequestURI())) {
+                if (apiKey == null || apiKey.isBlank()) {
+                    sendError(response, HttpServletResponse.SC_UNAUTHORIZED, "X-API-Key header is required");
+                    return;
+                }
+                
                 final var keyHash = hashApiKey(apiKey);
                 final var apiKeyOpt = apiKeyRepository.findByKeyHash(keyHash);
 
-                if (apiKeyOpt.isPresent()) {
-                    final var key = apiKeyOpt.get();
-                    if (!key.isRevoked()) {
-                        final var context = new ProjectContext(key.getProjectId(), key.getEnvironmentId());
-                        request.setAttribute(PROJECT_CONTEXT_ATTR, context);
-                    }
+                if (apiKeyOpt.isEmpty()) {
+                    sendError(response, HttpServletResponse.SC_UNAUTHORIZED, "Invalid API key");
+                    return;
                 }
+                
+                final var key = apiKeyOpt.get();
+                if (key.isRevoked()) {
+                    sendError(response, HttpServletResponse.SC_UNAUTHORIZED, "API key has been revoked");
+                    return;
+                }
+                
+                // Valid key - set project context
+                final var context = new ProjectContext(key.getProjectId(), key.getEnvironmentId());
+                request.setAttribute(PROJECT_CONTEXT_ATTR, context);
             }
-        } finally {
+        } catch (Exception e) {
+            logger.error("Error processing API key", e);
+            sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error processing API key");
+            return;
+        }
+        
+        try {
             filterChain.doFilter(request, response);
+        } finally {
             // Clear context after request processing
             request.removeAttribute(PROJECT_CONTEXT_ATTR);
         }
@@ -60,15 +85,29 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         final var path = request.getRequestURI();
-        // Skip org endpoints and non-SDK endpoints
-        if (path.startsWith("/api/v1/org/")) {
-            return true;
+        // Only filter SDK routes that require API key context
+        // SDK auth endpoints moved to /api/v1/end-users/auth/**
+        // SDK user endpoints at /api/v1/end-users/**
+        return !(path.startsWith("/api/v1/end-users/"));
+    }
+    
+    /**
+     * Checks if the request path is an SDK route requiring API key validation.
+     */
+    private boolean isSdkRoute(String path) {
+        return path.startsWith("/api/v1/end-users/");
+    }
+    
+    /**
+     * Sends an error response and logs the rejection.
+     */
+    private void sendError(HttpServletResponse response, int status, String message) throws IOException {
+        if (logger.isDebugEnabled()) {
+            logger.debug("API Key validation failed: " + message);
         }
-        if (path.startsWith("/api/v1/customers/")) {
-            return true;
-        }
-        // Filter SDK auth endpoints and end-user endpoints
-        return !(path.startsWith("/api/v1/auth/") || path.startsWith("/api/v1/end-users/"));
+        response.setStatus(status);
+        response.setContentType("application/json");
+        response.getWriter().write("{\"error\":\"" + message + "\"}");
     }
 
     private String hashApiKey(String apiKey) {

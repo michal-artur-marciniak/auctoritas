@@ -25,7 +25,7 @@ import java.util.Objects;
  * These endpoints require X-API-Key header for project/environment scoping.
  */
 @RestController
-@RequestMapping("/api/v1/auth")
+@RequestMapping("/api/v1/end-users/auth")
 public class SdkAuthController {
 
     private final RegisterEndUserUseCase registerEndUserUseCase;

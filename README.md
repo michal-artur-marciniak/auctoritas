@@ -179,10 +179,16 @@ curl -X DELETE http://localhost:8080/api/platform/admin/admin-id-to-deactivate \
 
 | Method | Endpoint | Description | Auth Required |
 |--------|----------|-------------|---------------|
-| POST | `/api/v1/auth/register` | Register SDK end user (scoped to project/env) | API Key |
-| POST | `/api/v1/auth/login` | Login SDK end user (scoped to project/env) | API Key |
-| GET | `/api/v1/auth/oauth/github` | Initiate GitHub OAuth for SDK users | API Key |
-| GET | `/api/v1/auth/oauth/google` | Initiate Google OAuth for SDK users | API Key |
+| POST | `/api/v1/end-users/auth/register` | Register SDK end user (scoped to project/env) | API Key |
+| POST | `/api/v1/end-users/auth/login` | Login SDK end user (scoped to project/env) | API Key |
+| GET | `/api/v1/end-users/auth/oauth/github` | Initiate GitHub OAuth for SDK users | API Key |
+| GET | `/api/v1/end-users/auth/oauth/google` | Initiate Google OAuth for SDK users | API Key |
+
+**API Key Context Resolution (US-CTX-001):**
+- SDK routes require `X-API-Key` header
+- API key resolves project and environment context automatically
+- Revoked keys are rejected with `401 Unauthorized`
+- Context is cleared after each request
 
 SDK authentication requires the `X-API-Key` header with a valid project API key (format: `pk_prod_*` or `pk_dev_*`). The API key scopes the user to a specific project and environment. Users registered with one API key cannot authenticate with a different API key.
 
@@ -268,7 +274,7 @@ Organization member authentication and SDK end-user authentication are strictly 
 | Flow | Endpoints | Token Type | Filter |
 |------|-----------|------------|--------|
 | **Org Member** | `/api/v1/customers/**` | Org JWT (`type: "org"`) | `OrgJwtAuthenticationFilter` |
-| **SDK End User** | `/api/v1/auth/**`, `/api/v1/users/**`, `/api/v1/end-users/**` | SDK JWT + API Key | `ApiKeyAuthenticationFilter` + `JwtAuthenticationFilter` |
+| **SDK End User** | `/api/v1/end-users/**` | SDK JWT + API Key | `ApiKeyAuthenticationFilter` + `JwtAuthenticationFilter` |
 | **Legacy Auth** | `/api/auth/**`, `/api/user/**` | Legacy JWT | `JwtAuthenticationFilter` |
 
 **Isolation Guarantees:**
@@ -474,23 +480,23 @@ curl -X POST http://localhost:8080/api/v1/customers/orgs/org-id/projects/project
   -d '{"environmentId":"PROD"}'
 
 # SDK end user registration (requires API key from project creation)
-curl -X POST http://localhost:8080/api/v1/auth/register \
+curl -X POST http://localhost:8080/api/v1/end-users/auth/register \
   -H "Content-Type: application/json" \
   -H "X-API-Key: pk_prod_xxxxx" \
   -d '{"email":"user@app.com","password":"password123","name":"App User"}'
 
 # SDK end user login (requires API key)
-curl -X POST http://localhost:8080/api/v1/auth/login \
+curl -X POST http://localhost:8080/api/v1/end-users/auth/login \
   -H "Content-Type: application/json" \
   -H "X-API-Key: pk_prod_xxxxx" \
   -d '{"email":"user@app.com","password":"password123"}'
 
 # SDK end user OAuth via GitHub (requires API key, redirects to GitHub)
-curl -L http://localhost:8080/api/v1/auth/oauth/github \
+curl -L http://localhost:8080/api/v1/end-users/auth/oauth/github \
   -H "X-API-Key: pk_prod_xxxxx"
 
 # SDK end user OAuth via Google (requires API key, redirects to Google)
-curl -L http://localhost:8080/api/v1/auth/oauth/google \
+curl -L http://localhost:8080/api/v1/end-users/auth/oauth/google \
   -H "X-API-Key: pk_prod_xxxxx"
 ```
 
