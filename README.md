@@ -1,14 +1,88 @@
-# OpenAgents Cloud
+# Auctoritas
 
-A modern monorepo using **pnpm workspaces** with a Spring Boot API handling authentication and a React frontend.
+A modern **Authentication-as-a-Service** platform with multi-tenant organization support and three-tier identity management.
 
-## Overview
+## What is Auctoritas?
 
-OpenAgents Cloud provides secure OpenClaw hosting. The platform consists of:
+Auctoritas provides flexible authentication for applications that need to manage multiple organizations, each with their own users and projects. It separates authentication into three distinct layers:
 
-- **API** (`apps/api`): Spring Boot authentication service with JWT tokens
-- **App** (`apps/app`): React + Vite frontend (consumer of API)
-- **WWW** (`apps/www`): Astro static marketing site
+- **Platform Admins**: Internal operators with cross-tenant access for support and management
+- **Organization Members**: Customer team members (OWNER/ADMIN/MEMBER roles) managing their organization
+- **End Users**: Application users scoped to specific project/environment pairs via API keys
+
+## Architecture Overview
+
+### Three-Tier Identity Model
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    PLATFORM ADMINS                          │
+│         (Cross-tenant access, internal use)                 │
+│              /api/platform/admin/**                         │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              │ manages
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    ORGANIZATIONS                            │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │              ORGANIZATION MEMBERS                      │  │
+│  │    (OWNER/ADMIN/MEMBER roles)                         │  │
+│  │         /api/v1/customers/orgs/**                      │  │
+│  │                                                      │  │
+│  │  ┌───────────────────────────────────────────────┐  │  │
+│  │  │                  PROJECTS                      │  │  │
+│  │  │  ┌──────────────┐    ┌──────────────┐        │  │  │
+│  │  │  │   PROD       │    │     DEV      │        │  │  │
+│  │  │  │ Environment  │    │ Environment  │        │  │  │
+│  │  │  └──────────────┘    └──────────────┘        │  │  │
+│  │  └───────────────────────────────────────────────┘  │  │
+│  └───────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              │ API Keys
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    END USERS (SDK)                          │
+│        (Scoped to project/environment via API keys)         │
+│              /api/v1/end-users/**                           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Authentication Flows
+
+Three isolated authentication flows ensure proper access control:
+
+| Flow | Endpoints | Token Type | Use Case |
+|------|-----------|------------|----------|
+| **Platform Admin** | `/api/platform/**` | Platform JWT | Internal platform management |
+| **Organization Member** | `/api/v1/customers/**` | Org JWT | Customer organization management |
+| **SDK End User** | `/api/v1/end-users/**` | SDK JWT + API Key | Application end-user authentication |
+
+**Security**: Each flow uses separate JWT types. Tokens from one flow cannot access endpoints from another.
+
+### Technology Stack
+
+**API** (`apps/api`): Spring Boot 4.0.2, Java 25, Spring Security 6.5, SQLite, Gradle
+
+**Frontend** (`apps/app`): React 19.2, Vite, TypeScript
+
+**Marketing** (`apps/www`): Astro 5.16.6, Tailwind CSS
+
+**Architecture**: Pragmatic DDD with clean layers (Domain, Application, Infrastructure, Presentation)
+
+## Project Structure
+
+```
+.
+├── apps/
+│   ├── api/          # Spring Boot API (Java 25, JWT Auth, SQLite)
+│   ├── app/          # React + Vite frontend
+│   └── www/          # Astro static marketing site
+├── docs/
+│   └── API.md        # Full API documentation
+└── package.json
+```
 
 ## Quick Start
 
@@ -18,740 +92,28 @@ pnpm install
 
 # Run all apps in development mode
 pnpm dev
-
-# Or run individually
-cd apps/api && ./gradlew bootRun   # API on :8080
-cd apps/app && pnpm dev           # React app on :5173
-cd apps/www && pnpm dev           # Marketing site on :4321
 ```
 
-## Structure
-
-```
-.
-├── apps/
-│   ├── api/          # Spring Boot API (Java 25, JWT Auth, SQLite)
-│   ├── app/          # React + Vite frontend
-│   └── www/          # Astro + Vite marketing site
-├── package.json      # Root package.json
-└── pnpm-workspace.yaml
-```
-
-## Architecture
-
-### Authentication Flow
-
-```
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│   React App  │────▶│  Spring API  │────▶│   SQLite DB  │
-│  (apps/app)  │     │  (apps/api)  │     │  (data/app)  │
-└──────────────┘     └──────────────┘     └──────────────┘
-       │                    │
-       │◀─── httpOnly ──────┤
-       │     Cookies        │
-       │                    │
-       │──── Authorized ───▶│
-       │    Requests        │
-```
-
-The **API** is the sole authentication authority. It issues JWT tokens in httpOnly cookies for XSS protection. The **React app** reads the cookie automatically with each request.
-
-The **marketing site** (`www`) is fully static with no authentication dependencies.
-
-## Technologies
-
-### API (`apps/api`)
-
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| Spring Boot | 4.0.2 | Application framework |
-| Java | 25 (LTS) | Language |
-| Spring Security | 6.5 | JWT authentication |
-| JJWT | 0.12.6 | JWT implementation |
-| SQLite | 3.51.1.0 | Database |
-| Gradle | Kotlin DSL | Build tool |
-
-**Architecture**: Pragmatic DDD with clean architecture layers (Domain, Application, Infrastructure, Presentation).
-
-### App (`apps/app`)
-
-| Technology | Version |
-|------------|---------|
-| React | 19.2.0 |
-| Vite | 6.0.11 |
-| TypeScript | 5.7 |
-
-### WWW (`apps/www`)
-
-| Technology | Version |
-|------------|---------|
-| Astro | 5.16.6 |
-| Vite | 6.0.x |
-| Tailwind CSS | 4.1.18 |
-
-**Note**: Previously had authentication (better-auth, Drizzle), now fully static.
-
-## Prerequisites
-
-- Node.js >= 22
-- pnpm >= 10
-- Java 25
-
-## API Endpoints
-
-The API runs on `http://localhost:8080` by default.
-
-### Authentication
-
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| POST | `/api/auth/register` | Register new user | No |
-| POST | `/api/auth/login` | Login (sets httpOnly cookies) | No |
-| POST | `/api/auth/refresh` | Refresh access token | No* |
-| GET | `/api/auth/oauth/github` | Initiate GitHub OAuth | No |
-| GET | `/api/auth/oauth/google` | Initiate Google OAuth | No |
-
-### Platform Admin
-
-**First Admin Creation (CLI Only):**
+Individual apps:
 ```bash
-cd apps/api
-./gradlew bootRun --args="create-admin admin@platform.com password123 'Platform Admin'"
+cd apps/api && ./gradlew bootRun    # API on :8080
+cd apps/app && pnpm dev             # React app on :5173
+cd apps/www && pnpm dev             # Marketing site on :4321
 ```
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| POST | `/api/platform/auth/login` | Platform admin login | No |
-| POST | `/api/platform/auth/refresh` | Refresh platform admin token | No |
-| GET | `/api/platform/admin/me` | Get current platform admin profile | Platform Admin JWT |
-| PATCH | `/api/platform/admin/me` | Update platform admin profile | Platform Admin JWT |
-| POST | `/api/platform/admin` | Create platform admin | Platform Admin JWT |
-| DELETE | `/api/platform/admin/{adminId}` | Deactivate platform admin | Platform Admin JWT |
-| GET | `/api/platform/admin/organizations` | List all organizations (cross-tenant) | Platform Admin JWT |
-| GET | `/api/platform/admin/organizations/{orgId}` | Get organization details with members/projects | Platform Admin JWT |
-| POST | `/api/platform/admin/organizations/{orgId}/impersonate` | Impersonate organization (generate org token) | Platform Admin JWT |
-| GET | `/api/platform/admin/end-users` | List all end users across all projects (cross-tenant) | Platform Admin JWT |
-
-Platform admins are internal platform operators with cross-tenant access to all organizations, projects, and end users for support and management purposes.
-
-**Security Note:** The first platform admin must be created via CLI when no admins exist. After the first admin is created, additional admins can only be created via the HTTP API by an existing platform admin.
-
-**Platform Admin Authentication:**
-```bash
-# Login (returns access and refresh tokens)
-curl -X POST http://localhost:8080/api/platform/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"admin@platform.com","password":"password123"}'
-
-# Refresh token
-curl -X POST http://localhost:8080/api/platform/auth/refresh \
-  -H "Content-Type: application/json" \
-  -d '{"refreshToken":"refresh-token-from-login"}'
-
-# Create additional admin (requires platform admin JWT)
-curl -X POST http://localhost:8080/api/platform/admin \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer platform-jwt" \
-  -d '{"email":"admin2@platform.com","password":"password123","name":"Second Admin"}'
-
-# Get current admin profile (requires platform admin JWT)
-curl http://localhost:8080/api/platform/admin/me \
-  -H "Authorization: Bearer platform-jwt"
-
-# Update admin profile (requires platform admin JWT)
-curl -X PATCH http://localhost:8080/api/platform/admin/me \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer platform-jwt" \
-  -d '{"name":"Updated Name","email":"new@platform.com"}'
-
-# Change password (requires current password)
-curl -X PATCH http://localhost:8080/api/platform/admin/me \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer platform-jwt" \
-  -d '{"currentPassword":"oldpass","newPassword":"newpass123"}'
-
-# Deactivate another platform admin (cannot deactivate last active admin)
-curl -X DELETE http://localhost:8080/api/platform/admin/admin-id-to-deactivate \
-  -H "Authorization: Bearer platform-jwt"
-
-# List all organizations (cross-tenant access)
-curl http://localhost:8080/api/platform/admin/organizations \
-  -H "Authorization: Bearer platform-jwt"
-
-# Get organization details with members and projects
-curl http://localhost:8080/api/platform/admin/organizations/org-id \
-  -H "Authorization: Bearer platform-jwt"
-```
-
-**Cross-Tenant Organization Access (US-PA-005):**
-
-Platform admins can view all organizations across all tenants for customer support:
-
-```bash
-# List all organizations with member counts
-curl http://localhost:8080/api/platform/admin/organizations \
-  -H "Authorization: Bearer platform-jwt"
-
-# Response includes:
-# - id, name, slug, status
-# - memberCount (computed)
-# - createdAt
-
-# Get detailed organization view
-curl http://localhost:8080/api/platform/admin/organizations/org-id \
-  -H "Authorization: Bearer platform-jwt"
-
-# Response includes:
-# - Organization details (id, name, slug, status, timestamps)
-# - members: array of all organization members
-# - projects: array of all projects with environments
-```
-
-**Cross-Tenant End User Access (US-PA-007):**
-
-Platform admins can search and view end users across all projects for account support:
-
-```bash
-# List all end users (cross-tenant access)
-curl http://localhost:8080/api/platform/admin/end-users \
-  -H "Authorization: Bearer platform-jwt"
-
-# Search by email (partial match, case-insensitive)
-curl "http://localhost:8080/api/platform/admin/end-users?email=user@example.com" \
-  -H "Authorization: Bearer platform-jwt"
-
-# Filter by project ID
-curl "http://localhost:8080/api/platform/admin/end-users?projectId=project-id" \
-  -H "Authorization: Bearer platform-jwt"
-
-# Response includes:
-# - id, email, name, banned status
-# - projectId, environmentId (for SDK end users)
-# - createdAt
-```
-
-**Organization Impersonation (US-PA-006):**
-
-Platform admins can impersonate an organization to troubleshoot issues as the customer sees them:
-
-```bash
-# Impersonate an organization (generates org-scoped token)
-curl -X POST http://localhost:8080/api/platform/admin/organizations/org-id/impersonate \
-  -H "Authorization: Bearer platform-jwt"
-
-# Response includes:
-# - accessToken: org-scoped JWT with impersonation metadata
-# - refreshToken: org-scoped refresh token
-# - tokenType: "Bearer"
-# - expiresIn: 900 (15 minutes in seconds)
-# - organizationId, organizationName
-# - impersonatedBy: admin ID who initiated impersonation
-# - expiresAt: token expiration timestamp
-
-# Use the impersonation token to access organization endpoints
-curl http://localhost:8080/api/v1/customers/orgs/org-id \
-  -H "Authorization: Bearer impersonation-access-token"
-```
-
-**Impersonation Token Security:**
-- Tokens have short expiry (15 minutes) for security
-- Includes `impersonated: true` and `impersonatedBy: admin-id` claims
-- Acts as an OWNER role member for full organization access
-- Impersonation actions are logged for audit purposes
-- Can access all `/api/v1/customers/**` endpoints with the impersonated token
-
-**Token Claims:**
-- Platform admin tokens include `type: "platform"` claim
-- Inactive platform admins cannot login
-
-### SDK Authentication
-
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| POST | `/api/v1/end-users/auth/register` | Register SDK end user (scoped to project/env) | API Key |
-| POST | `/api/v1/end-users/auth/login` | Login SDK end user (scoped to project/env) | API Key |
-| GET | `/api/v1/end-users/auth/oauth/github` | Initiate GitHub OAuth for SDK users | API Key |
-| GET | `/api/v1/end-users/auth/oauth/google` | Initiate Google OAuth for SDK users | API Key |
-
-**API Key Context Resolution (US-CTX-001):**
-- SDK routes require `X-API-Key` header
-- API key resolves project and environment context automatically
-- Revoked keys are rejected with `401 Unauthorized`
-- Context is cleared after each request
-
-SDK authentication requires the `X-API-Key` header with a valid project API key (format: `pk_prod_*` or `pk_dev_*`). The API key scopes the user to a specific project and environment. Users registered with one API key cannot authenticate with a different API key.
-
-**Banned Users:** Banned users cannot login via password or OAuth. Returns `403 Forbidden` with "User account is banned" message.
-
-### SDK End User
-
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| GET | `/api/v1/end-users/me` | Get current SDK end user profile | SDK JWT + API Key |
-| PATCH | `/api/v1/end-users/me` | Update SDK end user profile | SDK JWT + API Key |
-| GET | `/api/v1/end-users/sessions` | List active sessions | SDK JWT |
-| POST | `/api/v1/end-users/sessions` | Create new session | SDK JWT |
-| PATCH | `/api/v1/end-users/sessions/{sessionId}` | Extend session expiry | SDK JWT |
-| DELETE | `/api/v1/end-users/sessions/{sessionId}` | Revoke session | SDK JWT |
-
-**Profile Management (US-EU-002):**
-
-```bash
-# Get current SDK end user profile (requires API key and SDK JWT)
-curl http://localhost:8080/api/v1/end-users/me \
-  -H "Authorization: Bearer sdk-jwt" \
-  -H "X-API-Key: pk_prod_xxxxx"
-
-# Update SDK end user profile (email uniqueness enforced within project)
-curl -X PATCH http://localhost:8080/api/v1/end-users/me \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer sdk-jwt" \
-  -H "X-API-Key: pk_prod_xxxxx" \
-  -d '{"email":"new@app.com","name":"New Name"}'
-```
-
-**Session Management (US-EU-003):**
-
-```bash
-# List active sessions for the current end user (requires SDK JWT)
-curl http://localhost:8080/api/v1/end-users/sessions \
-  -H "Authorization: Bearer sdk-jwt"
-
-# Create a new session (requires SDK JWT)
-curl -X POST http://localhost:8080/api/v1/end-users/sessions \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer sdk-jwt" \
-  -d '{"expiresAt":"2026-12-31T23:59:59Z"}'
-
-# Extend a session expiry (requires SDK JWT)
-curl -X PATCH http://localhost:8080/api/v1/end-users/sessions/session-id \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer sdk-jwt" \
-  -d '{"expiresAt":"2026-12-31T23:59:59Z"}'
-
-# Revoke a session (requires SDK JWT)
-curl -X DELETE http://localhost:8080/api/v1/end-users/sessions/session-id \
-  -H "Authorization: Bearer sdk-jwt"
-```
-
-**Session Security:**
-- Sessions are scoped to the authenticated end user
-- Users can only view and manage their own sessions
-- Revoked sessions cannot be used for authentication
-- Sessions have configurable expiration times
-
-**Project-Level Isolation:**
-- Email uniqueness is enforced within project and environment scope
-- Cross-project access attempts return 404 Not Found
-- Both API key (for context) and SDK JWT (for authentication) are required
-
-### Project-Level Isolation
-
-End users are strictly isolated per project and environment (US-005). Key features:
-
-- **Repository Filtering**: User queries include `projectId` and `environmentId` filters
-- **Cross-Project Protection**: Accessing a user from a different project returns 404 Not Found
-- **API Key Scoping**: Each SDK request includes project context from the API key
-- **JWT Enforcement**: SDK endpoints validate the user belongs to the requesting project
-
-This ensures data never leaks between tenants, even with the same email address across different projects.
-
-### Authentication Flow Isolation (US-006)
-
-Organization member authentication and SDK end-user authentication are strictly isolated with separate filters and token types:
-
-| Flow | Endpoints | Token Type | Filter |
-|------|-----------|------------|--------|
-| **Org Member** | `/api/v1/customers/**` | Org JWT (`type: "org"`) | `OrgJwtAuthenticationFilter` |
-| **SDK End User** | `/api/v1/end-users/**` | SDK JWT + API Key | `ApiKeyAuthenticationFilter` + `JwtAuthenticationFilter` |
-| **Legacy Auth** | `/api/auth/**`, `/api/user/**` | Legacy JWT | `JwtAuthenticationFilter` |
-
-**Isolation Guarantees:**
-- Org JWTs cannot access SDK endpoints (returns 401)
-- SDK JWTs cannot access org endpoints (returns 401)
-- API keys are only processed on SDK routes
-- Each filter only processes requests for its designated path prefix
-
-**Org Authentication Flow:**
-1. `POST /api/v1/customers/auth/login` - Authenticate with organization ID, email, password
-2. Receive `accessToken` and `refreshToken` (both org-scoped)
-3. Use `Authorization: Bearer {accessToken}` for org endpoints
-4. `POST /api/v1/customers/auth/refresh` - Exchange refresh token for new tokens
-
-### Organization
-
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| POST | `/api/v1/customers/orgs/register` | Create organization + owner | No |
-| POST | `/api/v1/customers/auth/login` | Org member login (returns org JWT) | No |
-| POST | `/api/v1/customers/auth/refresh` | Refresh org access token | No |
-| POST | `/api/v1/customers/orgs/{orgId}/members/invite` | Invite org member | Org JWT |
-| POST | `/api/v1/customers/orgs/{orgId}/members/accept` | Accept invitation | No |
-| PUT | `/api/v1/customers/orgs/{orgId}/members/{memberId}/role` | Update member role | Org JWT (OWNER) |
-| DELETE | `/api/v1/customers/orgs/{orgId}/members/{memberId}` | Remove member | Org JWT (OWNER/ADMIN) |
-
-**Organization Member Management (US-ORG-002):**
-
-Invite flow creates tokenized invitations with configurable expiry (default 72 hours). Role changes restricted to OWNER only. Cannot remove the last OWNER from organization.
-
-```bash
-# Invite org member (requires OWNER or ADMIN role)
-curl -X POST http://localhost:8080/api/v1/customers/orgs/org-id/members/invite \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer org-jwt" \
-  -d '{"email":"member@acme.com","role":"ADMIN"}'
-
-# Accept invitation (no auth required, uses invitation token)
-curl -X POST http://localhost:8080/api/v1/customers/orgs/org-id/members/accept \
-  -H "Content-Type: application/json" \
-  -d '{"token":"invitation-token","name":"Member Name","password":"password123"}'
-
-# Update member role (requires OWNER role, cannot demote last OWNER)
-curl -X PUT http://localhost:8080/api/v1/customers/orgs/org-id/members/member-id/role \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer org-jwt" \
-  -d '{"role":"MEMBER"}'
-
-# Remove member (requires OWNER or ADMIN role, cannot remove last OWNER)
-curl -X DELETE http://localhost:8080/api/v1/customers/orgs/org-id/members/member-id \
-  -H "Authorization: Bearer org-jwt"
-```
-
-**Security Features:**
-- Invitations expire after 72 hours (configurable via `app.org.invitation-expiry-hours`)
-- Invitation tokens are single-use and deleted after acceptance
-- Member email uniqueness enforced within organization
-- Role-based access control: OWNER can manage roles and remove members, ADMIN can only invite and remove non-OWNER members
-- Last OWNER protection prevents removing or demoting the sole organization owner
-
-### Projects
-
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| POST | `/api/v1/customers/orgs/{orgId}/projects` | Create project with PROD/DEV environments + API keys | Org JWT (OWNER/ADMIN) |
-| GET | `/api/v1/customers/orgs/{orgId}/projects` | List organization projects | Org JWT |
-| GET | `/api/v1/customers/orgs/{orgId}/projects/{projectId}` | Get project details with environments | Org JWT |
-| DELETE | `/api/v1/customers/orgs/{orgId}/projects/{projectId}` | Archive project | Org JWT (OWNER/ADMIN) |
-
-### API Key Management
-
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| GET | `/api/v1/customers/orgs/{orgId}/projects/{projectId}/keys` | List API keys for project (redacted) | Org JWT |
-| POST | `/api/v1/customers/orgs/{orgId}/projects/{projectId}/keys` | Rotate API key for environment | Org JWT (OWNER/ADMIN) |
-
-**API Key Management (US-KEY-001):**
-
-Org admins can list and rotate API keys per environment:
-
-```bash
-# List API keys for project (returns metadata, no raw keys)
-curl http://localhost:8080/api/v1/customers/orgs/org-id/projects/project-id/keys \
-  -H "Authorization: Bearer org-jwt"
-
-# Rotate API key (returns new raw key once)
-curl -X POST http://localhost:8080/api/v1/customers/orgs/org-id/projects/project-id/keys \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer org-jwt" \
-  -d '{"environmentId":"PROD"}'
-```
-
-**Key Features:**
-- GET returns redacted key metadata (no raw keys exposed)
-- POST rotates key: revokes old key, generates new one with proper prefix
-- Only OWNER/ADMIN can rotate keys
-- Raw key is returned only once at rotation time
-- Keys prefixed with `pk_prod_*` or `pk_dev_*` based on environment
-
-* Can use refresh token from cookie or request body
-
-### Sessions
-
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| GET | `/api/sessions` | List active sessions | Yes |
-| POST | `/api/sessions` | Create new session | Yes |
-| PATCH | `/api/sessions/{id}` | Extend session expiry | Yes |
-| DELETE | `/api/sessions/{id}` | Revoke session | Yes |
-
-### User
-
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| GET | `/api/user/me` | Get current user profile | Yes |
-| PATCH | `/api/user/me` | Update profile (email, name) | Yes |
-| GET | `/api/user/admin/check` | Admin-only endpoint | Yes (ADMIN role) |
-
-### Public
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/hello` | Hello message |
-| GET | `/api/health` | Health check |
-
-### Example API Usage
-
-```bash
-# Register (sets httpOnly cookies automatically)
-curl -X POST http://localhost:8080/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"email":"user@example.com","password":"password123","name":"John"}' \
-  -c cookies.txt
-
-# Login (sets httpOnly cookies)
-curl -X POST http://localhost:8080/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"user@example.com","password":"password123"}' \
-  -c cookies.txt
-
-# Get profile (cookies sent automatically)
-curl http://localhost:8080/api/user/me \
-  -b cookies.txt
-
-# Update profile
-curl -X PATCH http://localhost:8080/api/user/me \
-  -H "Content-Type: application/json" \
-  -b cookies.txt \
-  -d '{"email":"new@example.com","name":"New Name"}'
-
-# List sessions
-curl http://localhost:8080/api/sessions \
-  -b cookies.txt
-
-# OAuth (redirects to provider)
-curl -L http://localhost:8080/api/auth/oauth/github
-
-# Create organization with owner
-curl -X POST http://localhost:8080/api/v1/customers/orgs/register \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Acme Inc","slug":"acme","ownerEmail":"owner@acme.com","ownerPassword":"password123","ownerName":"Owner"}'
-
-# Org member login
-curl -X POST http://localhost:8080/api/v1/customers/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"organizationId":"org-id","email":"owner@acme.com","password":"password123"}'
-
-# Refresh org token
-curl -X POST http://localhost:8080/api/v1/customers/auth/refresh \
-  -H "Content-Type: application/json" \
-  -d '{"refreshToken":"refresh-token-from-login"}'
-
-# Invite org member
-curl -X POST http://localhost:8080/api/v1/customers/orgs/org-id/members/invite \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer org-jwt" \
-  -d '{"email":"member@acme.com","role":"ADMIN"}'
-
-# Accept invitation
-curl -X POST http://localhost:8080/api/v1/customers/orgs/org-id/members/accept \
-  -H "Content-Type: application/json" \
-  -d '{"token":"invitation-token","name":"Member Name","password":"password123"}'
-
-# Update member role
-curl -X PUT http://localhost:8080/api/v1/customers/orgs/org-id/members/member-id/role \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer org-jwt" \
-  -d '{"role":"MEMBER"}'
-
-# Remove member
-curl -X DELETE http://localhost:8080/api/v1/customers/orgs/org-id/members/member-id \
-  -H "Authorization: Bearer org-jwt"
-
-# Create project with PROD/DEV environments (returns API keys once)
-curl -X POST http://localhost:8080/api/v1/customers/orgs/org-id/projects \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer org-jwt" \
-  -d '{"name":"My App","slug":"my-app","description":"Production application"}'
-
-# List projects
-curl http://localhost:8080/api/v1/customers/orgs/org-id/projects \
-  -H "Authorization: Bearer org-jwt"
-
-# Get project details
-curl http://localhost:8080/api/v1/customers/orgs/org-id/projects/project-id \
-  -H "Authorization: Bearer org-jwt"
-
-# Archive project
-curl -X DELETE http://localhost:8080/api/v1/customers/orgs/org-id/projects/project-id \
-  -H "Authorization: Bearer org-jwt"
-
-# List API keys for project (returns metadata, no raw keys)
-curl http://localhost:8080/api/v1/customers/orgs/org-id/projects/project-id/keys \
-  -H "Authorization: Bearer org-jwt"
-
-# Rotate API key (returns new raw key once)
-curl -X POST http://localhost:8080/api/v1/customers/orgs/org-id/projects/project-id/keys \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer org-jwt" \
-  -d '{"environmentId":"PROD"}'
-
-# SDK end user registration (requires API key from project creation)
-curl -X POST http://localhost:8080/api/v1/end-users/auth/register \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: pk_prod_xxxxx" \
-  -d '{"email":"user@app.com","password":"password123","name":"App User"}'
-
-# SDK end user login (requires API key)
-curl -X POST http://localhost:8080/api/v1/end-users/auth/login \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: pk_prod_xxxxx" \
-  -d '{"email":"user@app.com","password":"password123"}'
-
-# SDK end user OAuth via GitHub (requires API key, redirects to GitHub)
-curl -L http://localhost:8080/api/v1/end-users/auth/oauth/github \
-  -H "X-API-Key: pk_prod_xxxxx"
-
-# SDK end user OAuth via Google (requires API key, redirects to Google)
-curl -L http://localhost:8080/api/v1/end-users/auth/oauth/google \
-  -H "X-API-Key: pk_prod_xxxxx"
-```
-
-### Platform Admin Creation
-
-**First admin via CLI (when no admins exist):**
-```bash
-cd apps/api
-./gradlew bootRun --args="create-admin admin@platform.com password123 'Platform Admin'"
-```
-
-**Additional admins via API (requires platform admin JWT - implemented in US-PA-002):**
-```bash
-curl -X POST http://localhost:8080/api/platform/admin \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer platform-jwt" \
-  -d '{"email":"admin2@platform.com","password":"password123","name":"Second Admin"}'
-```
-
-## Development
-
-### Running the API
-
-```bash
-cd apps/api
-
-# Build
-./gradlew build
-
-# Run
-./gradlew bootRun
-
-# Test
-./gradlew test
-```
-
-### Running the React App
-
-```bash
-cd apps/app
-pnpm install
-pnpm dev
-```
-
-The React dev server proxies API requests to `http://localhost:8080` automatically.
-
-### Running the Marketing Site
-
-```bash
-cd apps/www
-pnpm install
-pnpm dev
-```
-
-## Configuration
-
-### API Configuration
-
-Edit `apps/api/src/main/resources/application.yml`:
-
-```yaml
-# JWT Secret (CHANGE IN PRODUCTION!)
-jwt:
-  secret: your-super-secret-key-min-32-bytes
-  expiration: 86400000       # 24 hours (access token)
-  refresh-expiration: 604800000  # 7 days (refresh token)
-
-# Server port
-server:
-  port: 8080
-
-# Database (SQLite)
-spring:
-  datasource:
-    url: jdbc:sqlite:./data/app.db
-  security:
-    oauth2:
-      client:
-        registration:
-          github:
-            client-id: ${GITHUB_CLIENT_ID}
-            client-secret: ${GITHUB_CLIENT_SECRET}
-            scope: user:email
-          google:
-            client-id: ${GOOGLE_CLIENT_ID}
-            client-secret: ${GOOGLE_CLIENT_SECRET}
-            scope: email,profile
-
-# Frontend integration
-app:
-  frontend:
-    redirect-url: http://localhost:5173/oauth/callback
-    allowed-origins: http://localhost:5173,http://localhost:4321
-  auth:
-    cookies:
-      secure: true
-      same-site: Lax
-```
-
-### React App Configuration
-
-The React app uses Vite's proxy configuration in `apps/app/vite.config.ts`:
-
-```typescript
-server: {
-  proxy: {
-    '/api': 'http://localhost:8080'
-  }
-}
-```
-
-## Project Migration History
-
-### Auth Migration (Completed)
-
-Previously, authentication was handled by `apps/www` using better-auth with SQLite. This was migrated to a dedicated Spring Boot API:
-
-| Before | After |
-|--------|-------|
-| `apps/www` had auth pages (signin, signup, dashboard, admin) | `apps/www` is now fully static |
-| better-auth library in Node.js | Spring Security + JWT in Java |
-| Database: better-sqlite3 | Database: SQLite + JPA |
-| Auth logic in Astro pages | Auth logic in API with pragmatic DDD |
-| Tokens in localStorage | httpOnly cookies |
-
-**Key Features**:
-- OAuth login (GitHub, Google) with email fallback
-- Session management (create, extend, revoke, list)
-- Profile updates with email uniqueness checks
-- httpOnly cookie-based token storage for XSS protection
-
-## Scripts
-
-Root `package.json` scripts:
-
-```bash
-pnpm dev      # Run all apps in dev mode
-pnpm build    # Build all apps
-pnpm test     # Run all tests
-```
-
-## Security
-
-- JWT tokens stored in httpOnly cookies (XSS protection)
-- Access tokens expire after 24 hours, refresh tokens after 7 days
-- Passwords hashed with BCrypt
-- CORS configured for localhost development
-- OAuth2 state parameter protection
-- No secrets in repositories (use environment variables)
+## Documentation
+
+- **[API Reference](./docs/API.md)** - Complete endpoint documentation with examples
+
+## Key Features
+
+- **Multi-Tenancy**: Organizations with complete data isolation
+- **Role-Based Access**: OWNER/ADMIN/MEMBER roles with granular permissions
+- **API Key Management**: Environment-scoped keys with rotation support
+- **OAuth Support**: GitHub and Google login for all user types
+- **Impersonation**: Platform admins can troubleshoot as customers
+- **Session Management**: Full CRUD for end-user sessions
+- **Security**: httpOnly cookies, BCrypt passwords, project-level isolation
 
 ## License
 
