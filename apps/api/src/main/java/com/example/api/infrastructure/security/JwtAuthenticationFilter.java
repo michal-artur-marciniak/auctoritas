@@ -77,7 +77,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         final var path = request.getRequestURI();
-        // Skip org and SDK endpoints - this filter is for legacy /api/auth/** only
-        return path.startsWith("/api/v1/org/") || path.startsWith("/api/v1/auth/");
+        // Skip org and platform endpoints - this filter is for SDK and legacy /api/auth/** only
+        if (path.startsWith("/api/v1/org/")) {
+            return true;
+        }
+        if (path.startsWith("/api/v1/customers/")) {
+            return true;
+        }
+        if (path.startsWith("/api/platform/")) {
+            return true;
+        }
+        return false;
     }
 }

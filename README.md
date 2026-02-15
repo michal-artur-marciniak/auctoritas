@@ -188,11 +188,33 @@ SDK authentication requires the `X-API-Key` header with a valid project API key 
 
 **Banned Users:** Banned users cannot login via password or OAuth. Returns `403 Forbidden` with "User account is banned" message.
 
-### SDK User
+### SDK End User
 
 | Method | Endpoint | Description | Auth Required |
 |--------|----------|-------------|---------------|
-| GET | `/api/v1/users/me` | Get current SDK user profile | SDK JWT |
+| GET | `/api/v1/end-users/me` | Get current SDK end user profile | SDK JWT + API Key |
+| PATCH | `/api/v1/end-users/me` | Update SDK end user profile | SDK JWT + API Key |
+
+**Profile Management (US-EU-002):**
+
+```bash
+# Get current SDK end user profile (requires API key and SDK JWT)
+curl http://localhost:8080/api/v1/end-users/me \
+  -H "Authorization: Bearer sdk-jwt" \
+  -H "X-API-Key: pk_prod_xxxxx"
+
+# Update SDK end user profile (email uniqueness enforced within project)
+curl -X PATCH http://localhost:8080/api/v1/end-users/me \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer sdk-jwt" \
+  -H "X-API-Key: pk_prod_xxxxx" \
+  -d '{"email":"new@app.com","name":"New Name"}'
+```
+
+**Project-Level Isolation:**
+- Email uniqueness is enforced within project and environment scope
+- Cross-project access attempts return 404 Not Found
+- Both API key (for context) and SDK JWT (for authentication) are required
 
 ### Project-Level Isolation
 
@@ -212,7 +234,7 @@ Organization member authentication and SDK end-user authentication are strictly 
 | Flow | Endpoints | Token Type | Filter |
 |------|-----------|------------|--------|
 | **Org Member** | `/api/v1/customers/**` | Org JWT (`type: "org"`) | `OrgJwtAuthenticationFilter` |
-| **SDK End User** | `/api/v1/auth/**`, `/api/v1/users/**` | SDK JWT + API Key | `ApiKeyAuthenticationFilter` + `JwtAuthenticationFilter` |
+| **SDK End User** | `/api/v1/auth/**`, `/api/v1/users/**`, `/api/v1/end-users/**` | SDK JWT + API Key | `ApiKeyAuthenticationFilter` + `JwtAuthenticationFilter` |
 | **Legacy Auth** | `/api/auth/**`, `/api/user/**` | Legacy JWT | `JwtAuthenticationFilter` |
 
 **Isolation Guarantees:**

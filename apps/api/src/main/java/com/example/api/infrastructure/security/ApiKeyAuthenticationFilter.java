@@ -64,8 +64,11 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         if (path.startsWith("/api/v1/org/")) {
             return true;
         }
-        // Only filter SDK auth endpoints
-        return !path.startsWith("/api/v1/auth/");
+        if (path.startsWith("/api/v1/customers/")) {
+            return true;
+        }
+        // Filter SDK auth endpoints and end-user endpoints
+        return !(path.startsWith("/api/v1/auth/") || path.startsWith("/api/v1/end-users/"));
     }
 
     private String hashApiKey(String apiKey) {
