@@ -130,6 +130,7 @@ cd apps/api
 | GET | `/api/platform/admin/organizations` | List all organizations (cross-tenant) | Platform Admin JWT |
 | GET | `/api/platform/admin/organizations/{orgId}` | Get organization details with members/projects | Platform Admin JWT |
 | POST | `/api/platform/admin/organizations/{orgId}/impersonate` | Impersonate organization (generate org token) | Platform Admin JWT |
+| GET | `/api/platform/admin/end-users` | List all end users across all projects (cross-tenant) | Platform Admin JWT |
 
 Platform admins are internal platform operators with cross-tenant access to all organizations, projects, and end users for support and management purposes.
 
@@ -204,6 +205,29 @@ curl http://localhost:8080/api/platform/admin/organizations/org-id \
 # - Organization details (id, name, slug, status, timestamps)
 # - members: array of all organization members
 # - projects: array of all projects with environments
+```
+
+**Cross-Tenant End User Access (US-PA-007):**
+
+Platform admins can search and view end users across all projects for account support:
+
+```bash
+# List all end users (cross-tenant access)
+curl http://localhost:8080/api/platform/admin/end-users \
+  -H "Authorization: Bearer platform-jwt"
+
+# Search by email (partial match, case-insensitive)
+curl "http://localhost:8080/api/platform/admin/end-users?email=user@example.com" \
+  -H "Authorization: Bearer platform-jwt"
+
+# Filter by project ID
+curl "http://localhost:8080/api/platform/admin/end-users?projectId=project-id" \
+  -H "Authorization: Bearer platform-jwt"
+
+# Response includes:
+# - id, email, name, banned status
+# - projectId, environmentId (for SDK end users)
+# - createdAt
 ```
 
 **Organization Impersonation (US-PA-006):**

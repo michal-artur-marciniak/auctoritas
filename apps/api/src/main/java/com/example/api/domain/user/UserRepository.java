@@ -3,6 +3,7 @@ package com.example.api.domain.user;
 import com.example.api.domain.environment.EnvironmentId;
 import com.example.api.domain.project.ProjectId;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -31,4 +32,19 @@ public interface UserRepository {
     User save(User user);
 
     void delete(UserId id);
+
+    /**
+     * Finds all users across all projects (for platform admin access).
+     */
+    List<User> findAll();
+
+    /**
+     * Finds users by email partial match (for platform admin search).
+     */
+    List<User> findByEmailContainingIgnoreCase(String email);
+
+    /**
+     * Finds users by project ID (for platform admin filtering).
+     */
+    List<User> findByProjectId(ProjectId projectId);
 }

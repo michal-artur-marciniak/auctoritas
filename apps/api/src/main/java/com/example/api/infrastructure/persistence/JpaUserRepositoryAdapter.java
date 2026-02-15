@@ -8,6 +8,7 @@ import com.example.api.domain.user.UserId;
 import com.example.api.domain.user.UserRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -63,5 +64,29 @@ public class JpaUserRepositoryAdapter implements UserRepository {
     @Override
     public void delete(UserId id) {
         jpaRepository.deleteById(id.value());
+    }
+
+    @Override
+    public List<User> findAll() {
+        return jpaRepository.findAll()
+                .stream()
+                .map(UserDomainMapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<User> findByEmailContainingIgnoreCase(String email) {
+        return jpaRepository.findByEmailContainingIgnoreCase(email)
+                .stream()
+                .map(UserDomainMapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<User> findByProjectId(ProjectId projectId) {
+        return jpaRepository.findByProjectId(projectId.value())
+                .stream()
+                .map(UserDomainMapper::toDomain)
+                .toList();
     }
 }
