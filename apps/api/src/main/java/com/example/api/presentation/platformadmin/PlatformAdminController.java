@@ -4,11 +4,13 @@ import com.example.api.application.platformadmin.CreatePlatformAdminUseCase;
 import com.example.api.application.platformadmin.DeactivatePlatformAdminUseCase;
 import com.example.api.application.platformadmin.GetOrganizationDetailsUseCase;
 import com.example.api.application.platformadmin.GetPlatformAdminProfileUseCase;
+import com.example.api.application.platformadmin.ImpersonateOrganizationUseCase;
 import com.example.api.application.platformadmin.ListAllOrganizationsUseCase;
 import com.example.api.application.platformadmin.OrganizationDetailsResponse;
 import com.example.api.application.platformadmin.OrganizationSummaryResponse;
 import com.example.api.application.platformadmin.PlatformAdminResponse;
 import com.example.api.application.platformadmin.UpdatePlatformAdminProfileUseCase;
+import com.example.api.application.platformadmin.dto.ImpersonationResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -40,19 +42,22 @@ public class PlatformAdminController {
     private final DeactivatePlatformAdminUseCase deactivatePlatformAdminUseCase;
     private final ListAllOrganizationsUseCase listAllOrganizationsUseCase;
     private final GetOrganizationDetailsUseCase getOrganizationDetailsUseCase;
+    private final ImpersonateOrganizationUseCase impersonateOrganizationUseCase;
 
     public PlatformAdminController(CreatePlatformAdminUseCase createPlatformAdminUseCase,
                                      GetPlatformAdminProfileUseCase getPlatformAdminProfileUseCase,
                                      UpdatePlatformAdminProfileUseCase updatePlatformAdminProfileUseCase,
                                      DeactivatePlatformAdminUseCase deactivatePlatformAdminUseCase,
                                      ListAllOrganizationsUseCase listAllOrganizationsUseCase,
-                                     GetOrganizationDetailsUseCase getOrganizationDetailsUseCase) {
+                                     GetOrganizationDetailsUseCase getOrganizationDetailsUseCase,
+                                     ImpersonateOrganizationUseCase impersonateOrganizationUseCase) {
         this.createPlatformAdminUseCase = createPlatformAdminUseCase;
         this.getPlatformAdminProfileUseCase = getPlatformAdminProfileUseCase;
         this.updatePlatformAdminProfileUseCase = updatePlatformAdminProfileUseCase;
         this.deactivatePlatformAdminUseCase = deactivatePlatformAdminUseCase;
         this.listAllOrganizationsUseCase = listAllOrganizationsUseCase;
         this.getOrganizationDetailsUseCase = getOrganizationDetailsUseCase;
+        this.impersonateOrganizationUseCase = impersonateOrganizationUseCase;
     }
 
     @PostMapping
@@ -105,6 +110,16 @@ public class PlatformAdminController {
             Authentication authentication,
             @PathVariable String orgId) {
         final var response = getOrganizationDetailsUseCase.execute(orgId);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/organizations/{orgId}/impersonate")
+    @PreAuthorize("hasAuthority('PLATFORM_ADMIN')")
+    public ResponseEntity<ImpersonationResponse> impersonateOrganization(
+            Authentication authentication,
+            @PathVariable String orgId) {
+        final var adminId = authentication.getName();
+        final var response = impersonateOrganizationUseCase.execute(orgId, adminId);
         return ResponseEntity.ok(response);
     }
 }

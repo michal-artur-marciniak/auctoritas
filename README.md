@@ -129,6 +129,7 @@ cd apps/api
 | DELETE | `/api/platform/admin/{adminId}` | Deactivate platform admin | Platform Admin JWT |
 | GET | `/api/platform/admin/organizations` | List all organizations (cross-tenant) | Platform Admin JWT |
 | GET | `/api/platform/admin/organizations/{orgId}` | Get organization details with members/projects | Platform Admin JWT |
+| POST | `/api/platform/admin/organizations/{orgId}/impersonate` | Impersonate organization (generate org token) | Platform Admin JWT |
 
 Platform admins are internal platform operators with cross-tenant access to all organizations, projects, and end users for support and management purposes.
 
@@ -204,6 +205,36 @@ curl http://localhost:8080/api/platform/admin/organizations/org-id \
 # - members: array of all organization members
 # - projects: array of all projects with environments
 ```
+
+**Organization Impersonation (US-PA-006):**
+
+Platform admins can impersonate an organization to troubleshoot issues as the customer sees them:
+
+```bash
+# Impersonate an organization (generates org-scoped token)
+curl -X POST http://localhost:8080/api/platform/admin/organizations/org-id/impersonate \
+  -H "Authorization: Bearer platform-jwt"
+
+# Response includes:
+# - accessToken: org-scoped JWT with impersonation metadata
+# - refreshToken: org-scoped refresh token
+# - tokenType: "Bearer"
+# - expiresIn: 900 (15 minutes in seconds)
+# - organizationId, organizationName
+# - impersonatedBy: admin ID who initiated impersonation
+# - expiresAt: token expiration timestamp
+
+# Use the impersonation token to access organization endpoints
+curl http://localhost:8080/api/v1/customers/orgs/org-id \
+  -H "Authorization: Bearer impersonation-access-token"
+```
+
+**Impersonation Token Security:**
+- Tokens have short expiry (15 minutes) for security
+- Includes `impersonated: true` and `impersonatedBy: admin-id` claims
+- Acts as an OWNER role member for full organization access
+- Impersonation actions are logged for audit purposes
+- Can access all `/api/v1/customers/**` endpoints with the impersonated token
 
 **Token Claims:**
 - Platform admin tokens include `type: "platform"` claim
