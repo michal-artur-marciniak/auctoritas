@@ -114,7 +114,3 @@ cd apps/www && pnpm dev             # Marketing site on :4321
 - **Impersonation**: Platform admins can troubleshoot as customers
 - **Session Management**: Full CRUD for end-user sessions
 - **Security**: httpOnly cookies, BCrypt passwords, project-level isolation
-
-## License
-
-MIT
